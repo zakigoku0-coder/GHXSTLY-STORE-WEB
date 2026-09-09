@@ -535,37 +535,50 @@
   }
 
   /* ---------- Google ---------- */
+  function ensureGIS(cb) {
+    if (window.google && google.accounts) return cb(true);
+    const s = document.createElement('script');
+    s.src = 'https://accounts.google.com/gsi/client';
+    s.onload = () => cb(true);
+    s.onerror = () => cb(false);
+    document.head.appendChild(s);
+  }
+
   function initGoogle() {
     const btn = $('#google-btn');
     const discordBtn = $('#discord-btn');
-    const setDisabled = (el, msg) => {
-      el.classList.add('disabled');
-      el.title = msg;
-      el.querySelector('.google-btn-text').textContent = msg;
-    };
-    if (!state.googleClientId) {
-      setDisabled(btn, 'Google login — coming soon');
-    }
-    if (typeof google !== 'undefined' && google.accounts && state.googleClientId) {
-      google.accounts.id.initialize({
-        client_id: state.googleClientId,
-        callback: window.__handleGoogleCredential
-      });
+    const gText = btn.querySelector('.google-btn-text');
+    const dText = discordBtn.querySelector('.google-btn-text');
+    if (state.googleClientId) {
       btn.classList.remove('disabled');
-      btn.querySelector('.google-btn-text').textContent = 'Continue with Google';
-      if (btn.dataset.wired !== '1') {
-        btn.dataset.wired = '1';
-        btn.addEventListener('click', () => {
-          if (!state.online) { toast('Preview build — sign-in works on the live store.', 'err'); return; }
+      gText.textContent = 'Continue with Google';
+    } else {
+      btn.classList.add('disabled');
+      btn.title = 'Google login is coming — use email for now';
+      gText.textContent = 'Google login — coming soon';
+    }
+    if (btn.dataset.wired !== '1') {
+      btn.dataset.wired = '1';
+      btn.addEventListener('click', () => {
+        if (!state.online) { toast('Preview build — sign-in works on the live store.', 'err'); return; }
+        if (!state.googleClientId) { toast('Google login is coming soon — use email for now.', 'err'); return; }
+        ensureGIS(ok => {
+          if (!ok || !(window.google && google.accounts)) { toast('Google failed to load. Try again.', 'err'); return; }
+          google.accounts.id.initialize({
+            client_id: state.googleClientId,
+            callback: window.__handleGoogleCredential
+          });
           google.accounts.id.prompt();
         });
-      }
+      });
     }
-    if (!state.discordEnabled) {
-      setDisabled(discordBtn, 'Discord login — coming soon');
-    } else {
+    if (state.discordEnabled) {
       discordBtn.classList.remove('disabled');
-      discordBtn.querySelector('.google-btn-text').textContent = 'Continue with Discord';
+      dText.textContent = 'Continue with Discord';
+    } else {
+      discordBtn.classList.add('disabled');
+      discordBtn.title = 'Discord login is coming — use email for now';
+      dText.textContent = 'Discord login — coming soon';
     }
     if (discordBtn.dataset.wired !== '1') {
       discordBtn.dataset.wired = '1';
@@ -871,7 +884,7 @@
   /* ---------- Init ---------- */
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-      navigator.serviceWorker.register('sw.js').catch(() => {});
+      navigator.serviceWorker.register('sw.js').then(r => r.update()).catch(() => {});
     });
   }
   initParticles();

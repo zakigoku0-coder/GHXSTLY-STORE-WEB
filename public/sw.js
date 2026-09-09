@@ -1,4 +1,4 @@
-const CACHE = 'ghxstly-v1';
+const CACHE = 'ghxstly-v2';
 const ASSETS = [
   '/',
   '/index.html',
@@ -27,17 +27,14 @@ self.addEventListener('fetch', e => {
   if (url.pathname.startsWith('/api/')) return;
 
   e.respondWith(
-    caches.match(e.request).then(cached => {
-      const online = fetch(e.request)
-        .then(response => {
-          if (response.ok && response.type === 'basic') {
-            const copy = response.clone();
-            caches.open(CACHE).then(c => c.put(e.request, copy));
-          }
-          return response;
-        })
-        .catch(() => cached);
-      return cached || online;
-    })
+    fetch(e.request)
+      .then(response => {
+        if (response.ok && response.type === 'basic') {
+          const copy = response.clone();
+          caches.open(CACHE).then(c => c.put(e.request, copy));
+        }
+        return response;
+      })
+      .catch(() => caches.match(e.request))
   );
 });

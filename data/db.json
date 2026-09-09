@@ -55,7 +55,7 @@
           "label": "20 exclusives"
         }
       ],
-      "stock": 50
+      "stock": 0
     },
     {
       "id": 2,
@@ -108,6 +108,7 @@
           "label": "Extras"
         }
       ],
+      "deliveryNote": "Message @tiktok_ghxstly and open a ticket so we can give you the account photos.",
       "credsEnv": "LEVIATHAN"
     },
     {

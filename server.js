@@ -174,7 +174,8 @@ app.get('/api/accounts', (req, res) => {
       stock: a.stock,
       desc: a.desc,
       chips: a.chips,
-      gallery: a.gallery || []
+      gallery: a.gallery || [],
+      deliveryNote: a.deliveryNote || null
     }));
   res.json({ accounts });
 });
@@ -276,7 +277,8 @@ app.post('/api/checkout', rateLimit(1500, 4), (req, res) => {
     amount: tx.amount,
     currency: CURRENCY,
     accountName: tx.accountName,
-    credentials: accountCredentials(account)
+    credentials: accountCredentials(account),
+    deliveryNote: account.deliveryNote || null
   });
 });
 

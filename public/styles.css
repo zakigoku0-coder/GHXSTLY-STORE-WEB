@@ -325,6 +325,12 @@ section:not(.hero) { padding: 88px 0; }
 .acc-name:hover { color: var(--tier-color, var(--common)); text-shadow: 0 0 12px color-mix(in srgb, var(--tier-color, var(--common)) 45%, transparent); }
 .acc-stats { font-size: 13px; color: var(--faint); }
 .stock-badge { color: var(--mist); font-weight: 800; }
+.stock-badge.sold { color: #f29b9b; }
+.acc-card button:disabled, .card-buy:disabled { opacity: .45; cursor: not-allowed; filter: none; }
+.delivery-note-custom {
+  margin-top: 12px; padding: 12px 14px; border-radius: 8px; font-size: 13.5px; font-weight: 700; line-height: 1.5;
+  color: #ffb3bd; background: rgba(255,46,77,0.10); border: 1px solid rgba(255,46,77,0.4);
+}
 .acc-foot { margin-top: auto; display: flex; align-items: center; justify-content: space-between; padding-top: 12px; border-top: 1px solid rgba(255,46,77,0.12); }
 .price { font-size: 20px; font-weight: 800; position: relative; }
 .price::after { content: ''; position: absolute; left: 0; bottom: -3px; width: 34px; height: 2px; border-radius: 2px; background: linear-gradient(90deg, var(--tier-color, var(--common)), transparent); }

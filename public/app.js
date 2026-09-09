@@ -18,7 +18,7 @@
   const DEMO_ACCOUNTS = [
     {
       id: 1, name: 'Hook hoodie 115+ skins', skins: 115, price: 30, tier: 'Rare', tierVar: '--rare',
-      warranty: '48h warranty', status: 'available', stock: 50,
+      warranty: '48h warranty', status: 'available', stock: 0,
       desc: 'Hook hoodie 115+ skins. Clean locker, full access, ready to play.',
       chips: [{ label: '115+ skins', gold: true }, { label: '4 rare builds', gold: true }, { label: 'Rare pickaxes', gold: true }],
       gallery: [
@@ -45,7 +45,8 @@
         { url: 'leviathan-account/3.jpg', label: 'Axe showcase' },
         { url: 'leviathan-account/4.jpg', label: 'Skins grid' },
         { url: 'leviathan-account/5.jpg', label: 'Extras' }
-      ]
+      ],
+      deliveryNote: 'Message @tiktok_ghxstly and open a ticket so we can give you the account photos.'
     }
   ];
 
@@ -196,7 +197,9 @@
       return;
     }
 
-    grid.innerHTML = filtered.map((a, i) => `
+    grid.innerHTML = filtered.map((a, i) => {
+      const out = !(a.stock > 0) || a.status === 'sold';
+      return `
       <div class="acc-card" style="--tier-color: var(${a.tierVar}); animation-delay:${Math.min(i * 40, 400)}ms">
         <div class="acc-thumb" onclick="openModal(${a.id})">
           ${accountIcon(a.tierVar)}
@@ -205,14 +208,15 @@
         <div class="acc-body">
           <span class="acc-tag">${a.tier}</span>
           <span class="acc-name" onclick="openModal(${a.id})" role="button" tabindex="0">${a.name}</span>
-          <span class="acc-stats">${a.skins}+ skins · <b class="stock-badge">in stock: ${a.stock}</b></span>
+          <span class="acc-stats">${a.skins}+ skins · <b class="stock-badge ${out ? 'sold' : ''}">${out ? 'OUT OF STOCK' : `in stock: ${a.stock}`}</b></span>
           <div class="acc-foot">
             <span class="price">${fmt(a.price)}</span>
-            <button type="button" class="card-buy" onclick="openCheckout(${a.id})">Buy</button>
+            <button type="button" class="card-buy" onclick="openCheckout(${a.id})" ${out ? 'disabled' : ''}>${out ? 'Out of stock' : 'Buy'}</button>
           </div>
         </div>
       </div>
-    `).join('');
+    `;
+    }).join('');
   }
 
   async function loadAccounts() {
@@ -267,6 +271,7 @@
   window.openCheckout = function (id) {
     const a = state.accounts.find(x => x.id === id);
     if (!a) return;
+    if (!(a.stock > 0) || a.status === 'sold') { toast('This account is out of stock.', 'err'); return; }
     state.selectedAccount = a;
     state.promo = { code: null, discount: 0 };
     $('#promo-code').value = '';
@@ -349,6 +354,13 @@
         credsBox.hidden = false;
       } else {
         credsBox.hidden = true;
+      }
+      const customNote = $('#delivery-note-custom');
+      if (data.deliveryNote) {
+        customNote.textContent = data.deliveryNote;
+        customNote.hidden = false;
+      } else {
+        customNote.hidden = true;
       }
       $('#delivery-order-code').textContent = data.orderCode;
       $('#delivery-note').textContent = 'The order was sent to the store. Open a Discord ticket and give them this order code to receive your order.';

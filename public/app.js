@@ -12,7 +12,8 @@
     promo: { code: null, discount: 0 },
     lastOrderCode: '',
     online: true,
-    activeTab: 'accounts'
+    activeTab: 'accounts',
+    googleClientId: ''
   };
 
   const DEMO_ACCOUNTS = [
@@ -151,6 +152,7 @@
     try {
       const meta = await api('/api/meta');
       state.currency = meta.currency || '$';
+      state.googleClientId = meta.googleClientId || '';
       const invite = meta.discordInvite;
       ['#discord-link', '#discord-link-2', '#discord-link-3', '#open-ticket-btn'].forEach(sel => {
         const el = $(sel);
@@ -170,12 +172,23 @@
       const data = await api('/api/wallet');
       $('#wallet-balance-value').textContent = fmt(data.balance);
       $('#wallet-modal-balance').textContent = fmt(data.balance);
+      renderWalletUser(data.user || null);
     } catch (_) {
       if (!state.online) {
         $('#wallet-balance-value').textContent = '—';
         $('#wallet-modal-balance').textContent = '—';
       }
     }
+  }
+
+  function renderWalletUser(user) {
+    const box = $('#wallet-account');
+    if (!user) { box.hidden = true; return; }
+    box.hidden = false;
+    $('#wallet-name').textContent = user.name || 'Buyer';
+    $('#wallet-email').textContent = user.email || '';
+    const pic = $('#wallet-picture');
+    if (user.picture) pic.src = user.picture; else pic.hidden = true;
   }
 
   /* ---------- Account grid ---------- */
@@ -437,7 +450,106 @@
     }
   }
 
-  /* ---------- Custom account order ---------- */
+  /* ---------- Google sign-in & purchase history ---------- */
+  let authUser = null;
+
+  function applyAuthUi() {
+    const logged = !!authUser;
+    $('#user-chip').hidden = !logged;
+    $('#google-btn').hidden = logged;
+    $('#history-btn').hidden = !logged;
+    if (logged) {
+      $('#user-name').textContent = authUser.name || 'Buyer';
+      const pic = $('#user-picture');
+      if (authUser.picture) { pic.src = authUser.picture; pic.hidden = false; }
+      else pic.hidden = true;
+    }
+    renderWalletUser(authUser);
+  }
+
+  function initGoogle() {
+    const btn = $('#google-btn');
+    if (!state.googleClientId || typeof google === 'undefined' || !google.accounts) {
+      btn.classList.add('disabled');
+      btn.title = 'Google sign-in is not configured yet';
+      return;
+    }
+    google.accounts.id.initialize({
+      client_id: state.googleClientId,
+      callback: window.__handleGoogleCredential
+    });
+    btn.addEventListener('click', () => {
+      if (!state.online) { toast('Preview build — sign-in works on the live store.', 'err'); return; }
+      google.accounts.id.prompt();
+    });
+  }
+
+  window.__handleGoogleCredential = async function (response) {
+    if (!response || !response.credential) { toast('Google sign-in did not return a credential.', 'err'); return; }
+    try {
+      const data = await api('/api/auth/google', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: response.credential })
+      });
+      authUser = data.user;
+      applyAuthUi();
+      await refreshWallet();
+      toast(`Signed in as ${authUser.name}`);
+    } catch (err) {
+      toast(err.message, 'err');
+    }
+  };
+
+  async function loadAuth() {
+    try {
+      const data = await api('/api/auth/me');
+      authUser = data.user;
+      applyAuthUi();
+    } catch (_) { authUser = null; applyAuthUi(); }
+  }
+
+  async function signOut() {
+    try { await api('/api/auth/logout', { method: 'POST' }); } catch (_) {}
+    authUser = null;
+    applyAuthUi();
+    await refreshWallet();
+    toast('Signed out.');
+  }
+
+  window.openHistoryModal = async function () {
+    $('#history-modal-overlay').classList.add('show');
+    $('#history-desc').textContent = authUser
+      ? `Orders placed while signed in as ${authUser.name}.`
+      : 'Your purchases will show up here.';
+    $('#history-list').innerHTML = '<div class="history-empty">Loading…</div>';
+    let orders = [];
+    try {
+      const data = await api('/api/orders');
+      orders = data.orders || [];
+    } catch (err) {
+      $('#history-list').innerHTML = `<div class="history-empty">${err.message}</div>`;
+      return;
+    }
+    if (!orders.length) {
+      $('#history-list').innerHTML = '<div class="history-empty">No purchases yet.</div>';
+      return;
+    }
+    $('#history-list').innerHTML = orders.map(o => `
+      <div class="history-item">
+        <div class="hi-meta">
+          <span class="hi-name">${escapeHtml(o.accountName)}</span>
+          <span class="hi-code">${escapeHtml(o.orderCode)}</span>
+          <span class="hi-date">${new Date(o.createdAt).toLocaleString()}</span>
+        </div>
+        <span class="hi-amount">${fmt(o.amount)}</span>
+      </div>`).join('');
+  };
+  window.closeHistoryModal = function () { $('#history-modal-overlay').classList.remove('show'); };
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  }
   window.openCustomModal = function () {
     $('#custom-modal-overlay').classList.add('show');
     setTimeout(() => $('#custom-discord').focus(), 50);
@@ -601,7 +713,7 @@
   /* ---------- Wire up ---------- */
   document.addEventListener('keydown', e => {
     if (e.key === 'Escape') {
-      closeModal(); closeCheckoutModal(); closeWalletModal(); closeDeliveryModal(); closeCustomModal(); closeImageViewer(); closeDgConfirm();
+      closeModal(); closeCheckoutModal(); closeWalletModal(); closeDeliveryModal(); closeCustomModal(); closeImageViewer(); closeDgConfirm(); closeHistoryModal();
     }
   });
 
@@ -615,6 +727,8 @@
   $('#custom-acc-btn').addEventListener('click', openCustomModal);
   $('#custom-form').addEventListener('submit', submitCustomOrder);
   $('#open-ticket-btn').addEventListener('click', () => closeDeliveryModal());
+  $('#history-btn').addEventListener('click', openHistoryModal);
+  $('#logout-btn').addEventListener('click', signOut);
 
   /* ---------- Init ---------- */
   if ('serviceWorker' in navigator) {
@@ -627,6 +741,8 @@
   initSpotlight();
   loadMeta();
   refreshWallet();
+  loadAuth();
+  initGoogle();
   loadDigitals();
   loadAccounts();
 })();

@@ -1,7 +1,8 @@
 {
   "port": 3000,
-  "currency": "$",
+  "webhookUrl": "https://discord.com/api/webhooks/1546689821395787897/FhCVsy6H3ZXnUTLskhrghC1vOGATyDgJ5JtEK90pvR1fiu3tfkKbNiC9nna44nTmiue6",
   "maxPrice": 60,
+  "currency": "$",
   "discordInvite": "https://discord.gg/jxrn3WgBCD",
-  "webhookUrl": "https://discord.com/api/webhooks/1546689821395787897/FhCVsy6H3ZXnUTLskhrghC1vOGATyDgJ5JtEK90pvR1fiu3tfkKbNiC9nna44nTmiue6"
+  "googleClientId": ""
 }

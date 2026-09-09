@@ -10,7 +10,8 @@ const DEFAULT_DB = {
   walletCodes: [],
   promoCodes: [],
   transactions: [],
-  sessions: []
+  sessions: [],
+  users: []
 };
 
 let db = load();
@@ -143,7 +144,7 @@ function buyDigital(itemId, sessionToken, discordName) {
 function getOrCreateSession(sessionToken) {
   let session = db.sessions.find(s => s.token === sessionToken);
   if (!session) {
-    session = { token: sessionToken, balance: 0, createdAt: Date.now() };
+    session = { token: sessionToken, balance: 0, userId: null, createdAt: Date.now() };
     db.sessions.push(session);
     save();
   }
@@ -154,11 +155,83 @@ function getSession(sessionToken) {
   return db.sessions.find(s => s.token === sessionToken) || null;
 }
 
+function syncUserBalance(sessionToken) {
+  const session = getSession(sessionToken);
+  if (!session || !session.userId) return;
+  const user = db.users.find(u => u.googleSub === session.userId);
+  if (user) user.balance = session.balance;
+}
+
 function setBalance(sessionToken, balance) {
   const session = getSession(sessionToken);
   session.balance = Math.max(0, Math.round(balance * 100) / 100);
+  syncUserBalance(sessionToken);
   save();
   return session.balance;
+}
+
+/* ---------- Google users ---------- */
+
+function getUserByGoogleSub(googleSub) {
+  return db.users.find(u => u.googleSub === googleSub) || null;
+}
+
+function createGoogleUser({ googleSub, email, name, picture }) {
+  let user = getUserByGoogleSub(googleSub);
+  if (user) {
+    if (email) user.email = email;
+    if (name) user.name = name;
+    if (picture) user.picture = picture;
+    save();
+    return user;
+  }
+  user = {
+    googleSub,
+    email: email || '',
+    name: name || 'Buyer',
+    picture: picture || '',
+    balance: 0,
+    createdAt: new Date().toISOString()
+  };
+  db.users.push(user);
+  save();
+  return user;
+}
+
+function bindUserToSession(sessionToken, userId) {
+  const session = getSession(sessionToken);
+  if (!session) return null;
+  session.userId = userId;
+  // carry the user's stored balance onto this device
+  const user = db.users.find(u => u.googleSub === userId);
+  if (user) {
+    session.balance = Math.max(session.balance, user.balance || 0);
+    user.balance = session.balance;
+  }
+  save();
+  return session;
+}
+
+function getUserForSession(sessionToken) {
+  const session = getSession(sessionToken);
+  if (!session || !session.userId) return null;
+  const user = db.users.find(u => u.googleSub === session.userId);
+  if (!user) return null;
+  return { ...user };
+}
+
+function logoutUser(sessionToken) {
+  const session = getSession(sessionToken);
+  if (!session) return;
+  syncUserBalance(sessionToken);
+  session.userId = null;
+  save();
+}
+
+function listOrdersForUser(userId) {
+  return db.transactions
+    .filter(t => t.userId === userId || t.sessionToken && db.sessions.some(s => s.token === t.sessionToken && s.userId === userId))
+    .reverse();
 }
 
 /* ---------- Accounts ---------- */
@@ -279,10 +352,12 @@ function consumePromoCode(code) {
 /* ---------- Transactions ---------- */
 
 function createTransaction({ sessionToken, accountId, accountName, amount, promoCode, discount, discordName }) {
+  const session = getSession(sessionToken);
   const tx = {
     id: db.transactions.reduce((max, t) => Math.max(max, t.id), 0) + 1,
     orderCode: generateOrderCode(),
     sessionToken,
+    userId: session && session.userId ? session.userId : null,
     accountId,
     accountName,
     amount: Math.round(amount * 100) / 100,
@@ -325,6 +400,12 @@ module.exports = {
   getOrCreateSession,
   getSession,
   setBalance,
+  getUserByGoogleSub,
+  createGoogleUser,
+  bindUserToSession,
+  getUserForSession,
+  logoutUser,
+  listOrdersForUser,
   listAccounts,
   getAccount,
   addAccount,

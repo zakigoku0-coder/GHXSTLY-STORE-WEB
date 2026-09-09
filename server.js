@@ -25,6 +25,84 @@ function accountCredentials(account) {
   }
   return null;
 }
+
+/* ---------- Google ID token verification (no SDK needed) ---------- */
+const GOOGLE_CLIENT_ID = config.googleClientId || process.env.GOOGLE_CLIENT_ID || null;
+const GOOGLE_CERTS_CACHE = { keys: null, at: 0 };
+
+function b64url(s) { return Buffer.from(s, 'base64url').toString(); }
+
+function jwkToPem(jwk) {
+  const eBuf = Buffer.from(jwk.e, 'base64url');
+  const nBuf = Buffer.from(jwk.n, 'base64url');
+  const e = jwk.e === 'AQAB' ? Buffer.from([0x01, 0x00, 0x01]) : rawToBigEndian(eBuf);
+  const n = rawToBigEndian(nBuf);
+  const der = derSequence(
+    Buffer.concat([derInteger(n), derInteger(e)])
+  );
+  return `-----BEGIN PUBLIC KEY-----\n${der.toString('base64').match(/.{1,64}/g).join('\n')}\n-----END PUBLIC KEY-----`;
+}
+function rawToBigEndian(buf) {
+  let out = buf;
+  let i = 0;
+  while (i < out.length && out[i] === 0) i++;
+  out = out.slice(i);
+  if (out[0] & 0x80) out = Buffer.concat([Buffer.from([0]), out]);
+  return out;
+}
+function derLength(len) {
+  if (len < 0x80) return Buffer.from([len]);
+  const bytes = [];
+  while (len > 0) { bytes.unshift(len & 0xff); len = len >>> 8; }
+  return Buffer.concat([Buffer.from([0x80 | bytes.length]), Buffer.from(bytes)]);
+}
+function derInteger(buf) {
+  return Buffer.concat([Buffer.from([0x02]), derLength(buf.length), buf]);
+}
+function derSequence(buf) {
+  return Buffer.concat([Buffer.from([0x30]), derLength(buf.length), buf]);
+}
+async function googleCerts() {
+  if (GOOGLE_CERTS_CACHE.keys && Date.now() - GOOGLE_CERTS_CACHE.at < 3600e3) return GOOGLE_CERTS_CACHE.keys;
+  const res = await fetch('https://www.googleapis.com/oauth2/v3/certs');
+  if (!res.ok) throw new Error('Google certs unavailable');
+  GOOGLE_CERTS_CACHE.keys = (await res.json()).keys;
+  GOOGLE_CERTS_CACHE.at = Date.now();
+  return GOOGLE_CERTS_CACHE.keys;
+}
+async function verifyGoogleToken(idToken) {
+  if (!GOOGLE_CLIENT_ID) return { error: 'Google login is not configured on this store yet.' };
+  if (!idToken || typeof idToken !== 'string' || idToken.split('.').length !== 3) {
+    return { error: 'Invalid credential.' };
+  }
+  const [h, p, sig] = idToken.split('.');
+  let header, payload;
+  try {
+    header = JSON.parse(b64url(h));
+    payload = JSON.parse(b64url(p));
+  } catch (_) {
+    return { error: 'Invalid credential.' };
+  }
+  if (payload.exp && payload.exp * 1000 < Date.now()) return { error: 'Credential expired.' };
+  if (payload.aud !== GOOGLE_CLIENT_ID) return { error: 'Credential is not for this store.' };
+  const keys = await googleCerts();
+  const jwk = keys.find(k => k.kid === header.kid);
+  if (!jwk) return { error: 'Issuer key not found.' };
+  try {
+    const key = crypto.createPublicKey(jwkToPem(jwk));
+    const ok = crypto.verify('sha256', Buffer.from(h + '.' + p), key, Buffer.from(sig, 'base64url'));
+    if (!ok) return { error: 'Signature verification failed.' };
+  } catch (_) {
+    return { error: 'Signature verification failed.' };
+  }
+  return {
+    ok: true,
+    googleSub: payload.sub,
+    email: payload.email || '',
+    name: payload.name || 'Buyer',
+    picture: payload.picture || ''
+  };
+}
 const SESSION_COOKIE = 'ghxstly_session';
 const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 
@@ -40,7 +118,7 @@ app.use((req, res, next) => {
     'X-Frame-Options': 'DENY',
     'Referrer-Policy': 'same-origin',
     'Content-Security-Policy':
-      "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+      "default-src 'self'; script-src 'self' 'unsafe-inline' https://accounts.google.com https://apis.google.com; style-src 'self' 'unsafe-inline' https://accounts.google.com https://*.googleapis.com https://*.gstatic.com; img-src 'self' data: https://*.googleusercontent.com; connect-src 'self' https://accounts.google.com; frame-src https://accounts.google.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
   });
   next();
 });
@@ -156,8 +234,37 @@ app.get('/api/meta', (req, res) => {
     currency: CURRENCY,
     maxPrice: MAX_PRICE,
     discordInvite: config.discordInvite || null,
+    googleClientId: GOOGLE_CLIENT_ID,
     stock: store.listAccounts().length
   });
+});
+
+/* ---------- Google auth ---------- */
+app.post('/api/auth/google', rateLimit(1500, 8), async (req, res) => {
+  const idToken = String(req.body.token || req.body.credential || '');
+  let result;
+  try {
+    result = await verifyGoogleToken(idToken);
+  } catch (err) {
+    return res.status(400).json({ error: 'Google is unreachable right now. Try again.' });
+  }
+  if (!result.ok) return res.status(400).json({ error: result.error });
+
+  const user = store.createGoogleUser({ googleSub: result.googleSub, email: result.email, name: result.name, picture: result.picture });
+  store.bindUserToSession(req.sessionToken, user.googleSub);
+  res.json({ ok: true, user: { name: user.name, email: user.email, picture: user.picture, balance: user.balance } });
+});
+
+app.get('/api/auth/me', (req, res) => {
+  const user = store.getUserForSession(req.sessionToken);
+  if (!user) return res.json({ user: null });
+  res.json({ user: { name: user.name, email: user.email, picture: user.picture, balance: user.balance } });
+});
+
+app.get('/api/wallet', (req, res) => {
+  const session = store.getSession(req.sessionToken);
+  const user = store.getUserForSession(req.sessionToken);
+  res.json({ balance: session.balance, currency: CURRENCY, user: user ? { name: user.name, email: user.email, picture: user.picture } : null });
 });
 
 app.get('/api/accounts', (req, res) => {
@@ -190,9 +297,9 @@ app.get('/api/account/:id', (req, res) => {
   res.json({ account: safe });
 });
 
-app.get('/api/wallet', (req, res) => {
-  const session = store.getSession(req.sessionToken);
-  res.json({ balance: session.balance, currency: CURRENCY });
+app.post('/api/auth/logout', (req, res) => {
+  store.logoutUser(req.sessionToken);
+  res.json({ ok: true });
 });
 
 app.post('/api/wallet/redeem', rateLimit(1000, 5), (req, res) => {
@@ -283,7 +390,11 @@ app.post('/api/checkout', rateLimit(1500, 4), (req, res) => {
 });
 
 app.get('/api/orders', (req, res) => {
-  const orders = store.listBySession(req.sessionToken).map(t => ({
+  const user = store.getUserForSession(req.sessionToken);
+  const list = user
+    ? store.listOrdersForUser(user.googleSub)
+    : store.listBySession(req.sessionToken);
+  const orders = list.map(t => ({
     orderCode: t.orderCode,
     accountName: t.accountName,
     amount: t.amount,

@@ -1923,5 +1923,6 @@
     }
   ],
   "transactions": [],
-  "sessions": []
+  "sessions": [],
+  "users": []
 }

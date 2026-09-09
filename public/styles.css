@@ -117,6 +117,32 @@ nav {
 .nav-links a { transition: color .2s ease, text-shadow .2s ease; position: relative; }
 .nav-links a:hover { color: var(--mist); text-shadow: 0 0 12px rgba(255,46,77,0.6); }
 .nav-actions-right { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: flex-end; }
+.auth-area { display: flex; align-items: center; }
+.google-login-btn { display: inline-flex; align-items: center; gap: 7px; height: 36px; padding: 0 12px; border: 1px solid rgba(255,255,255,0.14); border-radius: 10px; background: #fff; color: #1f1f1f; cursor: pointer; font-weight: 600; font-size: 13px; transition: transform .15s ease, box-shadow .15s ease; }
+.google-login-btn:hover { transform: translateY(-1px); box-shadow: 0 0 22px -8px rgba(255,255,255,0.6); }
+.google-login-btn.disabled { opacity: .5; cursor: not-allowed; filter: grayscale(.4); }
+.google-login-btn.disabled:hover { transform: none; box-shadow: none; }
+.google-btn-text { line-height: 1; }
+.user-chip { display: inline-flex; align-items: center; gap: 8px; height: 36px; padding: 0 8px 0 10px; border: 1px solid rgba(255,255,255,0.14); border-radius: 999px; background: rgba(255,255,255,0.05); }
+.user-chip img { width: 22px; height: 22px; border-radius: 50%; object-fit: cover; }
+.user-chip span { max-width: 110px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; color: var(--ink); }
+.user-chip button { border: 0; background: none; color: var(--muted); cursor: pointer; font-size: 12px; padding: 4px 8px; border-radius: 999px; transition: color .15s ease, background .15s ease; }
+.user-chip button:hover { color: var(--ink); background: rgba(255,255,255,0.08); }
+.btn-history { display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 12px; border: 1px solid rgba(255,255,255,0.14); border-radius: 10px; background: rgba(255,255,255,0.04); color: var(--ink); cursor: pointer; font-size: 13px; font-weight: 600; transition: transform .15s ease, box-shadow .15s ease, background .15s ease; }
+.btn-history:hover { background: rgba(255,255,255,0.09); transform: translateY(-1px); box-shadow: 0 0 22px -8px rgba(255,255,255,0.5); }
+.wallet-account { display: flex; align-items: center; gap: 10px; margin: 4px 0 14px; padding: 10px 12px; border: 1px solid rgba(255,255,255,0.1); border-radius: 12px; background: rgba(255,255,255,0.04); }
+.wallet-account img { width: 28px; height: 28px; border-radius: 50%; object-fit: cover; }
+.wallet-account div { display: flex; flex-direction: column; line-height: 1.25; min-width: 0; }
+.wallet-account strong { color: var(--ink); font-size: 14px; }
+.wallet-account span { color: var(--muted); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.history-list { display: flex; flex-direction: column; gap: 8px; margin-top: 16px; max-height: 42vh; overflow: auto; }
+.history-item { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 14px; border: 1px solid rgba(255,255,255,0.09); border-radius: 12px; background: rgba(255,255,255,0.035); }
+.history-item .hi-name { font-weight: 600; color: var(--ink); font-size: 14px; }
+.history-item .hi-meta { display: flex; flex-direction: column; gap: 2px; }
+.history-item .hi-date { color: var(--muted); font-size: 12px; }
+.history-item .hi-code { color: var(--muted); font-family: var(--mono, monospace); font-size: 11px; }
+.history-item .hi-amount { font-weight: 700; color: var(--accent); font-size: 14px; white-space: nowrap; }
+.history-empty { color: var(--muted); font-size: 13px; padding: 14px 0; text-align: center; }
 .wallet-balance {
   display: inline-flex; align-items: center; gap: 8px;
   padding: 9px 13px; border: 1px solid rgba(255,46,77,0.45); border-radius: 6px;

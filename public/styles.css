@@ -510,11 +510,12 @@ aside.filters[hidden] { display: none; }
 /* ---------- FORM ---------- */
 .form-group { margin-bottom: 14px; }
 .form-group label { display: block; font-size: 13px; font-weight: 800; color: var(--ink); margin-bottom: 6px; }
-.form-group input[type="text"], .form-group input[type="number"] {
+.form-group input[type="text"], .form-group input[type="number"], .form-group input[type="email"], .form-group input[type="password"] {
   width: 100%; min-width: 0; padding: 10px 12px; background: rgba(13,5,8,0.85);
   border: 1px solid rgba(255,46,77,0.25); border-radius: 6px; color: var(--ink); font-size: 14px;
   transition: border-color .2s ease, box-shadow .2s ease;
 }
+.form-group input::placeholder { color: rgba(255,255,255,0.32); }
 .form-group input:focus { border-color: var(--mist); outline: none; box-shadow: 0 0 0 3px rgba(255,46,77,0.13), 0 0 16px -6px rgba(255,46,77,0.55); }
 .inline-field { display: flex; gap: 8px; }
 .inline-field input { flex: 1; }

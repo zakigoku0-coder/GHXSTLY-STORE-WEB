@@ -165,6 +165,7 @@
       state.online = false;
       $('#stock-line').textContent = 'Preview build — checkout is disabled. Deploy on Render for the live store.';
     }
+    initGoogle();
   }
 
   async function refreshWallet() {
@@ -459,7 +460,6 @@
     $('#user-chip').hidden = !logged;
     $('#signin-btn').hidden = logged;
     $('#signup-btn').hidden = logged;
-    $('#history-btn').hidden = !logged;
     if (logged) {
       $('#user-name').textContent = authUser.name || 'Buyer';
       const pic = $('#user-picture');
@@ -589,7 +589,6 @@
   async function refreshHistoryBadge() {
     const badge = $('#history-badge');
     const logged = !!authUser;
-    $('#history-btn').hidden = !logged;
     badge.hidden = true;
     if (!logged) return;
     try {
@@ -857,7 +856,6 @@
   loadMeta();
   refreshWallet();
   loadAuth();
-  initGoogle();
   loadDigitals();
   loadAccounts();
 })();

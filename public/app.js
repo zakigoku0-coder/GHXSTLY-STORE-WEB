@@ -468,12 +468,7 @@
     { id: 'tweaks-premium', type: 'Tweaks', name: 'Tweaks — Premium', price: 10, limited: false, stock: null },
     { id: 'macro-normal', type: 'Macro', name: 'Macro — Normal', price: 5, limited: false, stock: null },
     { id: 'macro-premium', type: 'Macro', name: 'Macro — Premium', price: 10, limited: false, stock: null },
-    { id: 'macro-unlimited', type: 'Macro', name: 'Macro — Unlimited', price: 30, limited: false, stock: null },
-    { id: 'vb-10k', type: 'V-Bucks', name: '10 000 V-Bucks', price: 15, limited: false, stock: null },
-    { id: 'vb-20k', type: 'V-Bucks', name: '20 000 V-Bucks', price: 25, limited: false, stock: null },
-    { id: 'vb-30k', type: 'V-Bucks', name: '30 000 V-Bucks — Limited Edition', price: 30, limited: true, stock: 10 },
-    { id: 'vb-40k', type: 'V-Bucks', name: '40 000 V-Bucks', price: 45, limited: false, stock: null },
-    { id: 'vb-50k', type: 'V-Bucks', name: '50 000 V-Bucks', price: 50, limited: false, stock: null }
+    { id: 'macro-unlimited', type: 'Macro', name: 'Macro — Unlimited', price: 30, limited: false, stock: null }
   ];
 
   let digitals = DEMO_DIGITALS;
@@ -610,6 +605,11 @@
   $('#open-ticket-btn').addEventListener('click', () => closeDeliveryModal());
 
   /* ---------- Init ---------- */
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('sw.js').catch(() => {});
+    });
+  }
   initParticles();
   initReveal();
   initSpotlight();

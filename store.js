@@ -81,19 +81,14 @@ function generateOrderCode() {
   return `GHX-${time}-${generateCode(8)}-${generateCode(4)}`;
 }
 
-/* ---------- Digital goods (Tweaks / V-Bucks / Macro) ---------- */
+/* ---------- Digital goods (Tweaks / Macro) ---------- */
 
 const DIGITAL_CATALOG = [
   { id: 'tweaks-normal', type: 'Tweaks', name: 'Tweaks — Normal', price: 0, limited: false },
   { id: 'tweaks-premium', type: 'Tweaks', name: 'Tweaks — Premium', price: 10, limited: false },
   { id: 'macro-normal', type: 'Macro', name: 'Macro — Normal', price: 5, limited: false },
   { id: 'macro-premium', type: 'Macro', name: 'Macro — Premium', price: 10, limited: false },
-  { id: 'macro-unlimited', type: 'Macro', name: 'Macro — Unlimited', price: 30, limited: false },
-  { id: 'vb-10k', type: 'V-Bucks', name: '10 000 V-Bucks', price: 15, limited: false },
-  { id: 'vb-20k', type: 'V-Bucks', name: '20 000 V-Bucks', price: 25, limited: false },
-  { id: 'vb-30k', type: 'V-Bucks', name: '30 000 V-Bucks — Limited Edition', price: 30, limited: true, stock: 10 },
-  { id: 'vb-40k', type: 'V-Bucks', name: '40 000 V-Bucks', price: 45, limited: false },
-  { id: 'vb-50k', type: 'V-Bucks', name: '50 000 V-Bucks', price: 50, limited: false }
+  { id: 'macro-unlimited', type: 'Macro', name: 'Macro — Unlimited', price: 30, limited: false }
 ];
 
 function listDigitals() {

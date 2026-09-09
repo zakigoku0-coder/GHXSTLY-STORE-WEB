@@ -597,3 +597,5 @@ footer { padding: 56px 0 36px; }
   *, *::before, *::after { animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; transition-duration: 0.001ms !important; }
 }
 [hidden] { display: none !important; }
+
+#google-host { display: flex; justify-content: center; margin-top: 10px; }

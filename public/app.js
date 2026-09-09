@@ -13,7 +13,8 @@
     lastOrderCode: '',
     online: true,
     activeTab: 'accounts',
-    googleClientId: ''
+    googleClientId: '',
+    googleRendered: false
   };
 
   const DEMO_ACCOUNTS = [
@@ -544,33 +545,57 @@
     document.head.appendChild(s);
   }
 
+  function renderGoogleButton() {
+    if (!state.googleClientId || !(window.google && google.accounts)) return false;
+    if (state.googleRendered) return true;
+    state.googleRendered = true;
+    const host = $('#google-host');
+    if (!host) return false;
+    host.hidden = false;
+    $('#google-btn').hidden = true;
+    google.accounts.id.initialize({
+      client_id: state.googleClientId,
+      callback: window.__handleGoogleCredential
+    });
+    try {
+      google.accounts.id.renderButton(host, {
+        theme: 'outline',
+        text: 'continue_with',
+        shape: 'pill',
+        size: 'large',
+        width: 320,
+        logo_alignment: 'left'
+      });
+    } catch (_) {}
+    return true;
+  }
+
   function initGoogle() {
     const btn = $('#google-btn');
     const discordBtn = $('#discord-btn');
     const gText = btn.querySelector('.google-btn-text');
     const dText = discordBtn.querySelector('.google-btn-text');
-    if (state.googleClientId) {
-      btn.classList.remove('disabled');
-      gText.textContent = 'Continue with Google';
-    } else {
+    if (!state.googleClientId) {
+      btn.hidden = false;
+      $('#google-host').hidden = true;
       btn.classList.add('disabled');
       btn.title = 'Google login is coming — use email for now';
       gText.textContent = 'Google login — coming soon';
-    }
-    if (btn.dataset.wired !== '1') {
-      btn.dataset.wired = '1';
-      btn.addEventListener('click', () => {
-        if (!state.online) { toast('Preview build — sign-in works on the live store.', 'err'); return; }
-        if (!state.googleClientId) { toast('Google login is coming soon — use email for now.', 'err'); return; }
+    } else {
+      btn.classList.remove('disabled');
+      gText.textContent = 'Continue with Google';
+      if (window.google && google.accounts) {
+        renderGoogleButton();
+      } else {
         ensureGIS(ok => {
-          if (!ok || !(window.google && google.accounts)) { toast('Google failed to load. Try again.', 'err'); return; }
-          google.accounts.id.initialize({
-            client_id: state.googleClientId,
-            callback: window.__handleGoogleCredential
-          });
-          google.accounts.id.prompt();
+          if (ok) renderGoogleButton();
+          else {
+            btn.hidden = false;
+            btn.classList.add('disabled');
+            gText.textContent = 'Google unavailable — try again in a moment';
+          }
         });
-      });
+      }
     }
     if (state.discordEnabled) {
       discordBtn.classList.remove('disabled');

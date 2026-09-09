@@ -1,0 +1,7 @@
+services:
+  - type: web
+    name: ghxstly-store
+    runtime: docker
+    plan: free
+    autoDeploy: true
+    region: frankfurt

@@ -143,7 +143,18 @@ nav {
   clip-path: polygon(6px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%, 0 6px);
 }
 .nav-cta:hover { transform: translateY(-1px); filter: brightness(1.08); box-shadow: 0 0 26px -6px rgba(255,46,77,0.9); }
+.btn-tiktok {
+  display: inline-flex; align-items: center; gap: 7px;
+  font-size: 12.5px; font-weight: 800; padding: 8px 14px; border-radius: 5px;
+  border: 1px solid rgba(255,46,77,0.45); color: var(--mist);
+  text-transform: uppercase; letter-spacing: .06em; text-decoration: none;
+  background: rgba(255,46,77,0.06);
+  transition: transform .2s ease, border-color .2s ease, box-shadow .2s ease, filter .2s ease;
+  clip-path: polygon(6px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%, 0 6px);
+}
+.btn-tiktok:hover { transform: translateY(-1px); border-color: #ff2e4d; color: #ff2e4d; box-shadow: 0 0 22px -8px rgba(255,46,77,0.8); filter: brightness(1.08); }
 @media (max-width: 860px) { .nav-links { display: none; } }
+@media (max-width: 620px) { #tiktok-link-top { display: none; } }
 
 /* ---------- HERO ---------- */
 .hero { position: relative; padding: 104px 0 96px; border-bottom: 1px solid rgba(255,46,77,0.12); overflow: hidden; }
@@ -495,6 +506,15 @@ footer { padding: 56px 0 36px; }
 .footer-col a { display: block; font-size: 14px; color: #ffffff; margin-bottom: 10px; transition: color .2s ease, text-shadow .2s ease; }
 .footer-col a:hover { color: var(--mist); text-shadow: 0 0 10px rgba(255,46,77,0.5); }
 .footer-bottom { padding-top: 24px; display: flex; justify-content: space-between; flex-wrap: wrap; gap: 12px; font-size: 12.5px; color: var(--faint); }
+
+/* ---------- TIKTOK BAND ---------- */
+.tiktok-band {
+  position: relative; padding: 76px 0 88px; text-align: center;
+  border-top: 1px solid rgba(255,46,77,0.14);
+  background: radial-gradient(520px circle at 50% 0%, rgba(255,46,77,0.10), transparent 60%);
+}
+.tiktok-band .wrap { display: flex; flex-direction: column; align-items: center; gap: 24px; }
+.tiktok-band .btn-primary { display: inline-flex; align-items: center; gap: 10px; font-size: 15px; padding: 14px 28px; }
 
 /* ---------- TOAST ---------- */
 .toast {

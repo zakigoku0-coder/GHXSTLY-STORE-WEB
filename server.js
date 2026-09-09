@@ -523,6 +523,7 @@ app.get('/api/account/:id', (req, res) => {
 
 app.post('/api/auth/logout', (req, res) => {
   store.logoutUser(req.sessionToken);
+  res.clearCookie(SESSION_COOKIE, { httpOnly: true, sameSite: 'lax', path: '/' });
   res.json({ ok: true });
 });
 

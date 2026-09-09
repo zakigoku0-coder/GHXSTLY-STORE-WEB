@@ -623,6 +623,7 @@
 
   async function signOut() {
     try { await api('/api/auth/logout', { method: 'POST' }); } catch (_) {}
+    try { if (window.google && google.accounts) google.accounts.id.disableAutoSelect(); } catch (_) {}
     authUser = null;
     applyAuthUi();
     await refreshWallet();

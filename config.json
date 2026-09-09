@@ -4,5 +4,8 @@
   "maxPrice": 60,
   "currency": "$",
   "discordInvite": "https://discord.gg/jxrn3WgBCD",
-  "googleClientId": ""
+  "ownerEmail": "gearup20268@gmail.com",
+  "googleClientId": "",
+  "discordClientId": "",
+  "discordClientSecret": ""
 }

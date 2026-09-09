@@ -153,6 +153,7 @@
       const meta = await api('/api/meta');
       state.currency = meta.currency || '$';
       state.googleClientId = meta.googleClientId || '';
+      state.discordEnabled = !!meta.discordEnabled;
       const invite = meta.discordInvite;
       ['#discord-link', '#discord-link-2', '#discord-link-3', '#open-ticket-btn'].forEach(sel => {
         const el = $(sel);
@@ -462,6 +463,7 @@
     $('#signup-btn').hidden = logged;
     if (logged) {
       $('#user-name').textContent = authUser.name || 'Buyer';
+      $('#user-role-badge').hidden = authUser.role !== 'owner';
       const pic = $('#user-picture');
       if (authUser.picture) { pic.src = authUser.picture; pic.hidden = false; }
       else pic.hidden = true;
@@ -535,22 +537,43 @@
   /* ---------- Google ---------- */
   function initGoogle() {
     const btn = $('#google-btn');
-    if (!state.googleClientId || typeof google === 'undefined' || !google.accounts) {
-      btn.classList.add('disabled');
-      btn.title = 'Google login is coming — use email for now';
-      btn.querySelector('.google-btn-text').textContent = 'Google login — coming soon';
-      return;
+    const discordBtn = $('#discord-btn');
+    const setDisabled = (el, msg) => {
+      el.classList.add('disabled');
+      el.title = msg;
+      el.querySelector('.google-btn-text').textContent = msg;
+    };
+    if (!state.googleClientId) {
+      setDisabled(btn, 'Google login — coming soon');
     }
-    google.accounts.id.initialize({
-      client_id: state.googleClientId,
-      callback: window.__handleGoogleCredential
-    });
-    btn.classList.remove('disabled');
-    btn.querySelector('.google-btn-text').textContent = 'Continue with Google';
-    btn.addEventListener('click', () => {
-      if (!state.online) { toast('Preview build — sign-in works on the live store.', 'err'); return; }
-      google.accounts.id.prompt();
-    });
+    if (typeof google !== 'undefined' && google.accounts && state.googleClientId) {
+      google.accounts.id.initialize({
+        client_id: state.googleClientId,
+        callback: window.__handleGoogleCredential
+      });
+      btn.classList.remove('disabled');
+      btn.querySelector('.google-btn-text').textContent = 'Continue with Google';
+      if (btn.dataset.wired !== '1') {
+        btn.dataset.wired = '1';
+        btn.addEventListener('click', () => {
+          if (!state.online) { toast('Preview build — sign-in works on the live store.', 'err'); return; }
+          google.accounts.id.prompt();
+        });
+      }
+    }
+    if (!state.discordEnabled) {
+      setDisabled(discordBtn, 'Discord login — coming soon');
+    } else {
+      discordBtn.classList.remove('disabled');
+      discordBtn.querySelector('.google-btn-text').textContent = 'Continue with Discord';
+    }
+    if (discordBtn.dataset.wired !== '1') {
+      discordBtn.dataset.wired = '1';
+      discordBtn.addEventListener('click', () => {
+        if (!state.online) { toast('Preview build — sign-in works on the live store.', 'err'); return; }
+        window.location.href = '/api/auth/discord';
+      });
+    }
   }
 
   window.__handleGoogleCredential = async function (response) {

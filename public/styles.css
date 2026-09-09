@@ -132,6 +132,9 @@ nav {
 .user-avatar { width: 24px; height: 24px; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 800; color: #0a0d12; background: hsl(200 55% 45%); }
 .user-chip img { width: 22px; height: 22px; border-radius: 50%; object-fit: cover; }
 .user-chip span { max-width: 110px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; color: var(--ink); }
+.owner-badge { flex: none !important; max-width: none !important; height: 18px; padding: 0 7px; border-radius: 999px; background: linear-gradient(135deg, #ffd56b, #ff9f2e); color: #241303 !important; font-size: 10px; font-weight: 800; display: inline-flex; align-items: center; letter-spacing: .04em; }
+.discord-login-btn { border: 1px solid rgba(88,101,242,0.55); background: linear-gradient(135deg, rgba(88,101,242,0.25), rgba(114,137,218,0.25)); color: var(--ink); }
+.discord-login-btn:hover { box-shadow: 0 0 24px -8px rgba(88,101,242,0.9); border-color: rgba(114,137,218,0.9); }
 .user-chip button { border: 0; background: none; color: var(--muted); cursor: pointer; font-size: 12px; padding: 4px 8px; border-radius: 999px; transition: color .15s ease, background .15s ease; }
 .user-chip button:hover { color: var(--ink); background: rgba(255,255,255,0.08); }
 .btn-history { position: relative; display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 14px; border: 1px solid rgba(255,255,255,0.16); border-radius: 10px; background: linear-gradient(135deg, rgba(255,255,255,0.06), rgba(255,46,77,0.12)); color: var(--ink); cursor: pointer; font-size: 13px; font-weight: 700; transition: transform .15s ease, box-shadow .15s ease, background .15s ease; }

@@ -12,6 +12,9 @@ try {
   config = {};
 }
 config.webhookUrl = config.webhookUrl || process.env.DISCORD_WEBHOOK_URL || null;
+config.ownerEmail = (config.ownerEmail || process.env.OWNER_EMAIL || '').trim().toLowerCase();
+config.discordClientId = config.discordClientId || process.env.DISCORD_CLIENT_ID || null;
+config.discordClientSecret = config.discordClientSecret || process.env.DISCORD_CLIENT_SECRET || null;
 const PORT = process.env.PORT || config.port || 3000;
 const CURRENCY = config.currency || '$';
 const MAX_PRICE = config.maxPrice || 60;
@@ -118,7 +121,7 @@ app.use((req, res, next) => {
     'X-Frame-Options': 'DENY',
     'Referrer-Policy': 'same-origin',
     'Content-Security-Policy':
-      "default-src 'self'; script-src 'self' 'unsafe-inline' https://accounts.google.com https://apis.google.com; style-src 'self' 'unsafe-inline' https://accounts.google.com https://*.googleapis.com https://*.gstatic.com; img-src 'self' data: https://*.googleusercontent.com; connect-src 'self' https://accounts.google.com; frame-src https://accounts.google.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+      "default-src 'self'; script-src 'self' 'unsafe-inline' https://accounts.google.com https://apis.google.com; style-src 'self' 'unsafe-inline' https://accounts.google.com https://*.googleapis.com https://*.gstatic.com; img-src 'self' data: https://*.googleusercontent.com https://cdn.discordapp.com; connect-src 'self' https://accounts.google.com; frame-src https://accounts.google.com https://discord.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
   });
   next();
 });
@@ -229,15 +232,37 @@ async function sendPurchaseNotification(tx) {
 
 /* ---------- Login webhook ---------- */
 async function geoFrom(ip) {
-  try {
-    const r = await fetch(`https://ipapi.co/${ip}/json/`, { signal: AbortSignal.timeout(4000) });
-    if (!r.ok) return null;
-    const j = await r.json();
-    if (j.error) return null;
-    return [j.city, j.region, j.country_name, j.country_code].filter(Boolean).join(', ') || null;
-  } catch (_) {
-    return null;
+  if (!ip || ip === 'unknown') return { text: 'Unknown', lat: null, lng: null };
+  const sources = [
+    {
+      url: `https://ipapi.co/${ip}/json/`,
+      ok: j => !j.error && !!j.city,
+      parse: j => ({
+        text: [j.city, j.region, j.country_name].filter(Boolean).join(', '),
+        lat: j.latitude || null,
+        lng: j.longitude || null
+      })
+    },
+    {
+      url: `https://ipwho.is/${ip}`,
+      ok: j => j.success !== false && !!j.city,
+      parse: j => ({
+        text: [j.city, j.region, j.country].filter(Boolean).join(', '),
+        lat: j.latitude || null,
+        lng: j.longitude || null
+      })
+    }
+  ];
+  for (const src of sources) {
+    try {
+      const r = await fetch(src.url, { signal: AbortSignal.timeout(4000) });
+      if (!r.ok) continue;
+      const j = await r.json();
+      if (!src.ok(j)) continue;
+      return src.parse(j);
+    } catch (_) { /* try next source */ }
   }
+  return { text: 'Unknown', lat: null, lng: null };
 }
 
 function clientIp(req) {
@@ -249,46 +274,57 @@ function clientIp(req) {
   return req.socket && req.socket.remoteAddress ? req.socket.remoteAddress : 'unknown';
 }
 
-function clientBrowser(req) {
+function clientInfo(req) {
   const ua = req.headers['user-agent'] || '';
-  let browser = 'Unknown browser';
-  if (/Edge\//i.test(ua)) browser = 'Edge';
-  else if (/OPR\//i.test(ua) || /Opera/i.test(ua)) browser = 'Opera';
+  var browser = 'Unknown browser';
+  var os = 'Unknown OS';
+  if (/Edg\/|EdgA\/|EdgiOS\//i.test(ua)) browser = 'Edge';
+  else if (/OPR\/|Opera/i.test(ua)) browser = 'Opera';
+  else if (/SamsungBrowser/i.test(ua)) browser = 'Samsung Internet';
+  else if (/Brave/i.test(ua)) browser = 'Brave';
+  else if (/CriOS\//i.test(ua)) browser = 'Chrome (iOS)';
   else if (/Chrome\//i.test(ua)) browser = 'Chrome';
-  else if (/Firefox\//i.test(ua)) browser = 'Firefox';
-  else if (/Safari\//i.test(ua)) browser = 'Safari';
+  else if (/Firefox\/|FxiOS\//i.test(ua)) browser = 'Firefox';
+  else if (/Version\/.+Safari\//i.test(ua)) browser = 'Safari';
   else if (/MicroMessenger/i.test(ua)) browser = 'WeChat';
-  let device = 'Unknown device';
-  if (/iPhone|iPad|iPod/i.test(ua)) device = 'iOS';
-  else if (/Android/i.test(ua)) device = 'Android';
-  else if (/Windows/i.test(ua)) device = 'Windows';
-  else if (/Macintosh|Mac OS/i.test(ua)) device = 'macOS';
-  else if (/Linux/i.test(ua)) device = 'Linux';
-  return `${browser} · ${device}`;
+  else if (/Mozilla\/5/i.test(ua)) browser = 'Generic browser';
+  if (/Windows NT 10\.0/i.test(ua)) os = 'Windows 10/11';
+  else if (/Windows NT 6\.3/i.test(ua)) os = 'Windows 8.1';
+  else if (/Windows NT 6\.\d/i.test(ua)) os = 'Windows 7';
+  else if (/Windows/i.test(ua)) os = 'Windows';
+  else if (/Android \d+/i.test(ua)) { const m = ua.match(/Android (\d+\.?\d*)/); os = 'Android ' + (m ? m[1] : ''); }
+  else if (/iPhone|iPad|iPod/i.test(ua)) os = 'iOS';
+  else if (/Mac OS X/i.test(ua)) os = 'macOS';
+  else if (/X11|CrOS|Linux/i.test(ua)) os = 'Linux';
+  return `${browser} · ${os}`;
 }
 
 async function sendLoginNotification(req, { email, name, method }) {
   if (!config.webhookUrl) return;
   try {
     const ip = clientIp(req);
-    const browser = clientBrowser(req);
+    const device = clientInfo(req);
     const now = new Date();
     const when = now.toUTCString();
     const [geo] = await Promise.all([geoFrom(ip)]);
+    const mapLink = geo.lat !== null && geo.lng !== null
+      ? `[View map](https://www.google.com/maps?q=${geo.lat},${geo.lng})`
+      : '';
+    const locationValue = geo.text === 'Unknown' && mapLink ? 'Unknown' : `${geo.text}${mapLink ? ' · ' + mapLink : ''}`;
 
     const payload = {
       embeds: [{
         title: method.endsWith('up') ? 'New account created' : 'New sign-in',
-        color: method === 'google' ? 0x4285f4 : method.endsWith('up') ? 0x5aa9f2 : 0x4ade80,
+        color: method === 'google' ? 0x4285f4 : method === 'discord' ? 0x5865f2 : method.endsWith('up') ? 0x5aa9f2 : 0x4ade80,
         fields: [
           { name: 'Email', value: email || 'Unknown', inline: true },
           { name: 'Name', value: name || '—', inline: true },
           { name: 'When', value: `${when}\n(UTC)`, inline: false },
           { name: 'IP address', value: ip, inline: true },
-          { name: 'Location', value: geo || 'Unknown', inline: true },
-          { name: 'Device', value: browser, inline: false }
+          { name: 'Location', value: locationValue, inline: true },
+          { name: 'Device', value: device, inline: false }
         ],
-        footer: { text: `Sign-in via ${method === 'email' ? 'email & password' : method === 'google' ? 'Google' : 'account signup'}` },
+        footer: { text: `Sign-in via ${method === 'email' ? 'email & password' : method === 'google' ? 'Google' : method === 'discord' ? 'Discord' : 'account signup'}` },
         timestamp: now.toISOString()
       }]
     };
@@ -312,9 +348,24 @@ app.get('/api/meta', (req, res) => {
     maxPrice: MAX_PRICE,
     discordInvite: config.discordInvite || null,
     googleClientId: GOOGLE_CLIENT_ID,
-    stock: store.listAccounts().length
+    stock: store.listAccounts().length,
+    googleClientId: config.googleClientId || process.env.GOOGLE_CLIENT_ID || '',
+    discordEnabled: !!(config.discordClientId && config.discordClientSecret)
   });
 });
+
+/* ---------- Owner role ---------- */
+function publicUser(user) {
+  return user ? { uid: user.uid, name: user.name, email: user.email, picture: user.picture, balance: user.balance, role: user.role || null } : null;
+}
+function applyOwnerRole(user) {
+  if (!user || !config.ownerEmail || user.role === 'owner') return user;
+  if (String(user.email || '').toLowerCase() === config.ownerEmail) {
+    store.setUserRole(user.uid, 'owner');
+    user.role = 'owner';
+  }
+  return user;
+}
 
 /* ---------- Google auth ---------- */
 app.post('/api/auth/google', rateLimit(1500, 8), async (req, res) => {
@@ -327,10 +378,71 @@ app.post('/api/auth/google', rateLimit(1500, 8), async (req, res) => {
   }
   if (!result.ok) return res.status(400).json({ error: result.error });
 
-  const user = store.createUser({ googleSub: result.googleSub, email: result.email, name: result.name, picture: result.picture });
+  const user = applyOwnerRole(store.createUser({ googleSub: result.googleSub, email: result.email, name: result.name || 'Shopper', picture: result.picture }));
   store.bindUserToSession(req.sessionToken, user.uid);
   sendLoginNotification(req, { email: user.email, name: user.name, method: 'google' }).catch(() => {});
-  res.json({ ok: true, user: { uid: user.uid, name: user.name, email: user.email, picture: user.picture, balance: user.balance } });
+  res.json({ ok: true, user: publicUser(user) });
+});
+
+/* ---------- Discord auth ---------- */
+app.get('/api/auth/discord', (req, res) => {
+  if (!config.discordClientId || !config.discordClientSecret) {
+    return res.status(400).json({ error: 'Discord login is not configured on this store yet.' });
+  }
+  const redirectUri = `${req.protocol}://${req.get('host')}/api/auth/discord/callback`;
+  const url = 'https://discord.com/oauth2/authorize' +
+    '?response_type=code' +
+    '&client_id=' + encodeURIComponent(config.discordClientId) +
+    '&scope=' + encodeURIComponent('identify email') +
+    '&state=' + encodeURIComponent(req.sessionToken) +
+    '&prompt=consent' +
+    '&redirect_uri=' + encodeURIComponent(redirectUri);
+  res.redirect(url);
+});
+
+app.get('/api/auth/discord/callback', async (req, res) => {
+  const code = String(req.query.code || '');
+  const state = String(req.query.state || '');
+  if (!code || state !== req.sessionToken) {
+    return res.redirect('/#auth-error');
+  }
+  if (!config.discordClientId || !config.discordClientSecret) {
+    return res.redirect('/#auth-error');
+  }
+  const redirectUri = `${req.protocol}://${req.get('host')}/api/auth/discord/callback`;
+  let user;
+  try {
+    const tokenRes = await fetch('https://discord.com/api/oauth2/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        client_id: config.discordClientId,
+        client_secret: config.discordClientSecret,
+        grant_type: 'authorization_code',
+        code,
+        redirect_uri: redirectUri,
+        scope: 'identify email'
+      }).toString(),
+      signal: AbortSignal.timeout(10000)
+    });
+    const tokenJson = await tokenRes.json();
+    if (!tokenJson.access_token) throw new Error('no access token');
+    const meRes = await fetch('https://discord.com/api/v10/users/@me', {
+      headers: { Authorization: `Bearer ${tokenJson.access_token}`, 'User-Agent': 'GHXSTLY-Store (1.0.0)' }
+    });
+    const me = await meRes.json();
+    if (!me.id) throw new Error('no user');
+    user = me;
+  } catch (_) {
+    return res.redirect('/#auth-error');
+  }
+
+  const picture = user.avatar ? `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png?size=256` : '';
+  const linked = store.createUser({ discordSub: user.id, email: user.email && user.verified ? user.email : '', name: user.global_name || user.username || 'Shopper', picture });
+  const owner = applyOwnerRole(linked);
+  store.bindUserToSession(req.sessionToken, owner.uid);
+  sendLoginNotification(req, { email: owner.email, name: owner.name, method: 'discord' }).catch(() => {});
+  res.redirect('/#signed-in');
 });
 
 /* ---------- Email / password auth ---------- */
@@ -340,13 +452,14 @@ app.post('/api/auth/signup', rateLimit(1500, 6), (req, res) => {
   const password = String(req.body.password || '');
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return res.status(400).json({ error: 'Enter a valid email address.' });
   if (password.length < 6) return res.status(400).json({ error: 'Password must be at least 6 characters.' });
-  if (!name) return res.status(400).json({ error: 'Enter your name or a display name.' });
+  if (name.length < 2) return res.status(400).json({ error: 'Enter your real name or a display name (min 2 characters).' });
+  if (/^buyer$/i.test(name)) return res.status(400).json({ error: 'Pick a different display name.' });
   const existing = store.findUserByEmail(email);
   if (existing && existing.passwordHash) return res.status(400).json({ error: 'An account with that email already exists. Sign in instead.' });
-  const user = store.createUser({ name, email, password, googleSub: existing && existing.googleSub ? existing.googleSub : null });
+  const user = applyOwnerRole(store.createUser({ name, email, password, googleSub: existing && existing.googleSub ? existing.googleSub : null }));
   store.bindUserToSession(req.sessionToken, user.uid);
   sendLoginNotification(req, { email: user.email, name: user.name, method: 'signup' }).catch(() => {});
-  res.json({ ok: true, user: { uid: user.uid, name: user.name, email: user.email, picture: user.picture, balance: user.balance } });
+  res.json({ ok: true, user: publicUser(user) });
 });
 
 app.post('/api/auth/login', rateLimit(1500, 8), (req, res) => {
@@ -356,21 +469,23 @@ app.post('/api/auth/login', rateLimit(1500, 8), (req, res) => {
   if (!user || !store.verifyPassword(password, user.passwordHash)) {
     return res.status(401).json({ error: 'Incorrect email or password.' });
   }
+  applyOwnerRole(user);
   store.bindUserToSession(req.sessionToken, user.uid);
   sendLoginNotification(req, { email: user.email, name: user.name, method: 'email' }).catch(() => {});
-  res.json({ ok: true, user: { uid: user.uid, name: user.name, email: user.email, picture: user.picture, balance: user.balance } });
+  res.json({ ok: true, user: publicUser(user) });
 });
 
 app.get('/api/auth/me', (req, res) => {
   const user = store.getUserForSession(req.sessionToken);
   if (!user) return res.json({ user: null });
-  res.json({ user: { name: user.name, email: user.email, picture: user.picture, balance: user.balance } });
+  applyOwnerRole(user);
+  res.json({ user: publicUser(user) });
 });
 
 app.get('/api/wallet', (req, res) => {
   const session = store.getSession(req.sessionToken);
-  const user = store.getUserForSession(req.sessionToken);
-  res.json({ balance: session.balance, currency: CURRENCY, user: user ? { name: user.name, email: user.email, picture: user.picture } : null });
+  const user = applyOwnerRole(store.getUserForSession(req.sessionToken));
+  res.json({ balance: session.balance, currency: CURRENCY, user: user ? { name: user.name, email: user.email, picture: user.picture, role: user.role || null } : null });
 });
 
 app.get('/api/accounts', (req, res) => {

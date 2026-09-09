@@ -4,6 +4,29 @@ const crypto = require('crypto');
 
 const DATA_DIR = path.join(__dirname, 'data');
 const DB_FILE = path.join(DATA_DIR, 'db.json');
+const KV_KEY = 'ghxstly:db';
+let kv = null;
+let kvAvailable = false;
+try {
+  kv = require('@vercel/kv').kv;
+  kvAvailable = !!(process.env.KV_REST_API_URL || process.env.REDIS_REST_URL);
+} catch (_) {}
+
+
+async function loadDurable() {
+  if (!kv || !kvAvailable) return null;
+  try {
+    const snap = await kv.get(KV_KEY);
+    return snap && snap.users ? { ...DEFAULT_DB, ...snap } : null;
+  } catch (_) {
+    return null;
+  }
+}
+
+async function pushDurable() {
+  if (!kv || !kvAvailable) return;
+  try { await kv.set(KV_KEY, db); } catch (_) {}
+}
 
 const DEFAULT_DB = {
   accounts: [],
@@ -15,6 +38,17 @@ const DEFAULT_DB = {
 };
 
 let db = load();
+
+// On serverless (Vercel) the file system is ephemeral, so take the persisted
+// snapshot from key-value storage the moment the store boots.
+if (kv && kvAvailable) {
+  loadDurable().then(snap => {
+    if (snap) {
+      db = snap;
+      save();
+    }
+  }).catch(() => {});
+}
 
 function load() {
   if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
@@ -42,6 +76,7 @@ function save() {
     try {
       skipNextWatch = true;
       fs.writeFileSync(DB_FILE, JSON.stringify(db, null, 2));
+      pushDurable();
       try { lastOwnWriteMs = fs.statSync(DB_FILE).mtimeMs; } catch (_) {}
       dirty = false;
     } catch (err) {
@@ -206,28 +241,44 @@ function verifyPassword(password, stored) {
   }
 }
 
-function createUser({ name, email, password, googleSub, picture }) {
-  let user = findUserByEmail(email) || (googleSub && findUserByGoogleSub(googleSub));
+function createUser({ name, email, password, googleSub, discordSub, picture }) {
+  let user = findUserByEmail(email) || (googleSub && findUserByGoogleSub(googleSub)) || (discordSub && findUserByDiscordSub(discordSub));
   if (user) {
     if (email && !user.email) user.email = String(email).trim().toLowerCase();
     if (name && !user.name) user.name = name;
     if (picture && !user.picture) user.picture = picture;
     if (googleSub && !user.googleSub) user.googleSub = googleSub;
+    if (discordSub && !user.discordSub) user.discordSub = discordSub;
     if (password && !user.passwordHash) user.passwordHash = hashPassword(password);
     save();
     return user;
   }
   user = {
     uid: randomToken(8),
-    name: name || (email ? email.split('@')[0] : 'Buyer'),
+    name: name || (email ? email.split('@')[0] : 'Shopper'),
     email: email ? String(email).trim().toLowerCase() : '',
     picture: picture || '',
     googleSub: googleSub || null,
+    discordSub: discordSub || null,
     passwordHash: password ? hashPassword(password) : null,
+    role: null,
     balance: 0,
     createdAt: new Date().toISOString()
   };
   db.users.push(user);
+  save();
+  return user;
+}
+
+function findUserByDiscordSub(discordSub) {
+  if (!discordSub) return null;
+  return db.users.find(u => u.discordSub === discordSub) || null;
+}
+
+function setUserRole(uid, role) {
+  const user = getUserById(uid);
+  if (!user) return null;
+  user.role = role || null;
   save();
   return user;
 }
@@ -438,7 +489,9 @@ module.exports = {
   getUserById,
   findUserByEmail,
   findUserByGoogleSub,
+  findUserByDiscordSub,
   createUser,
+  setUserRole,
   verifyPassword,
   bindUserToSession,
   getUserForSession,

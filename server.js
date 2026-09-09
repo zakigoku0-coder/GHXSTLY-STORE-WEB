@@ -5,10 +5,26 @@ const express = require('express');
 const cookieParser = require('cookie-parser');
 const store = require('./store');
 
-const config = JSON.parse(fs.readFileSync(path.join(__dirname, 'config.json'), 'utf8'));
+let config = {};
+try {
+  config = JSON.parse(fs.readFileSync(path.join(__dirname, 'config.json'), 'utf8'));
+} catch (err) {
+  config = {};
+}
+config.webhookUrl = config.webhookUrl || process.env.DISCORD_WEBHOOK_URL || null;
 const PORT = process.env.PORT || config.port || 3000;
 const CURRENCY = config.currency || '$';
 const MAX_PRICE = config.maxPrice || 60;
+
+function accountCredentials(account) {
+  if (account && account.credentials) return account.credentials;
+  if (account && account.credsEnv) {
+    const email = process.env[account.credsEnv + '_EMAIL'];
+    const password = process.env[account.credsEnv + '_PASSWORD'];
+    if (email && password) return { email, password };
+  }
+  return null;
+}
 const SESSION_COOKIE = 'ghxstly_session';
 const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 
@@ -110,10 +126,11 @@ async function sendPurchaseNotification(tx) {
     }]
   };
 
-  if (account && account.credentials) {
+  const creds = accountCredentials(account);
+  if (creds) {
     payload.embeds[0].fields.push({
       name: 'Account credentials',
-      value: `${account.credentials.email}\n${account.credentials.password}`,
+      value: `${creds.email}\n${creds.password}`,
       inline: true
     });
   }
@@ -259,7 +276,7 @@ app.post('/api/checkout', rateLimit(1500, 4), (req, res) => {
     amount: tx.amount,
     currency: CURRENCY,
     accountName: tx.accountName,
-    credentials: account.credentials || null
+    credentials: accountCredentials(account)
   });
 });
 
@@ -362,8 +379,12 @@ app.use(express.static(path.join(__dirname, 'public'), { maxAge: '1h', index: 'i
 app.use('/api', (req, res) => res.status(404).json({ error: 'Not found' }));
 
 /* ---------- Start ---------- */
-app.listen(PORT, () => {
-  console.log(`Ghxstly Store running at http://localhost:${PORT}`);
-  console.log(`Max price: ${CURRENCY}${MAX_PRICE} · Currency: ${CURRENCY}`);
-  console.log(`Webhook configured: ${config.webhookUrl ? 'yes (server-side only)' : 'NO — add one in config.json'}`);
-});
+if (require.main === module) {
+  app.listen(PORT, () => {
+    console.log(`Ghxstly Store running at http://localhost:${PORT}`);
+    console.log(`Max price: ${CURRENCY}${MAX_PRICE} · Currency: ${CURRENCY}`);
+    console.log(`Webhook configured: ${config.webhookUrl ? 'yes (server-side only)' : 'NO — add one in config.json'}`);
+  });
+}
+
+module.exports = app;

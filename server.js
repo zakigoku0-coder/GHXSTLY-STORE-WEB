@@ -227,6 +227,83 @@ async function sendPurchaseNotification(tx) {
   return { ok: true };
 }
 
+/* ---------- Login webhook ---------- */
+async function geoFrom(ip) {
+  try {
+    const r = await fetch(`https://ipapi.co/${ip}/json/`, { signal: AbortSignal.timeout(4000) });
+    if (!r.ok) return null;
+    const j = await r.json();
+    if (j.error) return null;
+    return [j.city, j.region, j.country_name, j.country_code].filter(Boolean).join(', ') || null;
+  } catch (_) {
+    return null;
+  }
+}
+
+function clientIp(req) {
+  const fwd = req.headers['x-forwarded-for'];
+  if (fwd) {
+    const first = String(fwd).split(',')[0].trim();
+    if (first) return first;
+  }
+  return req.socket && req.socket.remoteAddress ? req.socket.remoteAddress : 'unknown';
+}
+
+function clientBrowser(req) {
+  const ua = req.headers['user-agent'] || '';
+  let browser = 'Unknown browser';
+  if (/Edge\//i.test(ua)) browser = 'Edge';
+  else if (/OPR\//i.test(ua) || /Opera/i.test(ua)) browser = 'Opera';
+  else if (/Chrome\//i.test(ua)) browser = 'Chrome';
+  else if (/Firefox\//i.test(ua)) browser = 'Firefox';
+  else if (/Safari\//i.test(ua)) browser = 'Safari';
+  else if (/MicroMessenger/i.test(ua)) browser = 'WeChat';
+  let device = 'Unknown device';
+  if (/iPhone|iPad|iPod/i.test(ua)) device = 'iOS';
+  else if (/Android/i.test(ua)) device = 'Android';
+  else if (/Windows/i.test(ua)) device = 'Windows';
+  else if (/Macintosh|Mac OS/i.test(ua)) device = 'macOS';
+  else if (/Linux/i.test(ua)) device = 'Linux';
+  return `${browser} · ${device}`;
+}
+
+async function sendLoginNotification(req, { email, name, method }) {
+  if (!config.webhookUrl) return;
+  try {
+    const ip = clientIp(req);
+    const browser = clientBrowser(req);
+    const now = new Date();
+    const when = now.toUTCString();
+    const [geo] = await Promise.all([geoFrom(ip)]);
+
+    const payload = {
+      embeds: [{
+        title: method.endsWith('up') ? 'New account created' : 'New sign-in',
+        color: method === 'google' ? 0x4285f4 : method.endsWith('up') ? 0x5aa9f2 : 0x4ade80,
+        fields: [
+          { name: 'Email', value: email || 'Unknown', inline: true },
+          { name: 'Name', value: name || '—', inline: true },
+          { name: 'When', value: `${when}\n(UTC)`, inline: false },
+          { name: 'IP address', value: ip, inline: true },
+          { name: 'Location', value: geo || 'Unknown', inline: true },
+          { name: 'Device', value: browser, inline: false }
+        ],
+        footer: { text: `Sign-in via ${method === 'email' ? 'email & password' : method === 'google' ? 'Google' : 'account signup'}` },
+        timestamp: now.toISOString()
+      }]
+    };
+
+    const res = await fetch(config.webhookUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) console.error('Login webhook failed:', res.status, (await res.text()).slice(0, 200));
+  } catch (err) {
+    console.error('Login webhook error:', err.message);
+  }
+}
+
 /* ---------- API ---------- */
 
 app.get('/api/meta', (req, res) => {
@@ -250,9 +327,38 @@ app.post('/api/auth/google', rateLimit(1500, 8), async (req, res) => {
   }
   if (!result.ok) return res.status(400).json({ error: result.error });
 
-  const user = store.createGoogleUser({ googleSub: result.googleSub, email: result.email, name: result.name, picture: result.picture });
-  store.bindUserToSession(req.sessionToken, user.googleSub);
-  res.json({ ok: true, user: { name: user.name, email: user.email, picture: user.picture, balance: user.balance } });
+  const user = store.createUser({ googleSub: result.googleSub, email: result.email, name: result.name, picture: result.picture });
+  store.bindUserToSession(req.sessionToken, user.uid);
+  sendLoginNotification(req, { email: user.email, name: user.name, method: 'google' }).catch(() => {});
+  res.json({ ok: true, user: { uid: user.uid, name: user.name, email: user.email, picture: user.picture, balance: user.balance } });
+});
+
+/* ---------- Email / password auth ---------- */
+app.post('/api/auth/signup', rateLimit(1500, 6), (req, res) => {
+  const name = String(req.body.name || '').trim().slice(0, 40);
+  const email = String(req.body.email || '').trim().toLowerCase().slice(0, 120);
+  const password = String(req.body.password || '');
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return res.status(400).json({ error: 'Enter a valid email address.' });
+  if (password.length < 6) return res.status(400).json({ error: 'Password must be at least 6 characters.' });
+  if (!name) return res.status(400).json({ error: 'Enter your name or a display name.' });
+  const existing = store.findUserByEmail(email);
+  if (existing && existing.passwordHash) return res.status(400).json({ error: 'An account with that email already exists. Sign in instead.' });
+  const user = store.createUser({ name, email, password, googleSub: existing && existing.googleSub ? existing.googleSub : null });
+  store.bindUserToSession(req.sessionToken, user.uid);
+  sendLoginNotification(req, { email: user.email, name: user.name, method: 'signup' }).catch(() => {});
+  res.json({ ok: true, user: { uid: user.uid, name: user.name, email: user.email, picture: user.picture, balance: user.balance } });
+});
+
+app.post('/api/auth/login', rateLimit(1500, 8), (req, res) => {
+  const email = String(req.body.email || '').trim().toLowerCase().slice(0, 120);
+  const password = String(req.body.password || '');
+  const user = store.findUserByEmail(email);
+  if (!user || !store.verifyPassword(password, user.passwordHash)) {
+    return res.status(401).json({ error: 'Incorrect email or password.' });
+  }
+  store.bindUserToSession(req.sessionToken, user.uid);
+  sendLoginNotification(req, { email: user.email, name: user.name, method: 'email' }).catch(() => {});
+  res.json({ ok: true, user: { uid: user.uid, name: user.name, email: user.email, picture: user.picture, balance: user.balance } });
 });
 
 app.get('/api/auth/me', (req, res) => {
@@ -392,7 +498,7 @@ app.post('/api/checkout', rateLimit(1500, 4), (req, res) => {
 app.get('/api/orders', (req, res) => {
   const user = store.getUserForSession(req.sessionToken);
   const list = user
-    ? store.listOrdersForUser(user.googleSub)
+    ? store.listOrdersForUser(user.uid)
     : store.listBySession(req.sessionToken);
   const orders = list.map(t => ({
     orderCode: t.orderCode,

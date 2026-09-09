@@ -450,34 +450,103 @@
     }
   }
 
-  /* ---------- Google sign-in & purchase history ---------- */
+  /* ---------- Accounts, sign-in & purchase history ---------- */
   let authUser = null;
+  let authMode = 'login';
 
   function applyAuthUi() {
     const logged = !!authUser;
     $('#user-chip').hidden = !logged;
-    $('#google-btn').hidden = logged;
+    $('#signin-btn').hidden = logged;
+    $('#signup-btn').hidden = logged;
     $('#history-btn').hidden = !logged;
     if (logged) {
       $('#user-name').textContent = authUser.name || 'Buyer';
       const pic = $('#user-picture');
       if (authUser.picture) { pic.src = authUser.picture; pic.hidden = false; }
       else pic.hidden = true;
+      $('#user-avatar').textContent = (authUser.name || 'G').trim().charAt(0).toUpperCase();
+      $('#user-avatar').style.background = avatarColor(authUser.uid || authUser.email);
     }
     renderWalletUser(authUser);
+    refreshHistoryBadge();
   }
 
+  function avatarColor(seed) {
+    let h = 0;
+    for (let i = 0; i < String(seed).length; i++) h = (h * 31 + String(seed).charCodeAt(i)) >>> 0;
+    return `hsl(${h % 360} 55% 45%)`;
+  }
+
+  /* ---------- Auth modal ---------- */
+  window.openAuthModal = function (mode) {
+    authMode = mode === 'signup' ? 'signup' : 'login';
+    renderAuthTabs();
+    $('#auth-modal-overlay').classList.add('show');
+    setTimeout(() => $('#auth-email').focus(), 50);
+  };
+  window.closeAuthModal = function () { $('#auth-modal-overlay').classList.remove('show'); };
+
+  function renderAuthTabs() {
+    $('#tab-login').classList.toggle('active', authMode === 'login');
+    $('#tab-signup').classList.toggle('active', authMode === 'signup');
+    $('#auth-name-group').hidden = authMode !== 'signup';
+    $('#auth-title').textContent = authMode === 'signup' ? 'Create your account' : 'Sign in to your account';
+    $('#auth-eyebrow').textContent = authMode === 'signup' ? 'NEW HERE' : 'WELCOME BACK';
+    $('#auth-submit').textContent = authMode === 'signup' ? 'Create account' : 'Sign in';
+    $('#auth-password').autocomplete = authMode === 'signup' ? 'new-password' : 'current-password';
+  }
+
+  async function submitAuth(e) {
+    e.preventDefault();
+    if (!state.online) {
+      toast('Proof build — accounts need the live server.', 'err');
+      return;
+    }
+    const email = $('#auth-email').value.trim();
+    const password = $('#auth-password').value;
+    const name = $('#auth-name').value.trim();
+    if (!email || !password) return;
+    const btn = $('#auth-submit');
+    btn.disabled = true;
+    btn.textContent = 'Working…';
+    try {
+      const path = authMode === 'signup' ? '/api/auth/signup' : '/api/auth/login';
+      const body = authMode === 'signup' ? { name, email, password } : { email, password };
+      const data = await api(path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+      authUser = data.user;
+      closeAuthModal();
+      applyAuthUi();
+      await refreshWallet();
+      toast(`Welcome${authMode === 'signup' ? ' to the store' : ' back'}, ${authUser.name}!`);
+    } catch (err) {
+      toast(err.message, 'err');
+    } finally {
+      btn.disabled = false;
+      btn.textContent = authMode === 'signup' ? 'Create account' : 'Sign in';
+    }
+  }
+
+  function switchAuthTab(tab) {
+    authMode = tab;
+    renderAuthTabs();
+  }
+
+  /* ---------- Google ---------- */
   function initGoogle() {
     const btn = $('#google-btn');
     if (!state.googleClientId || typeof google === 'undefined' || !google.accounts) {
       btn.classList.add('disabled');
-      btn.title = 'Google sign-in is not configured yet';
+      btn.title = 'Google login is coming — use email for now';
+      btn.querySelector('.google-btn-text').textContent = 'Google login — coming soon';
       return;
     }
     google.accounts.id.initialize({
       client_id: state.googleClientId,
       callback: window.__handleGoogleCredential
     });
+    btn.classList.remove('disabled');
+    btn.querySelector('.google-btn-text').textContent = 'Continue with Google';
     btn.addEventListener('click', () => {
       if (!state.online) { toast('Preview build — sign-in works on the live store.', 'err'); return; }
       google.accounts.id.prompt();
@@ -493,6 +562,7 @@
         body: JSON.stringify({ token: response.credential })
       });
       authUser = data.user;
+      closeAuthModal();
       applyAuthUi();
       await refreshWallet();
       toast(`Signed in as ${authUser.name}`);
@@ -505,8 +575,28 @@
     try {
       const data = await api('/api/auth/me');
       authUser = data.user;
-      applyAuthUi();
-    } catch (_) { authUser = null; applyAuthUi(); }
+    } catch (_) { authUser = null; }
+    applyAuthUi();
+  }
+
+  async function loadOrders() {
+    try {
+      const data = await api('/api/orders');
+      return data.orders || [];
+    } catch (_) { return []; }
+  }
+
+  async function refreshHistoryBadge() {
+    const badge = $('#history-badge');
+    const logged = !!authUser;
+    $('#history-btn').hidden = !logged;
+    badge.hidden = true;
+    if (!logged) return;
+    try {
+      const orders = await loadOrders();
+      badge.hidden = orders.length === 0;
+      badge.textContent = orders.length > 99 ? '99+' : orders.length;
+    } catch (_) {}
   }
 
   async function signOut() {
@@ -517,33 +607,53 @@
     toast('Signed out.');
   }
 
+  function orderStatus(o) {
+    return o.status === 'refunded' ? { label: 'Refunded', cls: 'refunded' }
+      : o.notified ? { label: 'Delivered', cls: 'delivered' }
+      : { label: 'Ordered', cls: 'ordered' };
+  }
+
   window.openHistoryModal = async function () {
+    if (!authUser) {
+      toast('Sign in to see your order history.', 'err');
+      window.openAuthModal('login');
+      return;
+    }
     $('#history-modal-overlay').classList.add('show');
-    $('#history-desc').textContent = authUser
-      ? `Orders placed while signed in as ${authUser.name}.`
-      : 'Your purchases will show up here.';
     $('#history-list').innerHTML = '<div class="history-empty">Loading…</div>';
-    let orders = [];
-    try {
-      const data = await api('/api/orders');
-      orders = data.orders || [];
-    } catch (err) {
-      $('#history-list').innerHTML = `<div class="history-empty">${err.message}</div>`;
-      return;
-    }
+    const orders = await loadOrders();
+    const spent = orders.reduce((s, o) => s + (o.amount || 0), 0);
+    $('#hs-count').textContent = orders.length;
+    $('#hs-spent').textContent = fmt(spent);
+    $('#hs-last').textContent = orders.length ? new Date(orders[0].createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : '—';
     if (!orders.length) {
-      $('#history-list').innerHTML = '<div class="history-empty">No purchases yet.</div>';
+      $('#history-list').innerHTML = '<div class="history-empty">No purchases yet — your orders will appear here.</div>';
       return;
     }
-    $('#history-list').innerHTML = orders.map(o => `
+    $('#history-list').innerHTML = orders.map(o => {
+      const st = orderStatus(o);
+      return `
       <div class="history-item">
         <div class="hi-meta">
           <span class="hi-name">${escapeHtml(o.accountName)}</span>
-          <span class="hi-code">${escapeHtml(o.orderCode)}</span>
           <span class="hi-date">${new Date(o.createdAt).toLocaleString()}</span>
+          <span class="hi-code-row">
+            <code class="hi-code">${escapeHtml(o.orderCode)}</code>
+            <button type="button" class="hi-copy" data-code="${escapeHtml(o.orderCode)}" aria-label="Copy order code">
+              <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>
+            </button>
+          </span>
         </div>
-        <span class="hi-amount">${fmt(o.amount)}</span>
-      </div>`).join('');
+        <div class="hi-right">
+          <span class="hi-status ${st.cls}">${st.label}</span>
+          <span class="hi-amount">${fmt(o.amount)}</span>
+        </div>
+      </div>`;
+    }).join('');
+    $$('#history-list .hi-copy').forEach(b => b.addEventListener('click', () => {
+      const code = b.dataset.code;
+      navigator.clipboard && navigator.clipboard.writeText(code).then(() => toast(`Copied ${code}`));
+    }));
   };
   window.closeHistoryModal = function () { $('#history-modal-overlay').classList.remove('show'); };
 
@@ -713,7 +823,7 @@
   /* ---------- Wire up ---------- */
   document.addEventListener('keydown', e => {
     if (e.key === 'Escape') {
-      closeModal(); closeCheckoutModal(); closeWalletModal(); closeDeliveryModal(); closeCustomModal(); closeImageViewer(); closeDgConfirm(); closeHistoryModal();
+      closeModal(); closeCheckoutModal(); closeWalletModal(); closeDeliveryModal(); closeCustomModal(); closeImageViewer(); closeDgConfirm(); closeHistoryModal(); closeAuthModal();
     }
   });
 
@@ -727,6 +837,11 @@
   $('#custom-acc-btn').addEventListener('click', openCustomModal);
   $('#custom-form').addEventListener('submit', submitCustomOrder);
   $('#open-ticket-btn').addEventListener('click', () => closeDeliveryModal());
+  $('#signin-btn').addEventListener('click', () => openAuthModal('login'));
+  $('#signup-btn').addEventListener('click', () => openAuthModal('signup'));
+  $('#tab-login').addEventListener('click', () => switchAuthTab('login'));
+  $('#tab-signup').addEventListener('click', () => switchAuthTab('signup'));
+  $('#auth-form').addEventListener('submit', submitAuth);
   $('#history-btn').addEventListener('click', openHistoryModal);
   $('#logout-btn').addEventListener('click', signOut);
 

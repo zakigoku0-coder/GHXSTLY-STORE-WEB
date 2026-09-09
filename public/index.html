@@ -40,19 +40,22 @@
     </div>
     <div class="nav-actions-right">
       <div id="auth-area" class="auth-area">
-        <div class="google-login-btn" id="google-btn" role="button" tabindex="0" aria-label="Sign in with Google">
-          <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="#4285F4" d="M23.5 12.27c0-.85-.08-1.66-.22-2.45H12v4.64h6.45a5.52 5.52 0 0 1-2.4 3.62v3h3.87c2.27-2.09 3.58-5.17 3.58-8.81Z"/><path fill="#34A853" d="M12 24c3.24 0 5.96-1.07 7.94-2.91l-3.87-3c-1.08.72-2.45 1.15-4.07 1.15-3.13 0-5.78-2.11-6.73-4.96H1.29v3.1A12 12 0 0 0 12 24Z"/><path fill="#FBBC05" d="M5.27 14.28a7.2 7.2 0 0 1 0-4.56V6.62H1.29a12 12 0 0 0 0 10.76l3.98-3.1Z"/><path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.44-3.44A11.98 11.98 0 0 0 12 0 12 12 0 0 0 1.29 6.62l3.98 3.1C6.22 6.86 8.87 4.75 12 4.75Z"/></svg>
-          <span class="google-btn-text">Sign in</span>
-        </div>
+        <button type="button" class="btn-signin" id="signin-btn">Sign in</button>
+        <button type="button" class="btn-signup" id="signup-btn">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M19 8v6M22 11h-6"/></svg>
+          Create account
+        </button>
         <div class="user-chip" id="user-chip" hidden>
-          <img id="user-picture" alt="" width="22" height="22" referrerpolicy="no-referrer">
+          <span class="user-avatar" id="user-avatar">G</span>
+          <img id="user-picture" alt="" width="22" height="22" referrerpolicy="no-referrer" hidden>
           <span id="user-name">Buyer</span>
           <button type="button" id="logout-btn" aria-label="Sign out">Sign out</button>
         </div>
       </div>
       <button type="button" class="btn-history" id="history-btn" aria-label="Purchase history">
-        <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l3 3"/></svg>
+        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l3 3"/></svg>
         History
+        <span class="history-badge" id="history-badge" hidden>0</span>
       </button>
       <button type="button" class="btn-custom-acc" id="custom-acc-btn">Custom Account</button>
       <button type="button" class="wallet-balance" id="wallet-button" aria-label="Open wallet">
@@ -336,13 +339,51 @@
   </div>
 </div>
 
+<!-- Auth modal -->
+<div class="modal-overlay" id="auth-modal-overlay" onclick="if(event.target===this)closeAuthModal()">
+  <div class="modal auth-modal">
+    <button type="button" class="modal-close" onclick="closeAuthModal()"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+    <div class="modal-eyebrow" id="auth-eyebrow">WELCOME</div>
+    <h3 id="auth-title">Sign in to your account</h3>
+    <p class="desc" id="auth-desc">Your wallet balance and purchase history follow your account on any device.</p>
+    <div class="auth-tabs" role="tablist">
+      <button type="button" class="auth-tab active" id="tab-login" data-tab="login">Sign in</button>
+      <button type="button" class="auth-tab" id="tab-signup" data-tab="signup">Create account</button>
+    </div>
+    <form id="auth-form">
+      <div class="form-group" id="auth-name-group">
+        <label for="auth-name">Display name</label>
+        <input type="text" id="auth-name" autocomplete="name" placeholder="e.g. GhxstlyShopper" maxlength="40">
+      </div>
+      <div class="form-group">
+        <label for="auth-email">Email</label>
+        <input type="email" id="auth-email" required autocomplete="email" placeholder="you@example.com">
+      </div>
+      <div class="form-group">
+        <label for="auth-password">Password</label>
+        <input type="password" id="auth-password" required autocomplete="current-password" placeholder="At least 6 characters">
+      </div>
+      <button type="submit" class="btn-primary full btn-glow" id="auth-submit">Sign in</button>
+    </form>
+    <div class="auth-divider"><span>or continue with</span></div>
+    <div class="google-login-btn" id="google-btn" role="button" tabindex="0" aria-label="Sign in with Google">
+      <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="#4285F4" d="M23.5 12.27c0-.85-.08-1.66-.22-2.45H12v4.64h6.45a5.52 5.52 0 0 1-2.4 3.62v3h3.87c2.27-2.09 3.58-5.17 3.58-8.81Z"/><path fill="#34A853" d="M12 24c3.24 0 5.96-1.07 7.94-2.91l-3.87-3c-1.08.72-2.45 1.15-4.07 1.15-3.13 0-5.78-2.11-6.73-4.96H1.29v3.1A12 12 0 0 0 12 24Z"/><path fill="#FBBC05" d="M5.27 14.28a7.2 7.2 0 0 1 0-4.56V6.62H1.29a12 12 0 0 0 0 10.76l3.98-3.1Z"/><path fill="#EA4335" d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.44-3.44A11.98 11.98 0 0 0 12 0 12 12 0 0 0 1.29 6.62l3.98 3.1C6.22 6.86 8.87 4.75 12 4.75Z"/></svg>
+      <span class="google-btn-text">Continue with Google</span>
+    </div>
+  </div>
+</div>
+
 <!-- Purchase history modal -->
 <div class="modal-overlay" id="history-modal-overlay" onclick="if(event.target===this)closeHistoryModal()">
   <div class="modal">
     <button type="button" class="modal-close" onclick="closeHistoryModal()"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
     <div class="modal-eyebrow">PURCHASE HISTORY</div>
     <h3>Your orders</h3>
-    <p class="desc" id="history-desc">Your purchases will show up here.</p>
+    <div class="history-summary" id="history-summary">
+      <div class="hs-block"><span class="hs-label">Orders</span><strong id="hs-count">0</strong></div>
+      <div class="hs-block"><span class="hs-label">Total spent</span><strong id="hs-spent">$0</strong></div>
+      <div class="hs-block"><span class="hs-label">Last order</span><strong id="hs-last">—</strong></div>
+    </div>
     <div id="history-list" class="history-list"></div>
   </div>
 </div>

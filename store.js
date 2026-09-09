@@ -158,7 +158,7 @@ function getSession(sessionToken) {
 function syncUserBalance(sessionToken) {
   const session = getSession(sessionToken);
   if (!session || !session.userId) return;
-  const user = db.users.find(u => u.googleSub === session.userId);
+  const user = db.users.find(u => u.uid === session.userId);
   if (user) user.balance = session.balance;
 }
 
@@ -170,26 +170,60 @@ function setBalance(sessionToken, balance) {
   return session.balance;
 }
 
-/* ---------- Google users ---------- */
+/* ---------- Accounts (email/password + Google) ---------- */
 
-function getUserByGoogleSub(googleSub) {
+function getUserById(uid) {
+  return db.users.find(u => u.uid === uid) || null;
+}
+
+function findUserByEmail(email) {
+  if (!email) return null;
+  const e = String(email).trim().toLowerCase();
+  return db.users.find(u => u.email && u.email.toLowerCase() === e) || null;
+}
+
+function findUserByGoogleSub(googleSub) {
   return db.users.find(u => u.googleSub === googleSub) || null;
 }
 
-function createGoogleUser({ googleSub, email, name, picture }) {
-  let user = getUserByGoogleSub(googleSub);
+function hashPassword(password) {
+  if (password.length > 200) return null;
+  const salt = crypto.randomBytes(16);
+  const hash = crypto.scryptSync(String(password), salt, 64);
+  return `${salt.toString('hex')}:${hash.toString('hex')}`;
+}
+
+function verifyPassword(password, stored) {
+  if (!stored || !stored.includes(':')) return false;
+  try {
+    const [saltHex, hashHex] = stored.split(':');
+    const salt = Buffer.from(saltHex, 'hex');
+    const hash = Buffer.from(hashHex, 'hex');
+    const test = crypto.scryptSync(String(password), salt, 64);
+    return test.length === hash.length && crypto.timingSafeEqual(test, hash);
+  } catch (_) {
+    return false;
+  }
+}
+
+function createUser({ name, email, password, googleSub, picture }) {
+  let user = findUserByEmail(email) || (googleSub && findUserByGoogleSub(googleSub));
   if (user) {
-    if (email) user.email = email;
-    if (name) user.name = name;
-    if (picture) user.picture = picture;
+    if (email && !user.email) user.email = String(email).trim().toLowerCase();
+    if (name && !user.name) user.name = name;
+    if (picture && !user.picture) user.picture = picture;
+    if (googleSub && !user.googleSub) user.googleSub = googleSub;
+    if (password && !user.passwordHash) user.passwordHash = hashPassword(password);
     save();
     return user;
   }
   user = {
-    googleSub,
-    email: email || '',
-    name: name || 'Buyer',
+    uid: randomToken(8),
+    name: name || (email ? email.split('@')[0] : 'Buyer'),
+    email: email ? String(email).trim().toLowerCase() : '',
     picture: picture || '',
+    googleSub: googleSub || null,
+    passwordHash: password ? hashPassword(password) : null,
     balance: 0,
     createdAt: new Date().toISOString()
   };
@@ -198,16 +232,15 @@ function createGoogleUser({ googleSub, email, name, picture }) {
   return user;
 }
 
-function bindUserToSession(sessionToken, userId) {
+function bindUserToSession(sessionToken, uid) {
   const session = getSession(sessionToken);
   if (!session) return null;
-  session.userId = userId;
+  const user = getUserById(uid);
+  if (!user) return null;
+  session.userId = user.uid;
   // carry the user's stored balance onto this device
-  const user = db.users.find(u => u.googleSub === userId);
-  if (user) {
-    session.balance = Math.max(session.balance, user.balance || 0);
-    user.balance = session.balance;
-  }
+  session.balance = Math.max(session.balance, user.balance || 0);
+  user.balance = session.balance;
   save();
   return session;
 }
@@ -215,9 +248,11 @@ function bindUserToSession(sessionToken, userId) {
 function getUserForSession(sessionToken) {
   const session = getSession(sessionToken);
   if (!session || !session.userId) return null;
-  const user = db.users.find(u => u.googleSub === session.userId);
+  const user = getUserById(session.userId);
   if (!user) return null;
-  return { ...user };
+  const safe = { ...user };
+  delete safe.passwordHash;
+  return safe;
 }
 
 function logoutUser(sessionToken) {
@@ -228,9 +263,9 @@ function logoutUser(sessionToken) {
   save();
 }
 
-function listOrdersForUser(userId) {
+function listOrdersForUser(uid) {
   return db.transactions
-    .filter(t => t.userId === userId || t.sessionToken && db.sessions.some(s => s.token === t.sessionToken && s.userId === userId))
+    .filter(t => t.userId === uid || t.sessionToken && db.sessions.some(s => s.token === t.sessionToken && s.userId === uid))
     .reverse();
 }
 
@@ -400,8 +435,11 @@ module.exports = {
   getOrCreateSession,
   getSession,
   setBalance,
-  getUserByGoogleSub,
-  createGoogleUser,
+  getUserById,
+  findUserByEmail,
+  findUserByGoogleSub,
+  createUser,
+  verifyPassword,
   bindUserToSession,
   getUserForSession,
   logoutUser,

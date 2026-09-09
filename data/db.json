@@ -1922,5 +1922,29 @@
     }
   ],
   "transactions": [],
-  "sessions": []
+  "sessions": [
+    {
+      "token": "88a7b39356ca32443a8eeda3f6cb121d22496707516a3504",
+      "balance": 0,
+      "createdAt": 1788983667974
+    },
+    {
+      "token": "18db88720b8521370f0b9219da210a8bd7120eeef6aaebff",
+      "balance": 0,
+      "createdAt": 1788983668065
+    },
+    {
+      "token": "f0a586cab7489604aecb58eac9a473704e25b6b550d401b3",
+      "balance": 0,
+      "createdAt": 1788983668331
+    },
+    {
+      "token": "c502ddb06d39805f2179320523aa42b3952409b0255eb78c",
+      "balance": 0,
+      "createdAt": 1788983668382
+    }
+  ],
+  "digitalStock": {
+    "vb-30k": 10
+  }
 }

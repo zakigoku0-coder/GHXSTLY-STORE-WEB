@@ -327,6 +327,8 @@ section:not(.hero) { padding: 88px 0; }
 .stock-badge { color: var(--mist); font-weight: 800; }
 .stock-badge.sold { color: #f29b9b; }
 .acc-card button:disabled, .card-buy:disabled { opacity: .45; cursor: not-allowed; filter: none; }
+.card-buy.sold { border-color: rgba(242,155,155,0.4); color: #f29b9b; background: rgba(242,155,155,0.08); cursor: not-allowed; }
+.card-buy.sold:hover { transform: none; box-shadow: none; }
 .delivery-note-custom {
   margin-top: 12px; padding: 12px 14px; border-radius: 8px; font-size: 13.5px; font-weight: 700; line-height: 1.5;
   color: #ffb3bd; background: rgba(255,46,77,0.10); border: 1px solid rgba(255,46,77,0.4);

@@ -31,7 +31,7 @@
     },
     {
       id: 2, name: 'fortnite account 205 skins leviathan axe candy axe', skins: 205, price: 40, tier: 'Epic', tierVar: '--epic',
-      warranty: '48h warranty', status: 'available', stock: 50,
+      warranty: '48h warranty', status: 'available', stock: 0,
       desc: 'Fortnite account with 205 skins featuring Leviathan outfit with the Leviathan axe and the Candy axe. Stacked and ready.',
       chips: [
         { label: '205 skins', gold: true },
@@ -211,7 +211,7 @@
           <span class="acc-stats">${a.skins}+ skins · <b class="stock-badge ${out ? 'sold' : ''}">${out ? 'OUT OF STOCK' : `in stock: ${a.stock}`}</b></span>
           <div class="acc-foot">
             <span class="price">${fmt(a.price)}</span>
-            <button type="button" class="card-buy" onclick="openCheckout(${a.id})" ${out ? 'disabled' : ''}>${out ? 'Out of stock' : 'Buy'}</button>
+            <button type="button" class="card-buy ${out ? 'sold' : ''}" onclick="openCheckout(${a.id})">${out ? 'Out of stock' : 'Buy'}</button>
           </div>
         </div>
       </div>

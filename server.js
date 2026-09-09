@@ -454,6 +454,9 @@ app.post('/api/auth/signup', rateLimit(1500, 6), (req, res) => {
   if (password.length < 6) return res.status(400).json({ error: 'Password must be at least 6 characters.' });
   if (name.length < 2) return res.status(400).json({ error: 'Enter your real name or a display name (min 2 characters).' });
   if (/^buyer$/i.test(name)) return res.status(400).json({ error: 'Pick a different display name.' });
+  if (config.ownerEmail && email === config.ownerEmail) {
+    return res.status(400).json({ error: 'That email signs in with Google or Discord only.' });
+  }
   const existing = store.findUserByEmail(email);
   if (existing && existing.passwordHash) return res.status(400).json({ error: 'An account with that email already exists. Sign in instead.' });
   const user = applyOwnerRole(store.createUser({ name, email, password, googleSub: existing && existing.googleSub ? existing.googleSub : null }));

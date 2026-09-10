@@ -28,12 +28,25 @@ function blobToken() {
   return process.env.BLOB_READ_WRITE_TOKEN || null;
 }
 
+function withTimeout(promise, ms, label) {
+  let timer;
+  const timeout = new Promise((_, reject) => {
+    timer = setTimeout(() => reject(new Error(label || 'timed out')), ms);
+    if (timer.unref) timer.unref();
+  });
+  return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
+}
+
 async function listSnaps() {
   const tok = blobToken();
   const out = [];
   let cursor;
   do {
-    const page = await blobClient.list({ prefix: SNAP_PREFIX, limit: 100, cursor, token: tok });
+    const page = await withTimeout(
+      blobClient.list({ prefix: SNAP_PREFIX, limit: 100, cursor, token: tok }),
+      8000,
+      'blob list timed out'
+    );
     for (const b of (page && page.blobs) || []) out.push(b);
     cursor = page && page.hasMore ? page.cursor : undefined;
   } while (cursor);
@@ -377,10 +390,22 @@ seedFromEnv();
 // snapshot from durable storage (Blob, else KV) the moment the store boots.
 // loadDurable() is a safe no-op when nothing is configured.
 const bootLoad = { at: null, ok: null, error: null, sessions: 0 };
+let bootReadyResolve;
+const bootReady = new Promise(resolve => { bootReadyResolve = resolve; });
+const bootSafety = setTimeout(() => { try { bootReadyResolve(); } catch (_) {} }, 10000);
+if (bootSafety.unref) bootSafety.unref();
+function ready() {
+  return bootReady;
+}
+
 async function bootDurable() {
   if (blobClient && blobToken()) {
     try {
-      const merged = await readMergedSnapshots(SNAP_READ);
+      // Boot takes only the newest head: fast, so the first requests
+      // already see durable state. Convergence across heads happens
+      // on every later save.
+      const { snaps } = await withTimeout(readRecentSnapshots(1), 9000, 'boot load timed out');
+      const merged = snaps.length ? snaps[0] : null;
       bootLoad.at = new Date().toISOString();
       if (merged) {
         db.sessions = merged.sessions;
@@ -397,13 +422,14 @@ async function bootDurable() {
         bootLoad.ok = false;
         bootLoad.error = 'no snapshot (fresh boot)';
       }
-      return;
     } catch (err) {
       bootLoad.at = new Date().toISOString();
       bootLoad.ok = false;
       bootLoad.error = String(err && err.message || err).slice(0, 200);
-      return;
+    } finally {
+      try { bootReadyResolve(); } catch (_) {}
     }
+    return;
   }
   loadDurable().then(snap => {
     bootLoad.at = new Date().toISOString();
@@ -416,10 +442,12 @@ async function bootDurable() {
       bootLoad.ok = false;
       bootLoad.error = 'no snapshot (fresh boot)';
     }
+    try { bootReadyResolve(); } catch (_) {}
   }).catch(err => {
     bootLoad.at = new Date().toISOString();
     bootLoad.ok = false;
     bootLoad.error = String(err && err.message || err).slice(0, 200);
+    try { bootReadyResolve(); } catch (_) {}
   });
 }
 bootDurable();
@@ -925,5 +953,6 @@ module.exports = {
   flushDurable,
   readBlobSnapshot,
   readMergedSnapshots,
-  mergeSnapshot
+  mergeSnapshot,
+  ready
 };

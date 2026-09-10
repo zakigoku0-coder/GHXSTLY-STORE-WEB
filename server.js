@@ -117,7 +117,12 @@ app.use((req, res, next) => {
 });
 
 /* ---------- Session middleware ---------- */
-app.use((req, res, next) => {
+app.use(async (req, res, next) => {
+  try {
+    // On a fresh serverless boot, wait (briefly) for durable state so the
+    // first requests don't see an empty database. Resolves instantly after.
+    await Promise.race([store.ready(), new Promise(r => setTimeout(r, 9000))]);
+  } catch (_) {}
   let token = req.cookies[SESSION_COOKIE];
   if (!token || !/^[a-f0-9]{48}$/.test(token)) {
     token = store.randomToken();

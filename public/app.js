@@ -609,6 +609,7 @@
       discordBtn.dataset.wired = '1';
       discordBtn.addEventListener('click', () => {
         if (!state.online) { toast('Preview build — sign-in works on the live store.', 'err'); return; }
+        if (!state.discordEnabled) { toast('Discord login is not connected yet — use email or Google for now.', 'err'); return; }
         window.location.href = '/api/auth/discord';
       });
     }

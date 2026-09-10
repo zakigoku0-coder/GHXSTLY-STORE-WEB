@@ -52,10 +52,166 @@ async function loadDurable() {
 
 const lastPush = { at: null, ok: null, error: null };
 
+// Merge a remote snapshot into memory without losing anything:
+// bindings and spends are ordered by recency, single-use flags and
+// sold states only ever move forward, lists are unioned.
+function mergeSnapshot(local, remote) {
+  const out = { ...DEFAULT_DB };
+
+  const sess = new Map();
+  for (const s of (remote.sessions || [])) {
+    if (s && s.token) sess.set(s.token, { ...s });
+  }
+  for (const s of (local.sessions || [])) {
+    if (!s || !s.token) continue;
+    const r = sess.get(s.token);
+    if (!r) { sess.set(s.token, { ...s }); continue; }
+    const lu = s.updatedAt || 0;
+    const ru = r.updatedAt || 0;
+    // userId: a proven logout (loggedOutAt newer than the binding) unbinds;
+    // otherwise a live binding always beats a stray empty row.
+    let userId;
+    if (s.userId && r.userId) {
+      userId = (lu >= ru ? s : r).userId;
+    } else if (s.userId || r.userId) {
+      const bound = s.userId ? s : r;
+      const bare = s.userId ? r : s;
+      const provenLogout = (bare.loggedOutAt || 0) >= (bound.updatedAt || 0) && !!bare.loggedOutAt;
+      userId = provenLogout ? null : bound.userId;
+    } else {
+      userId = null;
+    }
+    // balance: newest write wins (redeems, spends and binds all bump updatedAt).
+    const balance = (lu >= ru ? s.balance : r.balance);
+    sess.set(s.token, {
+      token: s.token,
+      balance: typeof balance === 'number' ? balance : 0,
+      userId: userId || null,
+      createdAt: s.createdAt || r.createdAt || Date.now(),
+      updatedAt: Math.max(lu, ru),
+      loggedOutAt: Math.max(s.loggedOutAt || 0, r.loggedOutAt || 0) || null
+    });
+  }
+  out.sessions = [...sess.values()];
+
+  const users = new Map();
+  for (const u of (remote.users || [])) {
+    if (u && u.uid) users.set(u.uid, { ...u });
+  }
+  for (const u of (local.users || [])) {
+    if (!u || !u.uid) continue;
+    const r = users.get(u.uid);
+    if (!r) { users.set(u.uid, { ...u }); continue; }
+    const merged = { ...r };
+    for (const k of ['name', 'email', 'picture', 'googleSub', 'discordSub', 'passwordHash']) {
+      if ((merged[k] === undefined || merged[k] === null || merged[k] === '') && u[k]) merged[k] = u[k];
+    }
+    if (u.role === 'owner' || r.role === 'owner') merged.role = 'owner';
+    const lb = u.balanceAt || 0;
+    const rb = r.balanceAt || 0;
+    if (lb > rb || (lb === rb && (u.balance || 0) > (merged.balance || 0))) {
+      merged.balance = u.balance || 0;
+      merged.balanceAt = lb;
+    }
+    users.set(u.uid, merged);
+  }
+  out.users = [...users.values()];
+
+  const codes = new Map();
+  for (const c of (remote.walletCodes || [])) {
+    if (c && c.code) codes.set(c.code, { ...c });
+  }
+  for (const c of (local.walletCodes || [])) {
+    if (!c || !c.code) continue;
+    const r = codes.get(c.code);
+    if (!r) { codes.set(c.code, { ...c }); continue; }
+    const used = !!(r.used || c.used);
+    const src = c.used ? c : r;
+    codes.set(c.code, { ...r, ...c, used, usedBy: src.usedBy || null, usedAt: src.usedAt || null });
+  }
+  out.walletCodes = [...codes.values()];
+
+  const promos = new Map();
+  for (const p of (remote.promoCodes || [])) {
+    if (p && p.code) promos.set(p.code, { ...p });
+  }
+  for (const p of (local.promoCodes || [])) {
+    if (!p || !p.code) continue;
+    const r = promos.get(p.code);
+    if (!r) { promos.set(p.code, { ...p }); continue; }
+    promos.set(p.code, { ...r, ...p, uses: Math.max(r.uses || 0, p.uses || 0) });
+  }
+  out.promoCodes = [...promos.values()];
+
+  const accounts = new Map();
+  for (const a of (remote.accounts || [])) {
+    if (a && a.id !== undefined && a.id !== null) accounts.set(a.id, { ...a });
+  }
+  for (const a of (local.accounts || [])) {
+    if (!a || a.id === undefined || a.id === null) continue;
+    const r = accounts.get(a.id);
+    if (!r) { accounts.set(a.id, { ...a }); continue; }
+    accounts.set(a.id, {
+      ...r,
+      ...a,
+      status: (r.status === 'sold' || a.status === 'sold') ? 'sold' : a.status,
+      stock: Math.min(typeof r.stock === 'number' ? r.stock : 99, typeof a.stock === 'number' ? a.stock : 99)
+    });
+  }
+  out.accounts = [...accounts.values()];
+
+  const tx = new Map();
+  for (const t of (remote.transactions || [])) {
+    if (t && t.orderCode) tx.set(t.orderCode, { ...t });
+  }
+  for (const t of (local.transactions || [])) {
+    if (t && t.orderCode && !tx.has(t.orderCode)) tx.set(t.orderCode, { ...t });
+  }
+  out.transactions = [...tx.values()];
+
+  const stock = { ...(remote.digitalStock || {}) };
+  for (const [k, v] of Object.entries(local.digitalStock || {})) {
+    stock[k] = (stock[k] === undefined) ? v : Math.min(stock[k], v);
+  }
+  out.digitalStock = stock;
+
+  return out;
+}
+
+async function readBlobSnapshot() {
+  const tok = blobToken();
+  if (!blobClient || !tok) return { snap: null, error: 'not configured' };
+  try {
+    const meta = await blobClient.head(BLOB_PATH, { token: tok });
+    const url = meta.downloadUrl || meta.url;
+    if (!url) return { snap: null, error: 'no snapshot yet' };
+    const r = await fetch(url, {
+      headers: { authorization: `Bearer ${tok}` },
+      signal: AbortSignal.timeout(10000)
+    });
+    if (!r.ok) return { snap: null, error: `download ${r.status}` };
+    const snap = await r.json();
+    if (!snap || !Array.isArray(snap.users)) return { snap: null, error: 'bad snapshot' };
+    return { snap, error: null };
+  } catch (err) {
+    return { snap: null, error: String(err && err.message || err).slice(0, 200) };
+  }
+}
+
 async function pushDurable() {
   const tok = blobToken();
   if (blobClient && tok) {
     try {
+      // Read-merge-write: never clobber another instance's newer state.
+      const { snap: remote } = await readBlobSnapshot();
+      const merged = remote ? mergeSnapshot(db, remote) : db;
+      db.sessions = merged.sessions;
+      db.users = merged.users;
+      db.walletCodes = merged.walletCodes;
+      db.promoCodes = merged.promoCodes;
+      db.accounts = merged.accounts;
+      db.transactions = merged.transactions;
+      db.digitalStock = merged.digitalStock;
       await blobClient.put(BLOB_PATH, JSON.stringify(db), {
         access: 'private',
         addRandomSuffix: false,
@@ -95,7 +251,8 @@ function durableStatus() {
     hasToken: !!blobToken(),
     hasClient: !!blobClient,
     kv: !!(kv && kvAvailable),
-    lastPush
+    lastPush,
+    bootLoad
   };
 }
 
@@ -177,12 +334,23 @@ seedFromEnv();
 // On serverless (Vercel) the file system is ephemeral, so take the persisted
 // snapshot from durable storage (Blob, else KV) the moment the store boots.
 // loadDurable() is a safe no-op when nothing is configured.
+const bootLoad = { at: null, ok: null, error: null, sessions: 0 };
 loadDurable().then(snap => {
+  bootLoad.at = new Date().toISOString();
   if (snap) {
     db = snap;
+    bootLoad.ok = true;
+    bootLoad.sessions = (snap.sessions || []).length;
     save();
+  } else {
+    bootLoad.ok = false;
+    bootLoad.error = 'no snapshot (fresh boot)';
   }
-}).catch(() => {});
+}).catch(err => {
+  bootLoad.at = new Date().toISOString();
+  bootLoad.ok = false;
+  bootLoad.error = String(err && err.message || err).slice(0, 200);
+});
 
 function load() {
   if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
@@ -289,6 +457,7 @@ function buyDigital(itemId, sessionToken, discordName) {
     return { ok: false, error: 'Insufficient wallet balance.', need: item.price, balance: session.balance };
   }
   session.balance = Math.max(0, Math.round((session.balance - item.price) * 100) / 100);
+  touchSession(session);
   syncUserBalance(sessionToken);
   if (item.limited) db.digitalStock[itemId] = Math.max(0, digitalStock(itemId) - 1);
   const tx = createTransaction({
@@ -306,10 +475,14 @@ function buyDigital(itemId, sessionToken, discordName) {
 
 /* ---------- Sessions ---------- */
 
+function touchSession(session) {
+  if (session) session.updatedAt = Date.now();
+}
+
 function getOrCreateSession(sessionToken) {
   let session = db.sessions.find(s => s.token === sessionToken);
   if (!session) {
-    session = { token: sessionToken, balance: 0, userId: null, createdAt: Date.now() };
+    session = { token: sessionToken, balance: 0, userId: null, createdAt: Date.now(), updatedAt: Date.now(), loggedOutAt: null };
     db.sessions.push(session);
     save();
   }
@@ -324,12 +497,16 @@ function syncUserBalance(sessionToken) {
   const session = getSession(sessionToken);
   if (!session || !session.userId) return;
   const user = db.users.find(u => u.uid === session.userId);
-  if (user) user.balance = session.balance;
+  if (user) {
+    user.balance = session.balance;
+    user.balanceAt = Date.now();
+  }
 }
 
 function setBalance(sessionToken, balance) {
   const session = getSession(sessionToken);
   session.balance = Math.max(0, Math.round(balance * 100) / 100);
+  touchSession(session);
   syncUserBalance(sessionToken);
   save();
   return session.balance;
@@ -393,6 +570,7 @@ function createUser({ name, email, password, googleSub, discordSub, picture }) {
     passwordHash: password ? hashPassword(password) : null,
     role: null,
     balance: 0,
+    balanceAt: Date.now(),
     createdAt: new Date().toISOString()
   };
   db.users.push(user);
@@ -419,9 +597,12 @@ function bindUserToSession(sessionToken, uid) {
   const user = getUserById(uid);
   if (!user) return null;
   session.userId = user.uid;
+  session.loggedOutAt = null;
   // carry the user's stored balance onto this device
   session.balance = Math.max(session.balance, user.balance || 0);
   user.balance = session.balance;
+  user.balanceAt = Date.now();
+  touchSession(session);
   save();
   return session;
 }
@@ -441,6 +622,9 @@ function logoutUser(sessionToken) {
   if (!session) return;
   syncUserBalance(sessionToken);
   session.userId = null;
+  // Note: updatedAt deliberately NOT bumped here — the logout is ordered
+  // purely by loggedOutAt so a stale balance can never become "newer".
+  session.loggedOutAt = Date.now();
   save();
 }
 
@@ -537,6 +721,7 @@ function redeemWalletCode(code, sessionToken) {
   const session = getSession(sessionToken);
   if (!session) return { ok: false, reason: 'nosession' };
   session.balance = Math.round((session.balance + entry.amount) * 100) / 100;
+  touchSession(session);
   syncUserBalance(sessionToken);
   save();
   return { ok: true, amount: entry.amount, balance: session.balance };
@@ -665,5 +850,7 @@ module.exports = {
   randomToken,
   generateCode,
   durableStatus,
-  flushDurable
+  flushDurable,
+  readBlobSnapshot,
+  mergeSnapshot
 };

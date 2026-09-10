@@ -660,7 +660,24 @@ app.post('/api/admin/snapshot', rateLimit(5000, 3), async (req, res) => {
   const viewer = applyOwnerRole(store.getUserForSession(req.sessionToken));
   if (!viewer || viewer.role !== 'owner') return res.status(403).json({ error: 'Owner only.' });
   try { await store.flushDurable(); } catch (_) {}
-  res.json({ ok: true, status: store.durableStatus() });
+  let blob = null;
+  try {
+    const { snap, error } = await store.readBlobSnapshot();
+    if (snap) {
+      const mine = (snap.sessions || []).find(s => s.token === req.sessionToken) || null;
+      blob = {
+        sessions: (snap.sessions || []).length,
+        users: (snap.users || []).length,
+        hasMySession: !!mine,
+        mySessionBound: !!(mine && mine.userId)
+      };
+    } else {
+      blob = { error };
+    }
+  } catch (err) {
+    blob = { error: String(err && err.message || err).slice(0, 200) };
+  }
+  res.json({ ok: true, status: store.durableStatus(), blob });
 });
 
 /* ---------- Digital goods ---------- */

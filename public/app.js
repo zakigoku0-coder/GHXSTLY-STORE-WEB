@@ -204,8 +204,9 @@
       return val >= lo && val <= hi;
     });
 
+    const isOwner = !!(authUser && authUser.role === 'owner');
     const filtered = state.accounts.filter(
-      a => inRange(a.price, priceChecks) && inRange(a.skins, skinChecks)
+      a => (isOwner || a.status !== 'sold') && inRange(a.price, priceChecks) && inRange(a.skins, skinChecks)
     );
 
     if (filtered.length === 0) {
@@ -229,6 +230,7 @@
             <span class="price">${fmt(a.price)}</span>
             <button type="button" class="card-buy ${out ? 'sold' : ''}" onclick="openCheckout(${a.id})">${out ? 'Out of stock' : 'Buy'}</button>
           </div>
+          ${isOwner ? `<button type="button" class="card-admin" onclick="adminStock(${a.id}, ${a.status === 'sold' ? 'false' : 'true'})">${a.status === 'sold' ? 'Restore to shop' : 'Mark sold'}</button>` : ''}
         </div>
       </div>
     `;
@@ -281,6 +283,19 @@
   window.buyFromModal = function () {
     closeModal();
     if (state.selectedAccount) openCheckout(state.selectedAccount.id);
+  };
+  window.adminStock = async function (id, sold) {
+    try {
+      const data = await api('/api/admin/stock', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, sold })
+      });
+      toast(sold ? 'Marked as sold — hidden from buyers.' : `Restored (stock: ${data.stock}).`);
+      await loadAccounts();
+    } catch (err) {
+      toast(err.message, 'err');
+    }
   };
 
   /* ---------- Checkout ---------- */
@@ -473,6 +488,7 @@
     }
     renderWalletUser(authUser);
     refreshHistoryBadge();
+    if (state.activeTab === 'accounts') renderAccounts();
   }
 
   function avatarColor(seed) {

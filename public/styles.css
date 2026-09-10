@@ -599,3 +599,5 @@ footer { padding: 56px 0 36px; }
 [hidden] { display: none !important; }
 
 #google-host { display: flex; justify-content: center; margin-top: 10px; }
+
+.card-admin { margin-top: 8px; width: 100%; background: transparent; border: 1px dashed var(--mist-dim); color: var(--mist); border-radius: 8px; padding: 6px; font-size: 12px; cursor: pointer; }

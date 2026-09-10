@@ -427,6 +427,18 @@ function restoreAccount(id) {
   return true;
 }
 
+function setStock(id, stock) {
+  const account = getAccount(id);
+  if (!account) return null;
+  const n = Number(stock);
+  if (!Number.isFinite(n)) return null;
+  account.stock = Math.min(Math.max(0, Math.round(n)), 100000);
+  if (account.stock === 0) account.status = 'sold';
+  else if (account.status === 'sold') account.status = 'available';
+  save();
+  return account;
+}
+
 /* ---------- Wallet codes ---------- */
 
 function createWalletCodes(amount, count) {
@@ -558,6 +570,7 @@ module.exports = {
   markAccountSold,
   decrementStock,
   restoreAccount,
+  setStock,
   createWalletCodes,
   redeemWalletCode,
   unusedWalletCodes,

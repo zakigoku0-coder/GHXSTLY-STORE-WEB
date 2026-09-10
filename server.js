@@ -474,8 +474,10 @@ app.get('/api/wallet', (req, res) => {
 });
 
 app.get('/api/accounts', (req, res) => {
+  const viewer = store.getUserForSession(req.sessionToken);
+  const isOwner = !!viewer && applyOwnerRole(viewer).role === 'owner';
   const accounts = store
-    .listAccounts()
+    .listAccounts(isOwner)
     .map(a => ({
       id: a.id,
       name: a.name,
@@ -485,6 +487,7 @@ app.get('/api/accounts', (req, res) => {
       skins: a.skins,
       warranty: a.warranty,
       stock: a.stock,
+      status: a.status,
       desc: a.desc,
       chips: a.chips,
       gallery: a.gallery || [],
@@ -620,6 +623,29 @@ app.get('/api/orders', (req, res) => {
     notified: t.notified
   }));
   res.json({ orders });
+});
+
+/* ---------- Owner stock control ---------- */
+app.post('/api/admin/stock', rateLimit(1500, 10), (req, res) => {
+  const viewer = applyOwnerRole(store.getUserForSession(req.sessionToken));
+  if (!viewer || viewer.role !== 'owner') return res.status(403).json({ error: 'Owner only.' });
+  const id = Number(req.body.id);
+  const account = store.getAccount(id);
+  if (!account) return res.status(404).json({ error: 'Account not found' });
+  if (req.body.sold === true) {
+    store.markAccountSold(id);
+  } else if (req.body.sold === false) {
+    store.restoreAccount(id);
+    if (!(store.getAccount(id).stock > 0)) store.setStock(id, 1);
+  } else if (req.body.stock !== undefined) {
+    if (store.setStock(id, req.body.stock) === null) {
+      return res.status(400).json({ error: 'Invalid stock value.' });
+    }
+  } else {
+    return res.status(400).json({ error: 'Nothing to update.' });
+  }
+  const updated = store.getAccount(id);
+  res.json({ ok: true, id: updated.id, status: updated.status, stock: updated.stock });
 });
 
 /* ---------- Digital goods ---------- */

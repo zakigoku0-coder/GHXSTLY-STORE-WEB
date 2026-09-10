@@ -655,6 +655,14 @@ app.get('/api/admin/durable', rateLimit(1500, 10), (req, res) => {
   res.json({ ok: true, status: store.durableStatus() });
 });
 
+/* ---------- Owner durability snapshot (awaited flush + status) ---------- */
+app.post('/api/admin/snapshot', rateLimit(5000, 3), async (req, res) => {
+  const viewer = applyOwnerRole(store.getUserForSession(req.sessionToken));
+  if (!viewer || viewer.role !== 'owner') return res.status(403).json({ error: 'Owner only.' });
+  try { await store.flushDurable(); } catch (_) {}
+  res.json({ ok: true, status: store.durableStatus() });
+});
+
 /* ---------- Digital goods ---------- */
 
 app.get('/api/digital', (req, res) => {

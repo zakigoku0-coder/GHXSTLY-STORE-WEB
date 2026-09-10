@@ -86,6 +86,11 @@ function durableStatus() {
   };
 }
 
+async function flushDurable() {
+  save();
+  await pushDurable();
+}
+
 const DEFAULT_DB = {
   accounts: [],
   walletCodes: [],
@@ -646,5 +651,6 @@ module.exports = {
   buyDigital,
   randomToken,
   generateCode,
-  durableStatus
+  durableStatus,
+  flushDurable
 };

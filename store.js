@@ -215,6 +215,7 @@ function buyDigital(itemId, sessionToken, discordName) {
     return { ok: false, error: 'Insufficient wallet balance.', need: item.price, balance: session.balance };
   }
   session.balance = Math.max(0, Math.round((session.balance - item.price) * 100) / 100);
+  syncUserBalance(sessionToken);
   if (item.limited) db.digitalStock[itemId] = Math.max(0, digitalStock(itemId) - 1);
   const tx = createTransaction({
     sessionToken,
@@ -460,7 +461,9 @@ function redeemWalletCode(code, sessionToken) {
   entry.usedBy = sessionToken;
   entry.usedAt = new Date().toISOString();
   const session = getSession(sessionToken);
+  if (!session) return { ok: false, reason: 'nosession' };
   session.balance = Math.round((session.balance + entry.amount) * 100) / 100;
+  syncUserBalance(sessionToken);
   save();
   return { ok: true, amount: entry.amount, balance: session.balance };
 }

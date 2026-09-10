@@ -9,5 +9,6 @@
   "discordClientId": "",
   "discordClientSecret": "",
   "discordPublicKey": "0cf474b401bbc2fa277718d7d217b6d6b23c21dabf4664778ada13ddeaa42012",
-  "ownerDiscordId": "1401282114015596665"
+  "ownerDiscordId": "1401282114015596665",
+  "discordCommandsChannel": "1546689767746310195"
 }

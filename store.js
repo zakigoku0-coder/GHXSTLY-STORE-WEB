@@ -39,12 +39,72 @@ const DEFAULT_DB = {
 
 let db = load();
 
+// Secrets (redeem codes, promo codes, owner login) are injected from
+// environment variables — never from the git repo — so the public repo
+// can never leak them. Missing entries are added, existing ones are
+// left untouched (used flags and balances are never reset).
+//   WALLET_CODES="GHX-20-ABC:20,GHX-25-DEF:25"
+//   PROMO_CODES="SAVE10:10:100,ONE50:50:1"
+//   OWNER_EMAIL="you@mail.com"  OWNER_PASSWORD="long-secret"
+function seedFromEnv() {
+  let changed = false;
+  for (const part of String(process.env.WALLET_CODES || '').split(',')) {
+    const idx = part.indexOf(':');
+    if (idx < 0) continue;
+    const code = part.slice(0, idx).trim();
+    const amount = Number(part.slice(idx + 1));
+    if (!code || code.length > 40 || !Number.isFinite(amount) || amount <= 0 || amount > 100000000) continue;
+    if (!db.walletCodes.some(c => c.code === code)) {
+      db.walletCodes.push({ code, amount, used: false, usedBy: null, usedAt: null });
+      changed = true;
+    }
+  }
+  for (const part of String(process.env.PROMO_CODES || '').split(',')) {
+    const seg = part.split(':');
+    if (seg.length < 3) continue;
+    const code = (seg[0] || '').trim().toUpperCase();
+    const discount = Number(seg[1]);
+    const maxUses = Number(seg[2]);
+    if (!code || code.length > 40 || !Number.isFinite(discount) || discount <= 0 || discount > 100 || !Number.isInteger(maxUses) || maxUses < 0) continue;
+    if (!db.promoCodes.some(p => p.code === code)) {
+      db.promoCodes.push({ code, discount, maxUses, uses: 0 });
+      changed = true;
+    }
+  }
+  const ownerEmail = String(process.env.OWNER_EMAIL || '').trim().toLowerCase();
+  const ownerPass = String(process.env.OWNER_PASSWORD || '');
+  if (ownerEmail && ownerPass.length >= 6 && ownerPass.length <= 200) {
+    let owner = db.users.find(u => u.email && String(u.email).toLowerCase() === ownerEmail);
+    if (!owner) {
+      owner = {
+        uid: randomToken(8),
+        name: 'Owner',
+        email: ownerEmail,
+        picture: '',
+        googleSub: null,
+        discordSub: null,
+        passwordHash: null,
+        role: 'owner',
+        balance: 0,
+        createdAt: new Date().toISOString()
+      };
+      db.users.push(owner);
+    }
+    owner.role = 'owner';
+    owner.passwordHash = hashPassword(ownerPass);
+    changed = true;
+  }
+  if (changed) save();
+}
+seedFromEnv();
+
 // On serverless (Vercel) the file system is ephemeral, so take the persisted
 // snapshot from key-value storage the moment the store boots.
 if (kv && kvAvailable) {
   loadDurable().then(snap => {
     if (snap) {
       db = snap;
+      seedFromEnv();
       save();
     }
   }).catch(() => {});

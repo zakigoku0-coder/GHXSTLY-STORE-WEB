@@ -515,8 +515,6 @@ app.post('/api/auth/logout', (req, res) => {
 });
 
 app.post('/api/wallet/redeem', rateLimit(1000, 5), (req, res) => {
-  const redeemer = store.getUserForSession(req.sessionToken);
-  if (!redeemer) return res.status(401).json({ error: 'Sign in to recharge your wallet.' });
   const code = String(req.body.code || '').trim();
   if (code.length > 40) return res.status(400).json({ error: 'Invalid or already-used code.' });
 
@@ -536,8 +534,6 @@ app.get('/api/promo/check', rateLimit(10000, 20), (req, res) => {
 });
 
 app.post('/api/checkout', rateLimit(1500, 4), (req, res) => {
-  const buyer = store.getUserForSession(req.sessionToken);
-  if (!buyer) return res.status(401).json({ error: 'Sign in to complete your purchase.' });
   const accountId = Number(req.body.accountId);
   const promoCode = req.body.promoCode ? String(req.body.promoCode).trim().toUpperCase() : null;
   const discordName = req.body.discordName ? String(req.body.discordName).trim().slice(0, 80) : '';
@@ -633,8 +629,6 @@ app.get('/api/digital', (req, res) => {
 });
 
 app.post('/api/digital/buy', rateLimit(1500, 4), (req, res) => {
-  const dgBuyer = store.getUserForSession(req.sessionToken);
-  if (!dgBuyer) return res.status(401).json({ error: 'Sign in to complete your purchase.' });
   const itemId = String(req.body.itemId || '').trim().slice(0, 40);
   const discordName = req.body.discordName ? String(req.body.discordName).trim().slice(0, 80) : '';
 

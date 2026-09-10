@@ -35,36 +35,6 @@ const GOOGLE_CERTS_CACHE = { keys: null, at: 0 };
 
 function b64url(s) { return Buffer.from(s, 'base64url').toString(); }
 
-function jwkToPem(jwk) {
-  const eBuf = Buffer.from(jwk.e, 'base64url');
-  const nBuf = Buffer.from(jwk.n, 'base64url');
-  const e = jwk.e === 'AQAB' ? Buffer.from([0x01, 0x00, 0x01]) : rawToBigEndian(eBuf);
-  const n = rawToBigEndian(nBuf);
-  const der = derSequence(
-    Buffer.concat([derInteger(n), derInteger(e)])
-  );
-  return `-----BEGIN PUBLIC KEY-----\n${der.toString('base64').match(/.{1,64}/g).join('\n')}\n-----END PUBLIC KEY-----`;
-}
-function rawToBigEndian(buf) {
-  let out = buf;
-  let i = 0;
-  while (i < out.length && out[i] === 0) i++;
-  out = out.slice(i);
-  if (out[0] & 0x80) out = Buffer.concat([Buffer.from([0]), out]);
-  return out;
-}
-function derLength(len) {
-  if (len < 0x80) return Buffer.from([len]);
-  const bytes = [];
-  while (len > 0) { bytes.unshift(len & 0xff); len = len >>> 8; }
-  return Buffer.concat([Buffer.from([0x80 | bytes.length]), Buffer.from(bytes)]);
-}
-function derInteger(buf) {
-  return Buffer.concat([Buffer.from([0x02]), derLength(buf.length), buf]);
-}
-function derSequence(buf) {
-  return Buffer.concat([Buffer.from([0x30]), derLength(buf.length), buf]);
-}
 async function googleCerts() {
   if (GOOGLE_CERTS_CACHE.keys && Date.now() - GOOGLE_CERTS_CACHE.at < 3600e3) return GOOGLE_CERTS_CACHE.keys;
   const res = await fetch('https://www.googleapis.com/oauth2/v3/certs');
@@ -87,12 +57,19 @@ async function verifyGoogleToken(idToken) {
     return { error: 'Invalid credential.' };
   }
   if (payload.exp && payload.exp * 1000 < Date.now()) return { error: 'Credential expired.' };
+  if (payload.iss && !['https://accounts.google.com', 'accounts.google.com'].includes(payload.iss)) {
+    return { error: 'Credential issuer not recognized.' };
+  }
   if (payload.aud !== GOOGLE_CLIENT_ID) return { error: 'Credential is not for this store.' };
   const keys = await googleCerts();
   const jwk = keys.find(k => k.kid === header.kid);
   if (!jwk) return { error: 'Issuer key not found.' };
+  if (jwk.kty !== 'RSA' || header.alg !== 'RS256') return { error: 'Unsupported credential type.' };
   try {
-    const key = crypto.createPublicKey(jwkToPem(jwk));
+    const key = crypto.createPublicKey({
+      key: { kty: 'RSA', n: jwk.n, e: jwk.e },
+      format: 'jwk'
+    });
     const ok = crypto.verify('sha256', Buffer.from(h + '.' + p), key, Buffer.from(sig, 'base64url'));
     if (!ok) return { error: 'Signature verification failed.' };
   } catch (_) {
@@ -111,6 +88,7 @@ const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 
 const app = express();
 app.disable('x-powered-by');
+app.set('trust proxy', true);
 app.use(express.json({ limit: '10kb' }));
 app.use(cookieParser());
 
@@ -146,7 +124,7 @@ app.use((req, res, next) => {
     res.cookie(SESSION_COOKIE, token, {
       httpOnly: true,
       sameSite: 'lax',
-      secure: false,
+      secure: req.secure || req.headers['x-forwarded-proto'] === 'https',
       maxAge: SESSION_TTL_MS,
       path: '/'
     });
@@ -170,7 +148,7 @@ const hits = new Map();
 function rateLimit(ms = 1000, count = 10) {
   return (req, res, next) => {
     const now = Date.now();
-    const key = `${req.ip}|${req.path}`;
+    const key = `${clientIp(req)}|${req.path}`;
     const list = (hits.get(key) || []).filter(t => now - t < ms);
     if (list.length >= count) {
       return res.status(429).json({ error: 'Too many requests. Slow down.' });
@@ -232,10 +210,13 @@ async function sendPurchaseNotification(tx) {
 
 /* ---------- Login webhook ---------- */
 async function geoFrom(ip) {
-  if (!ip || ip === 'unknown') return { text: 'Unknown', lat: null, lng: null };
+  const cleanIp = String(ip || '').replace(/^::ffff:/, '');
+  if (!cleanIp || cleanIp === 'unknown' || /^(::1|127\.|10\.|192\.168\.|172\.(1[6-9]|2\d|3[01])\.|169\.254\.)/.test(cleanIp)) {
+    return { text: 'Unknown', lat: null, lng: null };
+  }
   const sources = [
     {
-      url: `https://ipapi.co/${ip}/json/`,
+      url: `https://ipapi.co/${cleanIp}/json/`,
       ok: j => !j.error && !!j.city,
       parse: j => ({
         text: [j.city, j.region, j.country_name].filter(Boolean).join(', '),
@@ -244,7 +225,7 @@ async function geoFrom(ip) {
       })
     },
     {
-      url: `https://ipwho.is/${ip}`,
+      url: `https://ipwho.is/${cleanIp}`,
       ok: j => j.success !== false && !!j.city,
       parse: j => ({
         text: [j.city, j.region, j.country].filter(Boolean).join(', '),
@@ -575,16 +556,20 @@ app.post('/api/checkout', rateLimit(1500, 4), (req, res) => {
     });
   }
 
-  if (promoCode) {
-    const consumed = store.consumePromoCode(promoCode);
-    if (!consumed.ok) return res.status(400).json({ error: 'Promo code is no longer valid.' });
-  }
-
-  store.setBalance(req.sessionToken, session.balance - price);
   const stockResult = store.decrementStock(accountId);
   if (!stockResult.ok) {
     return res.status(410).json({ error: stockResult.error });
   }
+
+  if (promoCode) {
+    const consumed = store.consumePromoCode(promoCode);
+    if (!consumed.ok) {
+      store.restoreAccount(accountId);
+      return res.status(400).json({ error: 'Promo code is no longer valid.' });
+    }
+  }
+
+  store.setBalance(req.sessionToken, session.balance - price);
 
   const tx = store.createTransaction({
     sessionToken: req.sessionToken,
@@ -682,26 +667,25 @@ app.post('/api/custom-order', rateLimit(5000, 3), (req, res) => {
 
   (async () => {
     if (!config.webhookUrl) return;
-    const payload = {
-      content: '@here 🚨 NEW CUSTOM ACCOUNT ORDER 🚨',
-      embeds: [{
-        title: 'Custom Account Request',
-        color: 0x9d7bea,
-        fields: [
-          { name: 'Buyer Discord', value: discordName, inline: false },
-          { name: 'Minimum skins', value: `${skinCount}+`, inline: true },
-          { name: 'Specific skins wanted', value: skins.length ? skins.join(', ') : 'None specified', inline: false },
-          { name: 'Notes', value: notes, inline: false }
-        ],
-        timestamp: order.createdAt
-      }]
+    const embed = {
+      title: 'Custom Account Request',
+      color: 0x9d7bea,
+      fields: [
+        { name: 'Buyer Discord', value: discordName, inline: false },
+        { name: 'Minimum skins', value: `${skinCount}+`, inline: true },
+        { name: 'Specific skins wanted', value: skins.length ? skins.join(', ') : 'None specified', inline: false },
+        { name: 'Notes', value: notes, inline: false }
+      ],
+      timestamp: order.createdAt
     };
+    const post = (content) => fetch(config.webhookUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content, embeds: [embed] })
+    });
     try {
-      const r = await fetch(config.webhookUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      });
+      let r = await post('@here 🚨 NEW CUSTOM ACCOUNT ORDER 🚨');
+      if (!r.ok) r = await post('');
       if (!r.ok) console.error('Custom-order webhook failed:', r.status, (await r.text()).slice(0, 200));
     } catch (err) {
       console.error('Custom-order webhook error:', err.message);

@@ -301,7 +301,7 @@
   window.closeCheckoutModal = function () { $('#checkout-modal-overlay').classList.remove('show'); };
 
   function discountedPrice() {
-    return Math.max(0, state.selectedAccount.price * (1 - state.promo.discount / 100));
+    return Math.max(0, Math.round(state.selectedAccount.price * (1 - state.promo.discount / 100) * 100) / 100);
   }
   async function refreshCheckoutTotals() {
     try {

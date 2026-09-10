@@ -662,17 +662,17 @@ app.post('/api/admin/snapshot', rateLimit(5000, 3), async (req, res) => {
   try { await store.flushDurable(); } catch (_) {}
   let blob = null;
   try {
-    const { snap, error } = await store.readBlobSnapshot();
-    if (snap) {
-      const mine = (snap.sessions || []).find(s => s.token === req.sessionToken) || null;
+    const merged = await store.readMergedSnapshots(5);
+    if (merged) {
+      const mine = (merged.sessions || []).find(s => s.token === req.sessionToken) || null;
       blob = {
-        sessions: (snap.sessions || []).length,
-        users: (snap.users || []).length,
+        sessions: (merged.sessions || []).length,
+        users: (merged.users || []).length,
         hasMySession: !!mine,
         mySessionBound: !!(mine && mine.userId)
       };
     } else {
-      blob = { error };
+      blob = { error: 'no snapshot yet' };
     }
   } catch (err) {
     blob = { error: String(err && err.message || err).slice(0, 200) };

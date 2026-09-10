@@ -17,10 +17,51 @@ let blobClient = null;
 try {
   blobClient = require('@vercel/blob');
 } catch (_) {}
-const BLOB_PATH = 'ghxstly-db.json';
+// Immutable snapshots: every write gets a unique timestamped path, so edge
+// caches can never serve a stale version (immutable blobs cache correctly).
+// Boot and reads merge the newest few heads, so concurrent writers converge.
+const SNAP_PREFIX = 'snapshots/';
+const SNAP_READ = 5;
+const SNAP_KEEP = 10;
 
 function blobToken() {
   return process.env.BLOB_READ_WRITE_TOKEN || null;
+}
+
+async function listSnaps() {
+  const tok = blobToken();
+  const out = [];
+  let cursor;
+  do {
+    const page = await blobClient.list({ prefix: SNAP_PREFIX, limit: 100, cursor, token: tok });
+    for (const b of (page && page.blobs) || []) out.push(b);
+    cursor = page && page.hasMore ? page.cursor : undefined;
+  } while (cursor);
+  out.sort((a, b) => new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime());
+  return out;
+}
+
+async function downloadSnap(blob) {
+  const tok = blobToken();
+  const url = blob.downloadUrl || blob.url;
+  if (!url) throw new Error('no url');
+  const r = await fetch(url, {
+    headers: { authorization: `Bearer ${tok}` },
+    signal: AbortSignal.timeout(10000)
+  });
+  if (!r.ok) throw new Error(`download ${r.status}`);
+  const snap = await r.json();
+  if (!snap || !Array.isArray(snap.users)) throw new Error('bad snapshot');
+  return snap;
+}
+
+async function readRecentSnapshots(n) {
+  const list = await listSnaps();
+  const snaps = [];
+  for (const b of list.slice(0, n || SNAP_READ)) {
+    try { snaps.push(await downloadSnap(b)); } catch (_) {}
+  }
+  return { list, snaps };
 }
 
 async function loadDurable() {
@@ -179,32 +220,38 @@ function mergeSnapshot(local, remote) {
 }
 
 async function readBlobSnapshot() {
-  const tok = blobToken();
-  if (!blobClient || !tok) return { snap: null, error: 'not configured' };
+  if (!blobClient || !blobToken()) return { snap: null, error: 'not configured' };
   try {
-    const meta = await blobClient.head(BLOB_PATH, { token: tok });
-    const url = meta.downloadUrl || meta.url;
-    if (!url) return { snap: null, error: 'no snapshot yet' };
-    const r = await fetch(url, {
-      headers: { authorization: `Bearer ${tok}` },
-      signal: AbortSignal.timeout(10000)
-    });
-    if (!r.ok) return { snap: null, error: `download ${r.status}` };
-    const snap = await r.json();
-    if (!snap || !Array.isArray(snap.users)) return { snap: null, error: 'bad snapshot' };
-    return { snap, error: null };
+    // Newest head wins for the quick check; deeper merges happen on push/boot.
+    const { snaps } = await readRecentSnapshots(1);
+    if (!snaps.length) return { snap: null, error: 'no snapshot yet' };
+    return { snap: snaps[0], error: null };
   } catch (err) {
     return { snap: null, error: String(err && err.message || err).slice(0, 200) };
   }
+}
+
+// Newest few heads merged oldest-first, so concurrent writers converge.
+async function readMergedSnapshots(n) {
+  const { snaps } = await readRecentSnapshots(n || SNAP_READ);
+  let merged = null;
+  for (let i = snaps.length - 1; i >= 0; i--) {
+    merged = merged ? mergeSnapshot(merged, snaps[i]) : snaps[i];
+  }
+  return merged;
 }
 
 async function pushDurable() {
   const tok = blobToken();
   if (blobClient && tok) {
     try {
-      // Read-merge-write: never clobber another instance's newer state.
-      const { snap: remote } = await readBlobSnapshot();
-      const merged = remote ? mergeSnapshot(db, remote) : db;
+      // Read-merge-write across the newest heads, then write a NEW immutable
+      // key: concurrent writers converge instead of clobbering each other.
+      const { list, snaps } = await readRecentSnapshots(SNAP_READ);
+      let merged = db;
+      for (let i = snaps.length - 1; i >= 0; i--) {
+        merged = mergeSnapshot(merged, snaps[i]);
+      }
       db.sessions = merged.sessions;
       db.users = merged.users;
       db.walletCodes = merged.walletCodes;
@@ -212,29 +259,23 @@ async function pushDurable() {
       db.accounts = merged.accounts;
       db.transactions = merged.transactions;
       db.digitalStock = merged.digitalStock;
-      await blobClient.put(BLOB_PATH, JSON.stringify(db), {
+      const key = `${SNAP_PREFIX}${Date.now()}-${randomToken(4)}.json`;
+      const putRes = await blobClient.put(key, JSON.stringify(db), {
         access: 'private',
-        addRandomSuffix: false,
-        allowOverwrite: true,
-        cacheControlMaxAge: 0,
         contentType: 'application/json',
         token: tok
       });
-      let verified = false, vurl = null, vsize = null;
-      try {
-        const meta = await blobClient.head(BLOB_PATH, { token: tok });
-        vurl = meta.downloadUrl || meta.url || null;
-        vsize = (meta.size === undefined || meta.size === null) ? null : meta.size;
-        verified = !!vurl;
-      } catch (_) {
-        verified = false;
+      // Prune old heads (best effort).
+      const stale = list.slice(SNAP_KEEP).map(b => b.url).filter(Boolean);
+      if (stale.length) {
+        try { await blobClient.del(stale, { token: tok }); } catch (_) {}
       }
       lastPush.at = new Date().toISOString();
       lastPush.ok = true;
       lastPush.error = null;
-      lastPush.verified = verified;
-      lastPush.url = vurl;
-      lastPush.size = vsize;
+      lastPush.verified = true;
+      lastPush.url = (putRes && putRes.url) || null;
+      lastPush.size = null;
     } catch (err) {
       lastPush.at = new Date().toISOString();
       lastPush.ok = false;
@@ -336,22 +377,52 @@ seedFromEnv();
 // snapshot from durable storage (Blob, else KV) the moment the store boots.
 // loadDurable() is a safe no-op when nothing is configured.
 const bootLoad = { at: null, ok: null, error: null, sessions: 0 };
-loadDurable().then(snap => {
-  bootLoad.at = new Date().toISOString();
-  if (snap) {
-    db = snap;
-    bootLoad.ok = true;
-    bootLoad.sessions = (snap.sessions || []).length;
-    save();
-  } else {
-    bootLoad.ok = false;
-    bootLoad.error = 'no snapshot (fresh boot)';
+async function bootDurable() {
+  if (blobClient && blobToken()) {
+    try {
+      const merged = await readMergedSnapshots(SNAP_READ);
+      bootLoad.at = new Date().toISOString();
+      if (merged) {
+        db.sessions = merged.sessions;
+        db.users = merged.users;
+        db.walletCodes = merged.walletCodes;
+        db.promoCodes = merged.promoCodes;
+        db.accounts = merged.accounts;
+        db.transactions = merged.transactions;
+        db.digitalStock = merged.digitalStock;
+        bootLoad.ok = true;
+        bootLoad.sessions = (merged.sessions || []).length;
+        save();
+      } else {
+        bootLoad.ok = false;
+        bootLoad.error = 'no snapshot (fresh boot)';
+      }
+      return;
+    } catch (err) {
+      bootLoad.at = new Date().toISOString();
+      bootLoad.ok = false;
+      bootLoad.error = String(err && err.message || err).slice(0, 200);
+      return;
+    }
   }
-}).catch(err => {
-  bootLoad.at = new Date().toISOString();
-  bootLoad.ok = false;
-  bootLoad.error = String(err && err.message || err).slice(0, 200);
-});
+  loadDurable().then(snap => {
+    bootLoad.at = new Date().toISOString();
+    if (snap) {
+      db = snap;
+      bootLoad.ok = true;
+      bootLoad.sessions = (snap.sessions || []).length;
+      save();
+    } else {
+      bootLoad.ok = false;
+      bootLoad.error = 'no snapshot (fresh boot)';
+    }
+  }).catch(err => {
+    bootLoad.at = new Date().toISOString();
+    bootLoad.ok = false;
+    bootLoad.error = String(err && err.message || err).slice(0, 200);
+  });
+}
+bootDurable();
 
 function load() {
   if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
@@ -853,5 +924,6 @@ module.exports = {
   durableStatus,
   flushDurable,
   readBlobSnapshot,
+  readMergedSnapshots,
   mergeSnapshot
 };

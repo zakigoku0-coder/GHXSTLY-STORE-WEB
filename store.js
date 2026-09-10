@@ -66,29 +66,24 @@ function load() {
   }
 }
 
-let saveTimer = null;
-let dirty = false;
 let lastOwnWriteMs = 0;
+// Synchronous write-through save: every mutation is on disk before the
+// API response is sent, so refreshes, restarts and crashes can never
+// lose a purchase, a sold flag, a redeemed code or a session.
 function save() {
-  dirty = true;
-  if (saveTimer) clearTimeout(saveTimer);
-  saveTimer = setTimeout(() => {
-    try {
-      skipNextWatch = true;
-      fs.writeFileSync(DB_FILE, JSON.stringify(db, null, 2));
-      pushDurable();
-      try { lastOwnWriteMs = fs.statSync(DB_FILE).mtimeMs; } catch (_) {}
-      dirty = false;
-    } catch (err) {
-      console.error('Failed to save database:', err.message);
-    }
-  }, 25);
+  try {
+    const tmp = DB_FILE + '.tmp';
+    fs.writeFileSync(tmp, JSON.stringify(db, null, 2));
+    fs.renameSync(tmp, DB_FILE);
+    pushDurable();
+    try { lastOwnWriteMs = fs.statSync(DB_FILE).mtimeMs; } catch (_) {}
+  } catch (err) {
+    console.error('Failed to save database:', err.message);
+  }
 }
 
-let skipNextWatch = false;
 function pushWatch(eventType, filename) {
   if (filename && filename !== 'db.json') return;
-  if (dirty) return;
   try {
     let mtime = 0;
     try { mtime = fs.statSync(DB_FILE).mtimeMs; } catch (e) { return; }

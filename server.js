@@ -135,8 +135,9 @@ app.use((req, res, next) => {
 });
 
 /* ---------- State-changing requests must have JSON content type ---------- */
+const JSON_EXEMPT = new Set(['/api/auth/logout']);
 function requireJson(req, res, next) {
-  if (req.method === 'POST' && !req.is('application/json')) {
+  if (req.method === 'POST' && !JSON_EXEMPT.has(req.path) && !req.is('application/json')) {
     return res.status(415).json({ error: 'Content-Type must be application/json' });
   }
   next();
@@ -504,7 +505,12 @@ app.get('/api/account/:id', (req, res) => {
 
 app.post('/api/auth/logout', (req, res) => {
   store.logoutUser(req.sessionToken);
-  res.clearCookie(SESSION_COOKIE, { httpOnly: true, sameSite: 'lax', path: '/' });
+  res.clearCookie(SESSION_COOKIE, {
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: req.secure || req.headers['x-forwarded-proto'] === 'https',
+    path: '/'
+  });
   res.json({ ok: true });
 });
 

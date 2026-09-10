@@ -285,6 +285,11 @@
 
   /* ---------- Checkout ---------- */
   window.openCheckout = function (id) {
+    if (!authUser) {
+      toast('Sign in to buy an account.', 'err');
+      window.openAuthModal('login');
+      return;
+    }
     const a = state.accounts.find(x => x.id === id);
     if (!a) return;
     if (!(a.stock > 0) || a.status === 'sold') { toast('This account is out of stock.', 'err'); return; }
@@ -434,6 +439,12 @@
     e.preventDefault();
     if (!state.online) {
       toast('Preview build — wallet codes need the live server.', 'err');
+      return;
+    }
+    if (!authUser) {
+      closeWalletModal();
+      toast('Sign in to recharge your wallet.', 'err');
+      window.openAuthModal('login');
       return;
     }
     const input = $('#wallet-code');
@@ -832,6 +843,11 @@
 
   let pendingDigital = null;
   window.buyDigitalItem = function (id) {
+    if (!authUser) {
+      toast('Sign in to buy items.', 'err');
+      window.openAuthModal('login');
+      return;
+    }
     const item = digitals.find(i => i.id === id);
     if (!item) return;
     if (!state.online) {

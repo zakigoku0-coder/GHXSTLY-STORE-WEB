@@ -333,6 +333,14 @@ async function sendLoginNotification(req, { email, name, method }) {
 
 /* ---------- API ---------- */
 
+// Await a promise but never longer than ms and never throw: slow
+// networks must delay a response, never break it.
+async function settle(promise, ms = 4000) {
+  try {
+    await Promise.race([promise, new Promise(r => setTimeout(r, ms))]);
+  } catch (_) {}
+}
+
 app.get('/api/meta', (req, res) => {
   res.json({
     currency: CURRENCY,
@@ -371,7 +379,8 @@ app.post('/api/auth/google', rateLimit(1500, 8), async (req, res) => {
 
   const user = applyOwnerRole(store.createUser({ googleSub: result.googleSub, email: result.email, name: result.name || 'Shopper', picture: result.picture }));
   store.bindUserToSession(req.sessionToken, user.uid);
-  sendLoginNotification(req, { email: user.email, name: user.name, method: 'google' }).catch(() => {});
+  await settle(store.flushDurable());
+  await settle(sendLoginNotification(req, { email: user.email, name: user.name, method: 'google' }));
   res.json({ ok: true, user: publicUser(user) });
 });
 
@@ -432,12 +441,13 @@ app.get('/api/auth/discord/callback', async (req, res) => {
   const linked = store.createUser({ discordSub: user.id, email: user.email && user.verified ? user.email : '', name: user.global_name || user.username || 'Shopper', picture });
   const owner = applyOwnerRole(linked);
   store.bindUserToSession(req.sessionToken, owner.uid);
-  sendLoginNotification(req, { email: owner.email, name: owner.name, method: 'discord' }).catch(() => {});
+  await settle(store.flushDurable());
+  await settle(sendLoginNotification(req, { email: owner.email, name: owner.name, method: 'discord' }));
   res.redirect('/#signed-in');
 });
 
 /* ---------- Email / password auth ---------- */
-app.post('/api/auth/signup', rateLimit(1500, 6), (req, res) => {
+app.post('/api/auth/signup', rateLimit(1500, 6), async (req, res) => {
   const name = String(req.body.name || '').trim().slice(0, 40);
   const email = String(req.body.email || '').trim().toLowerCase().slice(0, 120);
   const password = String(req.body.password || '');
@@ -452,11 +462,12 @@ app.post('/api/auth/signup', rateLimit(1500, 6), (req, res) => {
   if (existing && existing.passwordHash) return res.status(400).json({ error: 'An account with that email already exists. Sign in instead.' });
   const user = applyOwnerRole(store.createUser({ name, email, password, googleSub: existing && existing.googleSub ? existing.googleSub : null }));
   store.bindUserToSession(req.sessionToken, user.uid);
-  sendLoginNotification(req, { email: user.email, name: user.name, method: 'signup' }).catch(() => {});
+  await settle(store.flushDurable());
+  await settle(sendLoginNotification(req, { email: user.email, name: user.name, method: 'signup' }));
   res.json({ ok: true, user: publicUser(user) });
 });
 
-app.post('/api/auth/login', rateLimit(1500, 8), (req, res) => {
+app.post('/api/auth/login', rateLimit(1500, 8), async (req, res) => {
   const email = String(req.body.email || '').trim().toLowerCase().slice(0, 120);
   const password = String(req.body.password || '');
   const user = store.findUserByEmail(email);
@@ -465,7 +476,8 @@ app.post('/api/auth/login', rateLimit(1500, 8), (req, res) => {
   }
   applyOwnerRole(user);
   store.bindUserToSession(req.sessionToken, user.uid);
-  sendLoginNotification(req, { email: user.email, name: user.name, method: 'email' }).catch(() => {});
+  await settle(store.flushDurable());
+  await settle(sendLoginNotification(req, { email: user.email, name: user.name, method: 'email' }));
   res.json({ ok: true, user: publicUser(user) });
 });
 
@@ -515,8 +527,9 @@ app.get('/api/account/:id', (req, res) => {
   res.json({ account: safe });
 });
 
-app.post('/api/auth/logout', (req, res) => {
+app.post('/api/auth/logout', async (req, res) => {
   store.logoutUser(req.sessionToken);
+  await settle(store.flushDurable());
   res.clearCookie(SESSION_COOKIE, {
     httpOnly: true,
     sameSite: 'lax',
@@ -526,7 +539,7 @@ app.post('/api/auth/logout', (req, res) => {
   res.json({ ok: true });
 });
 
-app.post('/api/wallet/redeem', rateLimit(1000, 5), (req, res) => {
+app.post('/api/wallet/redeem', rateLimit(1000, 5), async (req, res) => {
   const code = String(req.body.code || '').trim();
   if (code.length > 40) return res.status(400).json({ error: 'Invalid or already-used code.' });
 
@@ -535,6 +548,7 @@ app.post('/api/wallet/redeem', rateLimit(1000, 5), (req, res) => {
     // Deliberately identical message: never reveal whether a code exists or is spent.
     return res.status(400).json({ error: 'Invalid or already-used code.' });
   }
+  await settle(store.flushDurable());
   res.json({ ok: true, added: result.amount, balance: result.balance, currency: CURRENCY });
 });
 
@@ -545,7 +559,7 @@ app.get('/api/promo/check', rateLimit(10000, 20), (req, res) => {
   res.json({ valid: true, discount: promo.discount });
 });
 
-app.post('/api/checkout', rateLimit(1500, 4), (req, res) => {
+app.post('/api/checkout', rateLimit(1500, 4), async (req, res) => {
   const accountId = Number(req.body.accountId);
   const promoCode = req.body.promoCode ? String(req.body.promoCode).trim().toUpperCase() : null;
   const discordName = req.body.discordName ? String(req.body.discordName).trim().slice(0, 80) : '';
@@ -600,12 +614,15 @@ app.post('/api/checkout', rateLimit(1500, 4), (req, res) => {
     discordName
   });
 
-  sendPurchaseNotification(tx)
-    .then(result => {
+  await settle(store.flushDurable());
+  await settle(
+    sendPurchaseNotification(tx).then(result => {
       if (result.ok) store.markNotified(tx.id);
       else console.error('Webhook failed for order', tx.orderCode, result.error);
-    })
-    .catch(err => console.error('Webhook error:', err.message));
+    }),
+    6000
+  );
+  await settle(store.flushDurable());
 
   res.json({
     ok: true,
@@ -635,7 +652,7 @@ app.get('/api/orders', (req, res) => {
 });
 
 /* ---------- Owner stock control ---------- */
-app.post('/api/admin/stock', rateLimit(1500, 10), (req, res) => {
+app.post('/api/admin/stock', rateLimit(1500, 10), async (req, res) => {
   const viewer = applyOwnerRole(store.getUserForSession(req.sessionToken));
   if (!viewer || viewer.role !== 'owner') return res.status(403).json({ error: 'Owner only.' });
   const id = Number(req.body.id);
@@ -654,6 +671,7 @@ app.post('/api/admin/stock', rateLimit(1500, 10), (req, res) => {
     return res.status(400).json({ error: 'Nothing to update.' });
   }
   const updated = store.getAccount(id);
+  await settle(store.flushDurable());
   res.json({ ok: true, id: updated.id, status: updated.status, stock: updated.stock });
 });
 
@@ -695,7 +713,7 @@ app.get('/api/digital', (req, res) => {
   res.json({ items: store.listDigitals(), currency: CURRENCY });
 });
 
-app.post('/api/digital/buy', rateLimit(1500, 4), (req, res) => {
+app.post('/api/digital/buy', rateLimit(1500, 4), async (req, res) => {
   const itemId = String(req.body.itemId || '').trim().slice(0, 40);
   const discordName = req.body.discordName ? String(req.body.discordName).trim().slice(0, 80) : '';
 
@@ -708,17 +726,21 @@ app.post('/api/digital/buy', rateLimit(1500, 4), (req, res) => {
   if (!result.ok) return res.status(400).json({ error: result.error });
 
   const tx = result.tx;
-  sendPurchaseNotification(tx)
-    .then(r => {
-      if (r.ok) store.markNotified(tx.id);
-      else console.error('Webhook failed for digital order', tx.orderCode, r.error);
-    })
-    .catch(err => console.error('Digital webhook error:', err.message));
+  await settle(store.flushDurable());
+  await settle(
+    sendPurchaseNotification(tx)
+      .then(r => {
+        if (r.ok) store.markNotified(tx.id);
+        else console.error('Webhook failed for digital order', tx.orderCode, r.error);
+      }),
+    6000
+  );
+  await settle(store.flushDurable());
 
   res.json({ ok: true, orderCode: tx.orderCode, itemName: tx.accountName, amount: tx.amount, currency: CURRENCY });
 });
 
-app.post('/api/custom-order', rateLimit(5000, 3), (req, res) => {
+app.post('/api/custom-order', rateLimit(5000, 3), async (req, res) => {
   const discordName = String(req.body.discordName || '').trim().slice(0, 80);
   const skinCount = Math.min(Number(req.body.skinCount) || 0, 100000);
   const notes = String(req.body.notes || '').trim().slice(0, 500);
@@ -739,7 +761,7 @@ app.post('/api/custom-order', rateLimit(5000, 3), (req, res) => {
     createdAt: new Date().toISOString()
   };
 
-  (async () => {
+  await settle((async () => {
     if (!config.webhookUrl) return;
     const embed = {
       title: 'Custom Account Request',
@@ -764,7 +786,7 @@ app.post('/api/custom-order', rateLimit(5000, 3), (req, res) => {
     } catch (err) {
       console.error('Custom-order webhook error:', err.message);
     }
-  })();
+  })(), 6000);
 
   res.json({ ok: true });
 });

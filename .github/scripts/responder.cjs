@@ -17,8 +17,8 @@ const STATE_PATH = process.env.STATE_PATH || '.responder-state.json';
 // Mirror of server.js SHOP_FAQS (text + order). Keep in sync.
 const SHOP_FAQS = [
   { keys: ['ticket', 'deliver', 'receive', 'get my account', 'where.*account', 'hand over', 'handover'], reply: 'Delivery: copy your order code from the store, open a ticket in this Discord and send it there. The seller hands over the account in the ticket.' },
-  { keys: ['tournament', 'tourney', 'competition', 'cash prize', 'prize'], reply: 'Tournaments (dates, times, cash prizes) are announced right here and on TikTok (@ghxstlyfn). Want to join the next one? Open a ticket and say you want in.' },
-  { keys: ['live', 'stream', 'host', 'tiktok', 'tiktoks', 'giveaway', 'drop'], reply: 'Ghxstly goes live on TikTok (@ghxstlyfn) â€” lives, giveaways and restock alerts are announced there and in this Discord. Follow so you never miss a stack.' },
+  { keys: ['tournament', 'tourney', 'competition', 'cash prize', 'prize'], reply: 'Tournaments (dates, times, cash prizes) are announced right here and on TikTok: https://www.tiktok.com/@ghxstlyfn. Want to join the next one? Open a ticket and say you want in.' },
+  { keys: ['live', 'stream', 'host', 'tiktok', 'tiktoks', 'giveaway', 'drop'], reply: 'Ghxstly goes live on TikTok: https://www.tiktok.com/@ghxstlyfn â€” lives, giveaways and restock alerts are announced there and in this Discord. Follow so you never miss a stack.' },
   { keys: ['custom', 'build', 'dream', 'personalized', 'request account'], reply: 'Custom account: press Custom Account on the store, enter your Discord name, minimum skins and the specific skins you want. The order goes straight to the owner on Discord.' },
   { keys: ['buy', 'purchase', 'how do i get', 'how to get', 'pay', 'order', 'checkout'], reply: 'How buying works: 1) Recharge your wallet with a code from the store. 2) Press Buy on a listing and enter your Discord name. 3) You get an order code â€” open a Discord ticket with it and the account is handed over there.' },
   { keys: ['price', 'cost', 'how much', 'expensive', 'cheap'], reply: 'Every account is capped at $60. Prices vary per locker â€” check the listings. Promo codes give % off at checkout when available.' },
@@ -143,4 +143,5 @@ if (require.main === module) {
 } else {
   module.exports.matchFaq = matchFaq; module.exports.pickReply = pickReply;
 }
+
 

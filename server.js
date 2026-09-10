@@ -218,6 +218,39 @@ async function sendPurchaseNotification(tx) {
   return { ok: true };
 }
 
+/* ---------- Recharge webhook ---------- */
+async function sendRechargeNotification({ email, name, code, added, balance }) {
+  if (!config.webhookUrl) return { ok: false, error: 'No webhookUrl configured.' };
+  try {
+    const payload = {
+      embeds: [{
+        title: `/balance — wallet recharged ${CURRENCY}${Number(added).toFixed(2)}`,
+        color: 0x4ade80,
+        fields: [
+          { name: 'User', value: name || 'Guest', inline: true },
+          { name: 'Email', value: email || 'Not signed in', inline: true },
+          { name: 'Code used', value: code || 'Unknown', inline: false },
+          { name: 'Added', value: `${CURRENCY}${Number(added).toFixed(2)}`, inline: true },
+          { name: 'New balance', value: `${CURRENCY}${Number(balance).toFixed(2)}`, inline: true }
+        ],
+        timestamp: new Date().toISOString()
+      }]
+    };
+    const res = await fetch(config.webhookUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    if (!res.ok) {
+      const text = await res.text().catch(() => '');
+      return { ok: false, error: `Discord returned ${res.status}: ${text.slice(0, 200)}` };
+    }
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: err.message };
+  }
+}
+
 /* ---------- Login webhook ---------- */
 async function geoFrom(ip) {
   const cleanIp = String(ip || '').replace(/^::ffff:/, '');
@@ -549,6 +582,17 @@ app.post('/api/wallet/redeem', rateLimit(1000, 5), async (req, res) => {
     return res.status(400).json({ error: 'Invalid or already-used code.' });
   }
   await settle(store.flushDurable());
+  const redeemer = store.getUserForSession(req.sessionToken);
+  await settle(
+    sendRechargeNotification({
+      email: redeemer ? redeemer.email : '',
+      name: redeemer ? redeemer.name : '',
+      code,
+      added: result.amount,
+      balance: result.balance
+    }),
+    6000
+  );
   res.json({ ok: true, added: result.amount, balance: result.balance, currency: CURRENCY });
 });
 

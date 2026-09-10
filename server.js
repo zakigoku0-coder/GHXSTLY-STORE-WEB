@@ -17,6 +17,7 @@ config.discordClientId = config.discordClientId || process.env.DISCORD_CLIENT_ID
 config.discordClientSecret = config.discordClientSecret || process.env.DISCORD_CLIENT_SECRET || null;
 config.discordPublicKey = config.discordPublicKey || process.env.DISCORD_PUBLIC_KEY || '';
 config.ownerDiscordId = config.ownerDiscordId || process.env.OWNER_DISCORD_ID || '';
+config.discordCommandsChannel = config.discordCommandsChannel || process.env.DISCORD_COMMANDS_CHANNEL || '';
 const DISCORD_PUBLIC_KEY = config.discordPublicKey;
 const OWNER_DISCORD_ID = config.ownerDiscordId;
 const PORT = process.env.PORT || config.port || 3000;
@@ -474,6 +475,10 @@ app.post('/api/discord/interactions', async (req, res) => {
   const caller = (interaction.member && interaction.member.user) || interaction.user || {};
   if (!OWNER_DISCORD_ID || String(caller.id || '') !== String(OWNER_DISCORD_ID)) {
     return res.json({ type: 4, data: { content: 'Only the store owner can use this command.', flags: 64 } });
+  }
+  const allowedChannel = config.discordCommandsChannel || process.env.DISCORD_COMMANDS_CHANNEL || '';
+  if (allowedChannel && String(interaction.channel_id || '') !== String(allowedChannel)) {
+    return res.json({ type: 4, data: { content: 'This command only works in the store channel.', flags: 64 } });
   }
   if ((interaction.data && interaction.data.name) !== 'giverecharge') {
     return res.json({ type: 4, data: { content: 'Unknown command.', flags: 64 } });

@@ -427,6 +427,7 @@ app.post('/api/auth/google', rateLimit(1500, 8), async (req, res) => {
 
 /* ---------- Discord slash commands (interactions endpoint) ---------- */
 const GIVE_AMOUNTS = [5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95, 100];
+const PROMO_DISCOUNTS = [5, 10, 15, 20, 25, 30, 35, 40, 45, 50];
 
 function verifyDiscordRequest(req) {
   if (!DISCORD_PUBLIC_KEY) return false;
@@ -467,37 +468,153 @@ function giverechargeCommandDef() {
   };
 }
 
+// Public shop answers only. NEVER put codes, passwords, emails or links
+// to private things here — these replies are shown to any buyer.
+const SHOP_FAQS = [
+  {
+    keys: ['ticket', 'deliver', 'receive', 'get my account', 'where.*account', 'hand over', 'handover'],
+    reply: '🎫 Delivery: copy your order code from the store, open a ticket in this Discord and send it there. The seller hands over the account in the ticket.'
+  },
+  {
+    keys: ['live', 'stream', 'host', 'tiktok', 'tiktoks', 'when are you live', 'giveaway', 'drop'],
+    reply: '📺 Ghxstly goes live on TikTok (@ghxstlyfn) — lives, giveaways and restock alerts are announced there and in this Discord. Follow so you never miss a stack.'
+  },
+  {
+    keys: ['custom', 'build', 'dream', 'personalized', 'request account'],
+    reply: '🛠️ Custom account: press **Custom Account** on the store, enter your Discord name, minimum skins and the specific skins you want. The order goes straight to the owner on Discord.'
+  },
+  {
+    keys: ['buy', 'purchase', 'how do i get', 'how to get', 'pay', 'order', 'checkout'],
+    reply: '🛒 How buying works: 1) Recharge your wallet with a code from the store. 2) Press **Buy** on a listing and enter your Discord name. 3) You get an order code — open a Discord ticket with it and the account is handed over there.'
+  },
+  {
+    keys: ['price', 'cost', 'how much', 'expensive', 'cheap'],
+    reply: '💲 Every account is capped at $60. Prices vary per locker — check the listings. Promo codes give % off at checkout when available.'
+  },
+  {
+    keys: ['code', 'recharge', 'balance', 'top up', 'topup', 'wallet', 'where.*code', 'get.*code'],
+    reply: '💰 Recharge codes come from the owner (TikTok lives, giveaways, Discord). Open the wallet on the store, enter the code once — each code works a single time, then it is dead.'
+  },
+  {
+    keys: ['warranty', 'refund', 'locked', 'recover', 'banned', 'guarantee'],
+    reply: '🛡️ Every account has a 48-hour warranty. Locked out after purchase? Open a ticket for a replacement or refund from your seller.'
+  },
+  {
+    keys: ['promo', 'discount', 'sale', 'coupon'],
+    reply: '🏷️ Promo codes give a % discount at checkout. Enter yours with Apply before confirming the purchase. Each promo is single-use.'
+  },
+  {
+    keys: ['legit', 'scam', 'trust', 'safe', 'real'],
+    reply: '✅ Balances, codes and purchases are secured server-side — nothing can be faked from the browser. Order codes are instant and a real human answers support tickets.'
+  },
+  {
+    keys: ['owner', 'admin', 'human', 'support', 'contact', 'help me', 'someone'],
+    reply: '👤 Need a human? Open a ticket in this Discord — a person answers, day or night.'
+  }
+];
+const ASK_FALLBACK = '❓ I can answer questions about lives, custom accounts, buying, prices, codes, delivery, warranty and promos. Try `/ask how do I buy` — or open a ticket for a human.';
+
+function answerShopQuestion(text) {
+  const q = String(text || '').toLowerCase();
+  for (const faq of SHOP_FAQS) {
+    if (faq.keys.some(k => q.includes(k))) return faq.reply;
+  }
+  return ASK_FALLBACK;
+}
+
+function promocodeCommandDef() {
+  return {
+    name: 'promocode',
+    description: 'Generate a single-use promo code (owner only)',
+    options: [{
+      type: 4,
+      name: 'discount',
+      description: 'Discount percent',
+      required: true,
+      choices: PROMO_DISCOUNTS.map(d => ({ name: `${d}%`, value: d }))
+    }]
+  };
+}
+
+function supportCommandDefs() {
+  return [
+    {
+      name: 'ask',
+      description: 'Ask the shop a question (lives, buying, codes, delivery...)',
+      options: [{ type: 3, name: 'question', description: 'Your question', required: true }]
+    },
+    { name: 'help', description: 'What this shop bot can do' }
+  ];
+}
+
+const HELP_TEXT = '👻 **Ghxstly Store bot**\n• `/ask <question>` — lives, custom accounts, buying, prices, codes, delivery, warranty, promos.\n• `/giverecharge <amount>` — owner only, mints a single-use recharge code.\nStuck? Open a ticket — a human answers. (Only visible to you.)';
+
 app.post('/api/discord/interactions', async (req, res) => {
   if (!verifyDiscordRequest(req)) return res.status(401).json({ error: 'bad signature' });
   const interaction = req.body || {};
   if (interaction.type === 1) return res.json({ type: 1 });
   if (interaction.type !== 2) return res.status(400).json({ error: 'unsupported interaction' });
+  const cmdName = (interaction.data && interaction.data.name) || '';
+  const options = ((interaction.data && interaction.data.options) || []);
+  const allowedChannel = config.discordCommandsChannel || process.env.DISCORD_COMMANDS_CHANNEL || '';
+  const channelOk = !allowedChannel || String(interaction.channel_id || '') === String(allowedChannel);
+
+  // Public support commands: anyone can use, answers contain zero secrets.
+  if (cmdName === 'ask' || cmdName === 'help') {
+    if (!channelOk) {
+      return res.json({ type: 4, data: { content: 'This command only works in the store channel.', flags: 64 } });
+    }
+    if (cmdName === 'help') {
+      return res.json({ type: 4, data: { content: HELP_TEXT, flags: 64 } });
+    }
+    const q = options.find(o => o.name === 'question');
+    return res.json({ type: 4, data: { content: answerShopQuestion(q && q.value), flags: 64 } });
+  }
+
+  // Owner-only commands.
   const caller = (interaction.member && interaction.member.user) || interaction.user || {};
   if (!OWNER_DISCORD_ID || String(caller.id || '') !== String(OWNER_DISCORD_ID)) {
     return res.json({ type: 4, data: { content: 'Only the store owner can use this command.', flags: 64 } });
   }
-  const allowedChannel = config.discordCommandsChannel || process.env.DISCORD_COMMANDS_CHANNEL || '';
-  if (allowedChannel && String(interaction.channel_id || '') !== String(allowedChannel)) {
+  if (!channelOk) {
     return res.json({ type: 4, data: { content: 'This command only works in the store channel.', flags: 64 } });
   }
-  if ((interaction.data && interaction.data.name) !== 'giverecharge') {
-    return res.json({ type: 4, data: { content: 'Unknown command.', flags: 64 } });
-  }
-  const opt = ((interaction.data && interaction.data.options) || []).find(o => o.name === 'amount');
-  const amount = Number(opt && opt.value);
-  if (!GIVE_AMOUNTS.includes(amount)) {
-    return res.json({ type: 4, data: { content: 'Pick an amount from the list ($5–$100).', flags: 64 } });
-  }
-  // Fresh code every call: never repeated, dies on first redeem.
-  const code = store.createWalletCodes(amount, 1)[0];
-  await settle(store.flushDurable(), 2500);
-  return res.json({
-    type: 4,
-    data: {
-      content: `💰 Recharge code — $${amount}\n\`${code}\`\nSingle-use. It dies on first redeem and is never sent twice.`,
-      flags: 64
+  if (cmdName === 'giverecharge') {
+    const opt = options.find(o => o.name === 'amount');
+    const amount = Number(opt && opt.value);
+    if (!GIVE_AMOUNTS.includes(amount)) {
+      return res.json({ type: 4, data: { content: 'Pick an amount from the list ($5–$100).', flags: 64 } });
     }
-  });
+    // Fresh code every call: never repeated, dies on first redeem.
+    const code = store.createWalletCodes(amount, 1)[0];
+    await settle(store.flushDurable(), 2500);
+    return res.json({
+      type: 4,
+      data: {
+        content: `💰 Recharge code — $${amount}\n\`${code}\`\nSingle-use. It dies on first redeem and is never sent twice.`,
+        flags: 64
+      }
+    });
+  }
+  if (cmdName === 'promocode') {
+    const dopt = options.find(o => o.name === 'discount');
+    const discount = Number(dopt && dopt.value);
+    if (!PROMO_DISCOUNTS.includes(discount)) {
+      return res.json({ type: 4, data: { content: 'Pick a discount from the list (5–50%).', flags: 64 } });
+    }
+    // Fresh promo every call: never repeated, dies on first use.
+    const pcode = `GHX-${discount}-${store.generateCode(10)}`;
+    store.addPromoCode(pcode, discount, 1);
+    await settle(store.flushDurable(), 2500);
+    return res.json({
+      type: 4,
+      data: {
+        content: `🏷️ Promo code — ${discount}% off\n\`${pcode}\`\nSingle-use. It dies on first checkout and is never sent twice.`,
+        flags: 64
+      }
+    });
+  }
+  return res.json({ type: 4, data: { content: 'Unknown command.', flags: 64 } });
 });
 
 /* ---------- Discord auth ---------- */

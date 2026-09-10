@@ -1,4 +1,4 @@
-// Shop auto-responder (runs on a schedule, e.g. GitHub Actions cron).
+﻿// Shop auto-responder (runs on a schedule, e.g. GitHub Actions cron).
 // Reads new messages in the store channel(s) and replies to shop questions.
 // PUBLIC-SAFE: answers are fixed public strings. No codes, passwords,
 // emails or tokens are ever read, stored or sent by this script.
@@ -17,16 +17,20 @@ const STATE_PATH = process.env.STATE_PATH || '.responder-state.json';
 // Mirror of server.js SHOP_FAQS (text + order). Keep in sync.
 const SHOP_FAQS = [
   { keys: ['ticket', 'deliver', 'receive', 'get my account', 'where.*account', 'hand over', 'handover'], reply: 'Delivery: copy your order code from the store, open a ticket in this Discord and send it there. The seller hands over the account in the ticket.' },
-  { keys: ['live', 'stream', 'host', 'tiktok', 'tiktoks', 'giveaway', 'drop'], reply: 'Ghxstly goes live on TikTok (@ghxstlyfn) — lives, giveaways and restock alerts are announced there and in this Discord. Follow so you never miss a stack.' },
+  { keys: ['tournament', 'tourney', 'competition', 'cash prize', 'prize'], reply: 'Tournaments (dates, times, cash prizes) are announced right here and on TikTok (@ghxstlyfn). Want to join the next one? Open a ticket and say you want in.' },
+  { keys: ['live', 'stream', 'host', 'tiktok', 'tiktoks', 'giveaway', 'drop'], reply: 'Ghxstly goes live on TikTok (@ghxstlyfn) â€” lives, giveaways and restock alerts are announced there and in this Discord. Follow so you never miss a stack.' },
   { keys: ['custom', 'build', 'dream', 'personalized', 'request account'], reply: 'Custom account: press Custom Account on the store, enter your Discord name, minimum skins and the specific skins you want. The order goes straight to the owner on Discord.' },
-  { keys: ['buy', 'purchase', 'how do i get', 'how to get', 'pay', 'order', 'checkout'], reply: 'How buying works: 1) Recharge your wallet with a code from the store. 2) Press Buy on a listing and enter your Discord name. 3) You get an order code — open a Discord ticket with it and the account is handed over there.' },
-  { keys: ['price', 'cost', 'how much', 'expensive', 'cheap'], reply: 'Every account is capped at $60. Prices vary per locker — check the listings. Promo codes give % off at checkout when available.' },
-  { keys: ['code', 'recharge', 'balance', 'top up', 'topup', 'wallet'], reply: 'Recharge codes come from the owner (TikTok lives, giveaways, Discord). Open the wallet on the store, enter the code once — each code works a single time, then it is dead.' },
+  { keys: ['buy', 'purchase', 'how do i get', 'how to get', 'pay', 'order', 'checkout'], reply: 'How buying works: 1) Recharge your wallet with a code from the store. 2) Press Buy on a listing and enter your Discord name. 3) You get an order code â€” open a Discord ticket with it and the account is handed over there.' },
+  { keys: ['price', 'cost', 'how much', 'expensive', 'cheap'], reply: 'Every account is capped at $60. Prices vary per locker â€” check the listings. Promo codes give % off at checkout when available.' },
+  { keys: ['code', 'recharge', 'balance', 'top up', 'topup', 'wallet'], reply: 'Recharge codes come from the owner (TikTok lives, giveaways, Discord). Open the wallet on the store, enter the code once â€” each code works a single time, then it is dead.' },
   { keys: ['warranty', 'refund', 'locked', 'recover', 'banned', 'guarantee'], reply: 'Every account has a 48-hour warranty. Locked out after purchase? Open a ticket for a replacement or refund from your seller.' },
   { keys: ['promo', 'discount', 'sale', 'coupon'], reply: 'Promo codes give a % discount at checkout. Enter yours with Apply before confirming the purchase. Each promo is single-use.' },
-  { keys: ['legit', 'scam', 'trust', 'safe', 'real'], reply: 'Balances, codes and purchases are secured server-side — nothing can be faked from the browser. Order codes are instant and a real human answers support tickets.' },
-  { keys: ['owner', 'admin', 'human', 'support', 'contact', 'someone'], reply: 'Need a human? Open a ticket in this Discord — a person answers, day or night.' }
+  { keys: ['legit', 'scam', 'trust', 'safe', 'real'], reply: 'Balances, codes and purchases are secured server-side â€” nothing can be faked from the browser. Order codes are instant and a real human answers support tickets.' },
+  { keys: ['owner', 'admin', 'human', 'support', 'contact', 'someone'], reply: 'Need a human? Open a ticket in this Discord â€” a person answers, day or night.' }
 ];
+
+const BOT_ID = process.env.BOT_USER_ID || '1547559641637199953';
+const MENTION_FALLBACK = 'You called? Ask me about lives, tournaments, buying, prices, codes, delivery, warranty or promos â€” or try /ask, or open a ticket for a human.';
 
 function matchFaq(text) {
   const q = String(text || '').toLowerCase();
@@ -34,6 +38,16 @@ function matchFaq(text) {
   for (const faq of SHOP_FAQS) {
     if (faq.keys.some(k => q.includes(k))) return faq.reply;
   }
+  return null;
+}
+
+function pickReply(content) {
+  const text = String(content || '');
+  const mentioned = text.includes(`<@${BOT_ID}>`) || text.includes(`<@!${BOT_ID}>`);
+  const clean = text.split(`<@${BOT_ID}>`).join(' ').split(`<@!${BOT_ID}>`).join(' ');
+  const answer = matchFaq(clean);
+  if (answer) return answer;
+  if (mentioned && clean.trim()) return MENTION_FALLBACK;
   return null;
 }
 
@@ -103,7 +117,7 @@ async function main() {
       if (m.author && m.author.bot) continue;
       const content = String(m.content || '');
       if (!content.trim() || content.trim().startsWith('/')) continue;
-      const answer = matchFaq(content);
+      const answer = pickReply(content);
       if (!answer) continue;
       const post = await api('POST', `/channels/${ch}/messages`, {
         content: answer.slice(0, 1800),
@@ -124,8 +138,9 @@ async function main() {
 }
 
 if (require.main === module) {
-  module.exports.matchFaq = matchFaq;
+  module.exports.matchFaq = matchFaq; module.exports.pickReply = pickReply;
   main().catch(err => { console.error('fatal:', err.message); process.exit(1); });
 } else {
-  module.exports.matchFaq = matchFaq;
+  module.exports.matchFaq = matchFaq; module.exports.pickReply = pickReply;
 }
+

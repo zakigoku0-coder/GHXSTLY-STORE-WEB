@@ -62,9 +62,21 @@ async function pushDurable() {
         contentType: 'application/json',
         token: tok
       });
+      let verified = false, vurl = null, vsize = null;
+      try {
+        const meta = await blobClient.head(BLOB_PATH, { token: tok });
+        vurl = meta.downloadUrl || meta.url || null;
+        vsize = (meta.size === undefined || meta.size === null) ? null : meta.size;
+        verified = !!vurl;
+      } catch (_) {
+        verified = false;
+      }
       lastPush.at = new Date().toISOString();
       lastPush.ok = true;
       lastPush.error = null;
+      lastPush.verified = verified;
+      lastPush.url = vurl;
+      lastPush.size = vsize;
     } catch (err) {
       lastPush.at = new Date().toISOString();
       lastPush.ok = false;

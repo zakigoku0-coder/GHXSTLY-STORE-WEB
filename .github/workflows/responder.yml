@@ -22,7 +22,7 @@ jobs:
       - run: node .github/scripts/responder.cjs
         env:
           DISCORD_BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
-          CHANNEL_IDS: '1546689767746310195'
+          CHANNEL_IDS: '1539055035307266168'
       - uses: actions/cache/save@v4
         if: always()
         with:

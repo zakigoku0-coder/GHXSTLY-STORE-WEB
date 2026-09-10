@@ -50,6 +50,8 @@ async function loadDurable() {
   }
 }
 
+const lastPush = { at: null, ok: null, error: null };
+
 async function pushDurable() {
   const tok = blobToken();
   if (blobClient && tok) {
@@ -60,13 +62,28 @@ async function pushDurable() {
         contentType: 'application/json',
         token: tok
       });
+      lastPush.at = new Date().toISOString();
+      lastPush.ok = true;
+      lastPush.error = null;
     } catch (err) {
+      lastPush.at = new Date().toISOString();
+      lastPush.ok = false;
+      lastPush.error = String(err && err.message || err).slice(0, 300);
       console.error('Durable snapshot failed:', err.message);
     }
     return;
   }
   if (!kv || !kvAvailable) return;
   try { await kv.set(KV_KEY, db); } catch (_) {}
+}
+
+function durableStatus() {
+  return {
+    hasToken: !!blobToken(),
+    hasClient: !!blobClient,
+    kv: !!(kv && kvAvailable),
+    lastPush
+  };
 }
 
 const DEFAULT_DB = {
@@ -628,5 +645,6 @@ module.exports = {
   listDigitals,
   buyDigital,
   randomToken,
-  generateCode
+  generateCode,
+  durableStatus
 };

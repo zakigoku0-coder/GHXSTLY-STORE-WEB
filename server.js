@@ -648,6 +648,13 @@ app.post('/api/admin/stock', rateLimit(1500, 10), (req, res) => {
   res.json({ ok: true, id: updated.id, status: updated.status, stock: updated.stock });
 });
 
+/* ---------- Owner durability status (no secrets, owner only) ---------- */
+app.get('/api/admin/durable', rateLimit(1500, 10), (req, res) => {
+  const viewer = applyOwnerRole(store.getUserForSession(req.sessionToken));
+  if (!viewer || viewer.role !== 'owner') return res.status(403).json({ error: 'Owner only.' });
+  res.json({ ok: true, status: store.durableStatus() });
+});
+
 /* ---------- Digital goods ---------- */
 
 app.get('/api/digital', (req, res) => {

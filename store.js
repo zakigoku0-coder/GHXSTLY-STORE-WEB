@@ -70,11 +70,9 @@ async function downloadSnap(blob) {
 
 async function readRecentSnapshots(n) {
   const list = await listSnaps();
-  const snaps = [];
-  for (const b of list.slice(0, n || SNAP_READ)) {
-    try { snaps.push(await downloadSnap(b)); } catch (_) {}
-  }
-  return { list, snaps };
+  const slice = list.slice(0, n || SNAP_READ);
+  const results = await Promise.all(slice.map(b => downloadSnap(b).catch(() => null)));
+  return { list, snaps: results.filter(Boolean) };
 }
 
 async function loadDurable() {
@@ -314,6 +312,33 @@ function durableStatus() {
 async function flushDurable() {
   save();
   await pushDurable();
+}
+
+// Pull the newest shared state into memory before touching money
+// (redeem / checkout / promo). No-op when nothing is configured.
+async function refreshFromDurable() {
+  try {
+    if (blobClient && blobToken()) {
+      const merged = await readMergedSnapshots(SNAP_READ);
+      if (!merged) return false;
+      db.sessions = merged.sessions;
+      db.users = merged.users;
+      db.walletCodes = merged.walletCodes;
+      db.promoCodes = merged.promoCodes;
+      db.accounts = merged.accounts;
+      db.transactions = merged.transactions;
+      db.digitalStock = merged.digitalStock;
+      return true;
+    }
+    if (kv && kvAvailable) {
+      const snap = await kv.get(KV_KEY);
+      if (snap && snap.users) {
+        db = snap;
+        return true;
+      }
+    }
+  } catch (_) {}
+  return false;
 }
 
 const DEFAULT_DB = {
@@ -954,5 +979,6 @@ module.exports = {
   readBlobSnapshot,
   readMergedSnapshots,
   mergeSnapshot,
-  ready
+  ready,
+  refreshFromDurable
 };

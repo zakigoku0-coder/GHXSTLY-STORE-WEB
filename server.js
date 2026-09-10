@@ -122,6 +122,10 @@ app.use(async (req, res, next) => {
     // On a fresh serverless boot, wait (briefly) for durable state so the
     // first requests don't see an empty database. Resolves instantly after.
     await Promise.race([store.ready(), new Promise(r => setTimeout(r, 9000))]);
+    // Every API request starts from the newest shared state, so balances,
+    // used codes and sold flags are identical on all server copies.
+    // Skipped automatically when no durable storage is configured.
+    if (req.path.startsWith('/api/')) await store.refreshFromDurable();
   } catch (_) {}
   let token = req.cookies[SESSION_COOKIE];
   if (!token || !/^[a-f0-9]{48}$/.test(token)) {

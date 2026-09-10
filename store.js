@@ -216,6 +216,7 @@ async function pushDurable() {
         access: 'private',
         addRandomSuffix: false,
         allowOverwrite: true,
+        cacheControlMaxAge: 0,
         contentType: 'application/json',
         token: tok
       });

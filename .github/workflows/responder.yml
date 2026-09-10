@@ -1,0 +1,30 @@
+name: shop-responder
+
+on:
+  schedule:
+    - cron: '*/20 * * * *'
+  workflow_dispatch:
+
+jobs:
+  reply:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/cache/restore@v4
+        with:
+          path: .responder-state.json
+          key: responder-state
+          restore-keys: responder-state
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: node .github/scripts/responder.cjs
+        env:
+          DISCORD_BOT_TOKEN: ${{ secrets.BOT_TOKEN }}
+          CHANNEL_IDS: '1546689767746310195'
+      - uses: actions/cache/save@v4
+        if: always()
+        with:
+          path: .responder-state.json
+          key: responder-state-${{ github.run_id }}

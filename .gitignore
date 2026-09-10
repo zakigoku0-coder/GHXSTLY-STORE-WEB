@@ -1,3 +1,4 @@
 node_modules/
 *.log
 admin-codes.txt
+.responder-state.json

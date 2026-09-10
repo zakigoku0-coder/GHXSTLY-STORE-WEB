@@ -107,7 +107,7 @@ app.use((req, res, next) => {
     'X-Frame-Options': 'DENY',
     'Referrer-Policy': 'same-origin',
     'Content-Security-Policy':
-      "default-src 'self'; script-src 'self' 'unsafe-inline' https://accounts.google.com https://apis.google.com; style-src 'self' 'unsafe-inline' https://accounts.google.com https://*.googleapis.com https://*.gstatic.com; img-src 'self' data: https://*.googleusercontent.com https://cdn.discordapp.com https://*.blob.vercel-storage.com; connect-src 'self' https://accounts.google.com; frame-src https://accounts.google.com https://discord.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+      "default-src 'self'; script-src 'self' 'unsafe-inline' https://accounts.google.com https://apis.google.com; style-src 'self' 'unsafe-inline' https://accounts.google.com https://*.googleapis.com https://*.gstatic.com; img-src 'self' data: https://*.googleusercontent.com https://cdn.discordapp.com; connect-src 'self' https://accounts.google.com; frame-src https://accounts.google.com https://discord.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
   });
   next();
 });
@@ -526,20 +526,6 @@ function answerShopQuestion(text) {
   return ASK_FALLBACK;
 }
 
-function addphotoCommandDef() {
-  return {
-    name: 'addphoto',
-    description: 'Add a gallery photo to a listing (owner only)',
-    options: [
-      { type: 4, name: 'account', description: 'Account ID number', required: true },
-      { type: 11, name: 'photo', description: 'The photo to add', required: true },
-      { type: 3, name: 'label', description: 'Caption (optional)', required: false },
-      { type: 4, name: 'price', description: 'New price (optional)', required: false, min_value: 0, max_value: 100000 },
-      { type: 3, name: 'note', description: 'Text to add to the description (optional)', required: false }
-    ]
-  };
-}
-
 function promocodeCommandDef() {
   return {
     name: 'promocode',
@@ -565,7 +551,7 @@ function supportCommandDefs() {
   ];
 }
 
-const HELP_TEXT = 'ðŸ‘» **Ghxstly Store bot**\nâ€¢ `/ask <question>` â€” lives, custom accounts, buying, prices, codes, delivery, warranty, promos.\nâ€¢ `/giverecharge <amount>` â€” owner only, mints a single-use recharge code.\n• `/promocode <discount>` — owner only, mints a single-use promo code.\n• `/addphoto` — owner only, adds a gallery photo to a listing.\nStuck? Open a ticket â€” a human answers. (Only visible to you.)';
+const HELP_TEXT = 'ðŸ‘» **Ghxstly Store bot**\nâ€¢ `/ask <question>` â€” lives, custom accounts, buying, prices, codes, delivery, warranty, promos.\nâ€¢ `/giverecharge <amount>` â€” owner only, mints a single-use recharge code.\n• `/promocode <discount>` — owner only, mints a single-use promo code.\nStuck? Open a ticket â€” a human answers. (Only visible to you.)';
 
 app.post('/api/discord/interactions', async (req, res) => {
   if (!verifyDiscordRequest(req)) return res.status(401).json({ error: 'bad signature' });
@@ -631,80 +617,6 @@ app.post('/api/discord/interactions', async (req, res) => {
         flags: 64
       }
     });
-  }
-  if (cmdName === 'addphoto') {
-    const idOpt = options.find(o => o.name === 'account');
-    const id = Number(idOpt && idOpt.value);
-    const account = store.getAccount(id);
-    if (!account) {
-      return res.json({ type: 4, data: { content: 'No account with that ID. Check the listing number and try again.', flags: 64 } });
-    }
-    const photoOpt = options.find(o => o.name === 'photo');
-    const resolved = (interaction.data && interaction.data.resolved && interaction.data.resolved.attachments) || {};
-    const att = resolved[photoOpt && photoOpt.value] || null;
-    if (!att || !att.url) {
-      return res.json({ type: 4, data: { content: 'Attach a photo with the command.', flags: 64 } });
-    }
-    const contentType = String(att.content_type || '');
-    if (!contentType.startsWith('image/')) {
-      return res.json({ type: 4, data: { content: 'That file is not an image.', flags: 64 } });
-    }
-    if ((att.size || 0) > 8 * 1024 * 1024) {
-      return res.json({ type: 4, data: { content: 'Photo is too big (max 8 MB).', flags: 64 } });
-    }
-    if (!store.blobTokenOk()) {
-      return res.json({ type: 4, data: { content: 'Photo storage is not connected right now.', flags: 64 } });
-    }
-    let bytes;
-    try {
-      const dl = await fetch(att.url, { signal: AbortSignal.timeout(15000) });
-      if (!dl.ok) throw new Error(`download ${dl.status}`);
-      bytes = Buffer.from(await dl.arrayBuffer());
-      if (!bytes.length || bytes.length > 8 * 1024 * 1024) throw new Error('bad image data');
-    } catch (_) {
-      return res.json({ type: 4, data: { content: 'Could not download the photo. Try again.', flags: 64 } });
-    }
-    const labelOpt = options.find(o => o.name === 'label');
-    const priceOpt = options.find(o => o.name === 'price');
-    const noteOpt = options.find(o => o.name === 'note');
-    const label = String((labelOpt && labelOpt.value) || (att.filename || 'Photo')).slice(0, 80);
-    let ext = 'jpg';
-    const m = /\/([a-z0-9]+)(;|$)/i.exec(contentType);
-    if (m && ['jpg', 'jpeg', 'png', 'webp', 'gif'].includes(m[1].toLowerCase())) {
-      ext = m[1].toLowerCase() === 'jpeg' ? 'jpg' : m[1].toLowerCase();
-    }
-    let publicUrl;
-    try {
-      const putRes = await store.blobPut(
-        `gallery/${id}-${Date.now()}-${store.generateCode(6)}.${ext}`,
-        bytes,
-        contentType.startsWith('image/') ? contentType : 'image/jpeg'
-      );
-      publicUrl = putRes && putRes.url;
-      if (!publicUrl) throw new Error('upload failed');
-    } catch (_) {
-      return res.json({ type: 4, data: { content: 'Photo upload failed. Try again.', flags: 64 } });
-    }
-    const patch = { gallery: [...(account.gallery || []), { url: publicUrl, label }] };
-    if (priceOpt && priceOpt.value !== undefined && priceOpt.value !== null && String(priceOpt.value) !== '') {
-      const p = Number(priceOpt.value);
-      if (!Number.isFinite(p) || p < 0 || p > 100000) {
-        return res.json({ type: 4, data: { content: 'Bad price value.', flags: 64 } });
-      }
-      patch.price = Math.round(p * 100) / 100;
-    }
-    if (noteOpt && String(noteOpt.value || '').trim()) {
-      patch.desc = `${account.desc || ''}\n${String(noteOpt.value).trim()}`.slice(0, 2000);
-    }
-    const updated = store.updateAccount(id, patch);
-    if (!updated) {
-      return res.json({ type: 4, data: { content: 'Could not update that account.', flags: 64 } });
-    }
-    await settle(store.flushDurable(), 2500);
-    const bits = [`Photo added to **${account.name}** (${label}).`];
-    if (patch.price !== undefined) bits.push(`Price now $${patch.price}.`);
-    if (noteOpt && String(noteOpt.value || '').trim()) bits.push('Description updated.');
-    return res.json({ type: 4, data: { content: `${bits.join(' ')}\n${publicUrl}`, flags: 64 } });
   }
   return res.json({ type: 4, data: { content: 'Unknown command.', flags: 64 } });
 });

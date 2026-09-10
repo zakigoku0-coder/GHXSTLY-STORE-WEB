@@ -314,20 +314,6 @@ async function flushDurable() {
   await pushDurable();
 }
 
-function blobTokenOk() {
-  return !!(blobClient && blobToken());
-}
-
-async function blobPut(pathname, bytes, contentType) {
-  const tok = blobToken();
-  if (!blobClient || !tok) throw new Error('photo storage not connected');
-  return blobClient.put(pathname, bytes, {
-    access: 'public',
-    contentType: contentType || 'image/jpeg',
-    token: tok
-  });
-}
-
 // Pull the newest shared state into memory before touching money
 // (redeem / checkout / promo). No-op when nothing is configured.
 async function refreshFromDurable() {
@@ -825,27 +811,6 @@ function restoreAccount(id) {
   return true;
 }
 
-function updateAccount(id, patch) {
-  const account = getAccount(id);
-  if (!account) return null;
-  if (patch.price !== undefined) {
-    const p = Number(patch.price);
-    if (!Number.isFinite(p) || p < 0 || p > 100000) return null;
-    account.price = Math.round(p * 100) / 100;
-  }
-  if (patch.desc !== undefined) {
-    account.desc = String(patch.desc).slice(0, 2000);
-  }
-  if (patch.gallery !== undefined && Array.isArray(patch.gallery)) {
-    account.gallery = patch.gallery
-      .filter(g => g && g.url)
-      .slice(0, 24)
-      .map(g => ({ url: String(g.url).slice(0, 500), label: String(g.label || 'Photo').slice(0, 80) }));
-  }
-  save();
-  return account;
-}
-
 function setStock(id, stock) {
   const account = getAccount(id);
   if (!account) return null;
@@ -993,7 +958,6 @@ module.exports = {
   decrementStock,
   restoreAccount,
   setStock,
-  updateAccount,
   createWalletCodes,
   redeemWalletCode,
   unusedWalletCodes,
@@ -1016,7 +980,5 @@ module.exports = {
   readMergedSnapshots,
   mergeSnapshot,
   ready,
-  refreshFromDurable,
-  blobTokenOk,
-  blobPut
+  refreshFromDurable
 };

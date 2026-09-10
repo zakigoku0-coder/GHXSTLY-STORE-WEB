@@ -520,12 +520,13 @@ app.post('/api/wallet/redeem', rateLimit(1000, 5), (req, res) => {
 
   const result = store.redeemWalletCode(code, req.sessionToken);
   if (!result.ok) {
-    return res.status(400).json({ error: result.reason === 'used' ? 'Code already used.' : 'Invalid code.' });
+    // Deliberately identical message: never reveal whether a code exists or is spent.
+    return res.status(400).json({ error: 'Invalid or already-used code.' });
   }
   res.json({ ok: true, added: result.amount, balance: result.balance, currency: CURRENCY });
 });
 
-app.get('/api/promo/check', (req, res) => {
+app.get('/api/promo/check', rateLimit(10000, 20), (req, res) => {
   const code = String(req.query.code || '').trim().toUpperCase();
   const promo = store.getPromoCode(code);
   if (!promo) return res.json({ valid: false });

@@ -29,6 +29,21 @@ The webhook in `config.json` is the one that was leaked in the original page sou
 
 Never put the webhook URL anywhere except `config.json` — it is never sent to the browser.
 
+On hosting (Vercel) put secrets in environment variables instead of files —
+they are seeded into the store at boot and override the file values:
+
+```bash
+WALLET_CODES="GHX-20-ABC:20,GHX-25-DEF:25"   # recharge codes (CODE:amount, comma-separated)
+PROMO_CODES="SAVE10:10:100"                  # promo codes (CODE:discount:maxUses, comma-separated)
+DISCORD_WEBHOOK_URL="https://discord.com/api/webhooks/.../..."
+OWNER_EMAIL="you@mail.com"                   # owner login (also enables the OWNER badge)
+OWNER_PASSWORD="long-secret-here"
+DISCORD_CLIENT_ID="..."                      # Discord sign-in
+DISCORD_CLIENT_SECRET="..."
+GHXSTLY_ACCT2_EMAIL="..."                    # stored credentials for account #2 delivery
+GHXSTLY_ACCT2_PASSWORD="..."
+```
+
 ## Admin CLI
 
 ```bash

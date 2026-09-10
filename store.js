@@ -13,7 +13,34 @@ try {
 } catch (_) {}
 
 
+let blobClient = null;
+try {
+  blobClient = require('@vercel/blob');
+} catch (_) {}
+const BLOB_PATH = 'ghxstly-db.json';
+
+function blobToken() {
+  return process.env.BLOB_READ_WRITE_TOKEN || null;
+}
+
 async function loadDurable() {
+  const tok = blobToken();
+  if (blobClient && tok) {
+    try {
+      const meta = await blobClient.head(BLOB_PATH, { token: tok });
+      const url = meta.downloadUrl || meta.url;
+      if (!url) return null;
+      const r = await fetch(url, {
+        headers: { authorization: `Bearer ${tok}` },
+        signal: AbortSignal.timeout(10000)
+      });
+      if (!r.ok) return null;
+      const snap = await r.json();
+      return snap && Array.isArray(snap.users) ? { ...DEFAULT_DB, ...snap } : null;
+    } catch (_) {
+      return null;
+    }
+  }
   if (!kv || !kvAvailable) return null;
   try {
     const snap = await kv.get(KV_KEY);
@@ -24,6 +51,20 @@ async function loadDurable() {
 }
 
 async function pushDurable() {
+  const tok = blobToken();
+  if (blobClient && tok) {
+    try {
+      await blobClient.put(BLOB_PATH, JSON.stringify(db), {
+        access: 'private',
+        addRandomSuffix: false,
+        contentType: 'application/json',
+        token: tok
+      });
+    } catch (err) {
+      console.error('Durable snapshot failed:', err.message);
+    }
+    return;
+  }
   if (!kv || !kvAvailable) return;
   try { await kv.set(KV_KEY, db); } catch (_) {}
 }
@@ -99,16 +140,14 @@ function seedFromEnv() {
 seedFromEnv();
 
 // On serverless (Vercel) the file system is ephemeral, so take the persisted
-// snapshot from key-value storage the moment the store boots.
-if (kv && kvAvailable) {
-  loadDurable().then(snap => {
-    if (snap) {
-      db = snap;
-      seedFromEnv();
-      save();
-    }
-  }).catch(() => {});
-}
+// snapshot from durable storage (Blob, else KV) the moment the store boots.
+// loadDurable() is a safe no-op when nothing is configured.
+loadDurable().then(snap => {
+  if (snap) {
+    db = snap;
+    save();
+  }
+}).catch(() => {});
 
 function load() {
   if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });

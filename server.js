@@ -15,6 +15,10 @@ config.webhookUrl = config.webhookUrl || process.env.DISCORD_WEBHOOK_URL || null
 config.ownerEmail = (config.ownerEmail || process.env.OWNER_EMAIL || '').trim().toLowerCase();
 config.discordClientId = config.discordClientId || process.env.DISCORD_CLIENT_ID || null;
 config.discordClientSecret = config.discordClientSecret || process.env.DISCORD_CLIENT_SECRET || null;
+config.discordPublicKey = config.discordPublicKey || process.env.DISCORD_PUBLIC_KEY || '';
+config.ownerDiscordId = config.ownerDiscordId || process.env.OWNER_DISCORD_ID || '';
+const DISCORD_PUBLIC_KEY = config.discordPublicKey;
+const OWNER_DISCORD_ID = config.ownerDiscordId;
 const PORT = process.env.PORT || config.port || 3000;
 const CURRENCY = config.currency || '$';
 const MAX_PRICE = config.maxPrice || 60;
@@ -89,7 +93,10 @@ const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 const app = express();
 app.disable('x-powered-by');
 app.set('trust proxy', true);
-app.use(express.json({ limit: '10kb' }));
+app.use(express.json({
+  limit: '10kb',
+  verify: (req, res, buf) => { req.rawBody = buf; }
+}));
 app.use(cookieParser());
 
 /* ---------- Security headers ---------- */
@@ -415,6 +422,77 @@ app.post('/api/auth/google', rateLimit(1500, 8), async (req, res) => {
   await settle(store.flushDurable());
   await settle(sendLoginNotification(req, { email: user.email, name: user.name, method: 'google' }));
   res.json({ ok: true, user: publicUser(user) });
+});
+
+/* ---------- Discord slash commands (interactions endpoint) ---------- */
+const GIVE_AMOUNTS = [5, 10, 15, 20, 25, 30, 35, 40, 45, 50, 55, 60, 65, 70, 75, 80, 85, 90, 95, 100];
+
+function verifyDiscordRequest(req) {
+  if (!DISCORD_PUBLIC_KEY) return false;
+  const sig = req.headers['x-signature-ed25519'];
+  const ts = req.headers['x-signature-timestamp'];
+  if (!sig || !ts || !req.rawBody) return false;
+  try {
+    const key = crypto.createPublicKey({
+      key: Buffer.concat([
+        Buffer.from('302a300506032b6570032100', 'hex'),
+        Buffer.from(String(DISCORD_PUBLIC_KEY).trim(), 'hex')
+      ]),
+      format: 'der',
+      type: 'spki'
+    });
+    return crypto.verify(
+      null,
+      Buffer.from(String(ts) + req.rawBody.toString('utf8')),
+      key,
+      Buffer.from(String(sig), 'hex')
+    );
+  } catch (_) {
+    return false;
+  }
+}
+
+function giverechargeCommandDef() {
+  return {
+    name: 'giverecharge',
+    description: 'Generate a single-use wallet recharge code (owner only)',
+    options: [{
+      type: 4,
+      name: 'amount',
+      description: 'Balance value in dollars',
+      required: true,
+      choices: GIVE_AMOUNTS.map(a => ({ name: `$${a}`, value: a }))
+    }]
+  };
+}
+
+app.post('/api/discord/interactions', async (req, res) => {
+  if (!verifyDiscordRequest(req)) return res.status(401).json({ error: 'bad signature' });
+  const interaction = req.body || {};
+  if (interaction.type === 1) return res.json({ type: 1 });
+  if (interaction.type !== 2) return res.status(400).json({ error: 'unsupported interaction' });
+  const caller = (interaction.member && interaction.member.user) || interaction.user || {};
+  if (!OWNER_DISCORD_ID || String(caller.id || '') !== String(OWNER_DISCORD_ID)) {
+    return res.json({ type: 4, data: { content: 'Only the store owner can use this command.', flags: 64 } });
+  }
+  if ((interaction.data && interaction.data.name) !== 'giverecharge') {
+    return res.json({ type: 4, data: { content: 'Unknown command.', flags: 64 } });
+  }
+  const opt = ((interaction.data && interaction.data.options) || []).find(o => o.name === 'amount');
+  const amount = Number(opt && opt.value);
+  if (!GIVE_AMOUNTS.includes(amount)) {
+    return res.json({ type: 4, data: { content: 'Pick an amount from the list ($5–$100).', flags: 64 } });
+  }
+  // Fresh code every call: never repeated, dies on first redeem.
+  const code = store.createWalletCodes(amount, 1)[0];
+  await settle(store.flushDurable(), 2500);
+  return res.json({
+    type: 4,
+    data: {
+      content: `💰 Recharge code — $${amount}\n\`${code}\`\nSingle-use. It dies on first redeem and is never sent twice.`,
+      flags: 64
+    }
+  });
 });
 
 /* ---------- Discord auth ---------- */

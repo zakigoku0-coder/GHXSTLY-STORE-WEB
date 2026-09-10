@@ -59,6 +59,7 @@ async function pushDurable() {
       await blobClient.put(BLOB_PATH, JSON.stringify(db), {
         access: 'private',
         addRandomSuffix: false,
+        allowOverwrite: true,
         contentType: 'application/json',
         token: tok
       });

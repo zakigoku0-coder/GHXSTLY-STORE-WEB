@@ -1045,30 +1045,48 @@ app.post('/api/support-chat', rateLimit(3000, 15), async (req, res) => {
   if (!message) return res.status(400).json({ error: 'Empty message.' });
   const q = message.toLowerCase();
   let reply = null;
-  if (/(ticket|deliver|receive|get my account|where.*account|hand over|handover)/.test(q)) {
-    reply = 'Delivery: copy your order code from the store, open a ticket in this Discord and send it there. The seller hands over the account in the ticket.';
-  } else if (/(live|stream|host|tiktok|tiktoks|when are you live|giveaway|drop)/.test(q)) {
-    reply = 'Ghxstly goes live on TikTok: https://www.tiktok.com/@ghxstlyfn — lives, giveaways and restock alerts are announced there and in this Discord.';
-  } else if (/(tournament|tourney|competition|cash prize|prize)/.test(q)) {
-    reply = 'Tournaments (dates, times, cash prizes) are announced on TikTok: https://www.tiktok.com/@ghxstlyfn. Want to join? Open a ticket and say you want in.';
-  } else if (/(custom|build|dream|personalized|request account)/.test(q)) {
-    reply = 'Custom account: press Custom Account on the store, enter your Discord name, minimum skins and the specific skins you want.';
-  } else if (/(buy|purchase|how do i get|how to get|pay|order|checkout)/.test(q)) {
-    reply = 'How buying works: 1) Recharge your wallet with a code from the store. 2) Press Buy on a listing and enter your Discord name. 3) You get an order code — open a Discord ticket with it and the account is handed over there.';
-  } else if (/(price|cost|how much|expensive|cheap)/.test(q)) {
+  const ticket = '\n\nNeed more help? [Open a Discord ticket](https://discord.com/channels/@me) for instant human support.';
+
+  if (/(ticket|deliver|receive|get my account|where.*account|hand over|handover|after.*buy|what.*after)/.test(q)) {
+    reply = 'Delivery: copy your order code from the store, open a ticket in this Discord and send it there. The seller hands over the account in the ticket.' + ticket;
+  } else if (/(live|stream|host|tiktok|tiktoks|when are you live|giveaway|drop|when.*drop)/.test(q)) {
+    reply = 'Ghxstly goes live on TikTok: https://www.tiktok.com/@ghxstlyfn — lives, giveaways and restock alerts are announced there and in this Discord. Follow so you never miss a stack.';
+  } else if (/(tournament|tourney|competition|cash prize|prize|compete)/.test(q)) {
+    reply = 'Tournaments (dates, times, cash prizes) are announced on TikTok and in this Discord. Want to join? Open a ticket and say you want in.' + ticket;
+  } else if (/(custom|build|dream|personalized|request account|specific skin)/.test(q)) {
+    reply = 'Custom account: press Custom Account on the store, enter your Discord name, minimum skins and the specific skins you want. The order goes straight to the store owner.' + ticket;
+  } else if (/(buy|purchase|how do i get|how to get|pay|order|checkout|step)/.test(q)) {
+    reply = 'How buying works:\n1) Recharge your wallet with a code from the store\n2) Press Buy on a listing and enter your Discord name\n3) You get an order code — open a Discord ticket with it and the account is handed over there.\n\nMax price per account: $60.';
+  } else if (/(price|cost|how much|expensive|cheap|worth)/.test(q)) {
     reply = 'Every account is capped at $60. Prices vary per locker — check the listings. Promo codes give % off at checkout when available.';
-  } else if (/(code|recharge|balance|top up|topup|wallet)/.test(q)) {
-    reply = 'Recharge codes come from the owner (TikTok lives, giveaways, Discord). Open the wallet on the store, enter the code once — each code works a single time.';
-  } else if (/(warranty|refund|locked|recover|banned|guarantee)/.test(q)) {
-    reply = 'Every account has a 48-hour warranty. Locked out after purchase? Open a ticket for a replacement or refund from your seller.';
-  } else if (/(promo|discount|sale|coupon)/.test(q)) {
+  } else if (/(code|recharge|balance|top up|topup|wallet|add money|fund)/.test(q)) {
+    reply = 'Recharge codes come from the owner (TikTok lives, giveaways, Discord). Open the wallet on the store, enter the code once — each code works a single time, then it\'s dead.';
+  } else if (/(warranty|refund|locked|recover|banned|guarantee|problem|issue|broken)/.test(q)) {
+    reply = 'Every account has a 48-hour warranty. Locked out after purchase? Open a ticket for a replacement or refund from your seller.' + ticket;
+  } else if (/(promo|discount|sale|coupon|code.*off|%)/.test(q)) {
     reply = 'Promo codes give a % discount at checkout. Enter yours with Apply before confirming the purchase. Each promo is single-use.';
-  } else if (/(legit|scam|trust|safe|real)/.test(q)) {
+  } else if (/(legit|scam|trust|safe|real|fake|secure)/.test(q)) {
     reply = 'Balances, codes and purchases are secured server-side — nothing can be faked from the browser. Order codes are instant and a real human answers support tickets.';
-  } else if (/(owner|admin|human|support|contact|someone)/.test(q)) {
-    reply = 'Need a human? Open a ticket in this Discord — a person answers, day or night.';
+  } else if (/(owner|admin|human|support|contact|someone|talk.*person)/.test(q)) {
+    reply = 'Need a human? Open a ticket in this Discord — a person answers, day or night.' + ticket;
+  } else if (/(hi|hello|hey|sup|what's up|how are you)/.test(q)) {
+    reply = 'Hey! Welcome to Ghxstly Store. I can help you with buying accounts, prices, codes, delivery, warranties, promos, and more. What do you want to know?';
+  } else if (/(skin|outfit|cosmetic|rap|galaxy|og|renegade|travis|black knight)/.test(q)) {
+    reply = 'Check our listings for specific skins — every account shows its skin count and tier. Want something specific? Press Custom Account to request it.';
+  } else if (/(account.*type|bronze|silver|gold|platinum|diamond|tier)/.test(q)) {
+    reply = 'Accounts are tiered by skin count and value: Bronze (1-50 skins), Silver (50-100), Gold (100-200), Platinum (200-400), Diamond (400+). Each tier has its own price range, all capped at $60.';
+  } else if (/(how many|stock|available|out of stock|restock|when.*restock)/.test(q)) {
+    reply = 'Stock levels are shown on each listing. Sold-out items may be restocked during TikTok lives. Follow https://www.tiktok.com/@ghxstlyfn for restock alerts.';
+  } else if (/(pay.*method|payment|card|paypal|crypto|apple pay|venmo)/.test(q)) {
+    reply = 'We use a wallet system — recharge with a single-use code from the store (given during lives, giveaways, or from the owner). No card or PayPal needed directly.';
+  } else if (/(thank|thanks|thx|ty|appreciate)/.test(q)) {
+    reply = 'You\'re welcome! If you need anything else, I\'m here. Enjoy your new locker! 🎮';
+  } else if (/(age|old|minimum|requirement)/.test(q)) {
+    reply = 'No age restrictions on the store itself, but you need a Discord account for delivery. Open a ticket if you need help.';
+  } else if (/(night|late|hours|open|available|when.*open|24|always)/.test(q)) {
+    reply = 'The store is always open online. Human support on Discord is available day and night — just open a ticket.';
   }
-  res.json({ ok: true, reply: reply || 'I can answer questions about lives, tournaments, buying, prices, codes, delivery, warranty, promos. Try asking about one of those — or open a ticket for a human.' });
+  res.json({ ok: true, reply: reply || 'I can answer questions about buying, prices, codes, delivery, warranties, promos, skins, tournaments, and more. What would you like to know?' + ticket });
 });
 
 /* ---------- Static files ---------- */

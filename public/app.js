@@ -390,12 +390,12 @@
       const out = !(a.stock > 0) || a.status === 'sold';
       return `
       <div class="acc-card" style="--tier-color: var(${a.tierVar}); animation-delay:${Math.min(i * 40, 400)}ms">
+        <button type="button" class="wish-btn ${isWishlisted(a.id) ? 'active' : ''}" onclick="event.stopPropagation(); toggleWishlist(${a.id})" aria-label="Toggle wishlist">
+          <svg viewBox="0 0 24 24" width="18" height="18" fill="${isWishlisted(a.id) ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+        </button>
         <div class="acc-thumb" onclick="openModal(${a.id})">
           ${accountIcon(a.tierVar)}
           <span class="warranty-badge">${a.warranty}</span>
-          <button type="button" class="wish-btn ${isWishlisted(a.id) ? 'active' : ''}" onclick="event.stopPropagation(); toggleWishlist(${a.id})" aria-label="Toggle wishlist">
-            <svg viewBox="0 0 24 24" width="16" height="16" fill="${isWishlisted(a.id) ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
-          </button>
         </div>
         <div class="acc-body">
           <span class="acc-tag">${a.tier}</span>
@@ -1083,7 +1083,14 @@
     const container = $('#support-messages');
     const div = document.createElement('div');
     div.className = 'support-message ' + (isUser ? 'user' : 'bot');
-    div.innerHTML = isUser ? escapeHtml(text) : text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+    if (isUser) {
+      div.innerHTML = escapeHtml(text);
+    } else {
+      div.innerHTML = text
+        .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener" style="color:var(--neon);text-decoration:underline;">$1</a>')
+        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+        .replace(/\n/g, '<br>');
+    }
     container.appendChild(div);
     container.scrollTop = container.scrollHeight;
   }

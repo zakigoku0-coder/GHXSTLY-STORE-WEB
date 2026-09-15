@@ -606,8 +606,8 @@ footer { padding: 56px 0 36px; }
 .support-toggle {
   position: fixed; bottom: 24px; right: 24px; z-index: 10000;
   width: 56px; height: 56px; border-radius: 50%; border: none; cursor: pointer;
-  background: linear-gradient(135deg, var(--neon), var(--mist));
-  color: #fff; display: flex; align-items: center; justify-content: center;
+  background: var(--neon); color: #fff;
+  display: flex; align-items: center; justify-content: center;
   box-shadow: 0 4px 20px rgba(255,46,77,0.4);
   transition: transform .2s, box-shadow .2s;
 }
@@ -690,13 +690,14 @@ footer { padding: 56px 0 36px; }
 
 /* ---------- WISH BUTTON ON CARD ---------- */
 .wish-btn {
-  position: absolute; top: 8px; right: 8px; z-index: 2;
-  width: 30px; height: 30px; border-radius: 50%; border: none; cursor: pointer;
-  background: rgba(0,0,0,0.55); color: rgba(255,255,255,0.5);
+  position: absolute; top: 8px; right: 8px; z-index: 5;
+  width: 34px; height: 34px; border-radius: 50%; border: none; cursor: pointer;
+  background: rgba(0,0,0,0.65); color: rgba(255,255,255,0.55);
   display: flex; align-items: center; justify-content: center;
   transition: color .2s, transform .2s, background .2s;
+  backdrop-filter: blur(4px);
 }
-.wish-btn:hover, .wish-btn.active { color: var(--neon); transform: scale(1.15); background: rgba(0,0,0,0.7); }
+.wish-btn:hover, .wish-btn.active { color: #ff2e4d; transform: scale(1.15); background: rgba(0,0,0,0.8); }
 
 /* ---------- CART BUTTON ON CARD ---------- */
 .acc-foot-btns { display: flex; gap: 6px; align-items: center; }

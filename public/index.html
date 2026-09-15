@@ -443,6 +443,26 @@
   </div>
 </section>
 
+<!-- Support Chat -->
+<button id="support-toggle" class="support-toggle" onclick="openSupportChat()" title="Support">
+  <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+</button>
+<div id="support-modal" class="support-modal" hidden>
+  <div class="support-modal-inner">
+    <div class="support-header">
+      <span>Support Chat</span>
+      <button class="support-close" onclick="closeSupportChat()" title="Close">&times;</button>
+    </div>
+    <div id="support-messages" class="support-messages"></div>
+    <div class="support-input-row">
+      <input id="support-input" type="text" placeholder="Ask about accounts, prices, codes..." maxlength="500" autocomplete="off">
+      <button class="support-send" onclick="sendSupportMessage()" title="Send">
+        <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+      </button>
+    </div>
+  </div>
+</div>
+
 <script src="https://accounts.google.com/gsi/client"></script>
 <script src="app.js"></script>
 </body>

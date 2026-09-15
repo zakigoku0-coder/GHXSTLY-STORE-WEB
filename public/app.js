@@ -898,6 +898,59 @@
     }
   };
 
+  /* ---------- Support Chat ---------- */
+  function appendSupportMessage(text, isUser) {
+    const container = $('#support-messages');
+    const div = document.createElement('div');
+    div.className = 'support-message ' + (isUser ? 'user' : 'bot');
+    div.innerHTML = isUser ? escapeHtml(text) : text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+    container.appendChild(div);
+    container.scrollTop = container.scrollHeight;
+  }
+
+  window.openSupportChat = function () {
+    $('#support-modal').hidden = false;
+    $('#support-toggle').hidden = true;
+    $('#support-input').focus();
+    if ($('#support-messages').children.length === 0) {
+      appendSupportMessage('Hey! Ask me about prices, accounts, codes, delivery, tournaments, warranties, promos, or anything about the shop.', false);
+    }
+  };
+
+  window.closeSupportChat = function () {
+    $('#support-modal').hidden = true;
+    $('#support-toggle').hidden = false;
+  };
+
+  window.sendSupportMessage = async function () {
+    const input = $('#support-input');
+    const text = input.value.trim();
+    if (!text) return;
+    appendSupportMessage(text, true);
+    input.value = '';
+    input.disabled = true;
+    try {
+      const data = await api('/api/support-chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: text })
+      });
+      appendSupportMessage(data.reply || 'Sorry, I did not catch that. Try asking about prices, accounts, codes, delivery, or promos.', false);
+    } catch (err) {
+      appendSupportMessage('Sorry, something went wrong. Try again or open a ticket.', false);
+    } finally {
+      input.disabled = false;
+      input.focus();
+    }
+  };
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Enter' && document.activeElement && document.activeElement.id === 'support-input') {
+      e.preventDefault();
+      sendSupportMessage();
+    }
+  });
+
   /* ---------- Wire up ---------- */
   document.addEventListener('keydown', e => {
     if (e.key === 'Escape') {

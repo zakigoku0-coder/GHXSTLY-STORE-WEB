@@ -29,7 +29,7 @@ const SHOP_FAQS = [
   { keys: ['owner', 'admin', 'human', 'support', 'contact', 'someone'], reply: 'Need a human? Open a ticket in this Discord â€” a person answers, day or night.' }
 ];
 
-const BOT_ID = process.env.BOT_USER_ID || '1547559641637199953';
+const BOT_ID = process.env.BOT_USER_ID || process.env.DISCORD_BOT_ID || '1547559641637199953';
 const MENTION_FALLBACK = 'You called? Ask me about lives, tournaments, buying, prices, codes, delivery, warranty or promos â€” or try /ask, or open a ticket for a human.';
 
 function matchFaq(text) {

@@ -1039,8 +1039,43 @@ app.post('/api/custom-order', rateLimit(5000, 3), async (req, res) => {
   res.json({ ok: true });
 });
 
+/* ---------- Support Chat (public, no auth required, secret-free) ---------- */
+app.post('/api/support-chat', rateLimit(3000, 15), async (req, res) => {
+  const message = String(req.body.message || '').trim().slice(0, 500);
+  if (!message) return res.status(400).json({ error: 'Empty message.' });
+
+  // Simple FAQ matching — zero secrets, zero external calls.
+  const q = message.toLowerCase();
+  let reply = null;
+
+  if (/(ticket|deliver|receive|get my account|where.*account|hand over|handover)/.test(q)) {
+    reply = 'Delivery: copy your order code from the store, open a ticket in this Discord and send it there. The seller hands over the account in the ticket.';
+  } else if (/(live|stream|host|tiktok|tiktoks|when are you live|giveaway|drop)/.test(q)) {
+    reply = 'Ghxstly goes live on TikTok: https://www.tiktok.com/@ghxstlyfn — lives, giveaways and restock alerts are announced there and in this Discord. Follow so you never miss a stack.';
+  } else if (/(tournament|tourney|competition|cash prize|prize)/.test(q)) {
+    reply = 'Tournaments (dates, times, cash prizes) are announced right here and on TikTok: https://www.tiktok.com/@ghxstlyfn. Want to join the next one? Open a ticket and say you want in.';
+  } else if (/(custom|build|dream|personalized|request account)/.test(q)) {
+    reply = 'Custom account: press Custom Account on the store, enter your Discord name, minimum skins and the specific skins you want. The order goes straight to the owner on Discord.';
+  } else if (/(buy|purchase|how do i get|how to get|pay|order|checkout)/.test(q)) {
+    reply = 'How buying works: 1) Recharge your wallet with a code from the store. 2) Press Buy on a listing and enter your Discord name. 3) You get an order code — open a Discord ticket with it and the account is handed over there.';
+  } else if (/(price|cost|how much|expensive|cheap)/.test(q)) {
+    reply = 'Every account is capped at $60. Prices vary per locker — check the listings. Promo codes give % off at checkout when available.';
+  } else if (/(code|recharge|balance|top up|topup|wallet)/.test(q)) {
+    reply = 'Recharge codes come from the owner (TikTok lives, giveaways, Discord). Open the wallet on the store, enter the code once — each code works a single time, then it is dead.';
+  } else if (/(warranty|refund|locked|recover|banned|guarantee)/.test(q)) {
+    reply = 'Every account has a 48-hour warranty. Locked out after purchase? Open a ticket for a replacement or refund from your seller.';
+  } else if (/(promo|discount|sale|coupon)/.test(q)) {
+    reply = 'Promo codes give a % discount at checkout. Enter yours with Apply before confirming the purchase. Each promo is single-use.';
+  } else if (/(legit|scam|trust|safe|real)/.test(q)) {
+    reply = 'Balances, codes and purchases are secured server-side — nothing can be faked from the browser. Order codes are instant and a real human answers support tickets.';
+  } else if (/(owner|admin|human|support|contact|someone)/.test(q)) {
+    reply = 'Need a human? Open a ticket in this Discord — a person answers, day or night.';
+  }
+
+  res.json({ ok: true, reply: reply || "I can answer questions about lives, tournaments, buying, prices, codes, delivery, warranty, promos. Try asking about one of those — or open a ticket for a human." });
+});
+
 /* ---------- Static files ---------- */
-app.use(express.static(path.join(__dirname, 'public'), { maxAge: '1h', index: 'index.html' }));
 
 app.use('/api', (req, res) => res.status(404).json({ error: 'Not found' }));
 

@@ -898,10 +898,81 @@
     }
   };
 
-  /* ---------- Wire up ---------- */
+  /* ---------- Support Chat ---------- */
+  const SUPPORT_FAQS = [
+    { keys: ['ticket', 'deliver', 'receive', 'get my account', 'where.*account', 'hand over', 'handover'], reply: 'Delivery: copy your order code from the store, open a ticket in this Discord and send it there. The seller hands over the account in the ticket.' },
+    { keys: ['live', 'stream', 'host', 'tiktok', 'tiktoks', 'when are you live', 'giveaway', 'drop'], reply: 'Ghxstly goes live on TikTok: https://www.tiktok.com/@ghxstlyfn — lives, giveaways and restock alerts are announced there and in this Discord. Follow so you never miss a stack.' },
+    { keys: ['tournament', 'tourney', 'competition', 'cash prize', 'prize'], reply: 'Tournaments (dates, times, cash prizes) are announced right here and on TikTok: https://www.tiktok.com/@ghxstlyfn. Want to join the next one? Open a ticket and say you want in.' },
+    { keys: ['custom', 'build', 'dream', 'personalized', 'request account'], reply: 'Custom account: press Custom Account on the store, enter your Discord name, minimum skins and the specific skins you want. The order goes straight to the owner on Discord.' },
+    { keys: ['buy', 'purchase', 'how do i get', 'how to get', 'pay', 'order', 'checkout'], reply: 'How buying works: 1) Recharge your wallet with a code from the store. 2) Press Buy on a listing and enter your Discord name. 3) You get an order code — open a Discord ticket with it and the account is handed over there.' },
+    { keys: ['price', 'cost', 'how much', 'expensive', 'cheap'], reply: 'Every account is capped at $60. Prices vary per locker — check the listings. Promo codes give % off at checkout when available.' },
+    { keys: ['code', 'recharge', 'balance', 'top up', 'topup', 'wallet'], reply: 'Recharge codes come from the owner (TikTok lives, giveaways, Discord). Open the wallet on the store, enter the code once — each code works a single time, then it is dead.' },
+    { keys: ['warranty', 'refund', 'locked', 'recover', 'banned', 'guarantee'], reply: 'Every account has a 48-hour warranty. Locked out after purchase? Open a ticket for a replacement or refund from your seller.' },
+    { keys: ['promo', 'discount', 'sale', 'coupon'], reply: 'Promo codes give a % discount at checkout. Enter yours with Apply before confirming the purchase. Each promo is single-use.' },
+    { keys: ['legit', 'scam', 'trust', 'safe', 'real'], reply: 'Balances, codes and purchases are secured server-side — nothing can be faked from the browser. Order codes are instant and a real human answers support tickets.' },
+    { keys: ['owner', 'admin', 'human', 'support', 'contact', 'someone'], reply: 'Need a human? Open a ticket in this Discord — a person answers, day or night.' }
+  ];
+
+  function matchFaq(text) {
+    const q = String(text || '').toLowerCase();
+    if (!q.trim()) return null;
+    for (const faq of SUPPORT_FAQS) {
+      if (faq.keys.some(k => text.toLowerCase().includes(k))) return faq.reply;
+    }
+    return null;
+  }
+
+  function appendSupportMessage(text, isUser) {
+    const container = $('#support-messages');
+    const div = document.createElement('div');
+    div.className = 'support-message ' + (isUser ? 'user' : 'bot');
+    div.innerHTML = isUser ? text : text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+    container.appendChild(div);
+    container.scrollTop = container.scrollHeight;
+  }
+
+  window.openSupportChat = function () {
+    $('#support-modal').hidden = false;
+    $('#support-toggle').hidden = true;
+    $('#support-input').focus();
+    // Add welcome message if empty
+    if ($('#support-messages').children.length === 0) {
+      appendSupportMessage('Hey! Ask me about prices, accounts, codes, delivery, tournaments, warranties, promos — or anything about the shop.', false);
+    }
+  };
+
+  window.closeSupportChat = function () {
+    $('#support-modal').hidden = true;
+    $('#support-toggle').hidden = false;
+  };
+
+  window.sendSupportMessage = async function () {
+    const input = $('#support-input');
+    const text = input.value.trim();
+    if (!text) return;
+    appendSupportMessage(text, true);
+    input.value = '';
+    input.disabled = true;
+    try {
+      const data = await api('/api/support-chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: text })
+      });
+      appendSupportMessage(data.reply || 'Sorry, something went wrong. Try again or open a ticket.', false);
+    } catch (err) {
+      appendSupportMessage('Sorry, something went wrong. Try again or open a ticket.', false);
+    } finally {
+      input.disabled = false;
+      input.focus();
+    }
+  };
+
+  // Allow Enter to send
   document.addEventListener('keydown', e => {
-    if (e.key === 'Escape') {
-      closeModal(); closeCheckoutModal(); closeWalletModal(); closeDeliveryModal(); closeCustomModal(); closeImageViewer(); closeDgConfirm(); closeHistoryModal(); closeAuthModal();
+    if (e.key === 'Enter' && e.target.id === 'support-input') {
+      e.preventDefault();
+      sendSupportMessage();
     }
   });
 

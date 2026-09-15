@@ -14,7 +14,178 @@
     online: true,
     activeTab: 'accounts',
     googleClientId: '',
-    googleRendered: false
+    googleRendered: false,
+    wishlist: JSON.parse(localStorage.getItem('ghxstly-wishlist') || '[]'),
+    cart: JSON.parse(localStorage.getItem('ghxstly-cart') || '[]')
+  };
+
+  function saveWishlist() { localStorage.setItem('ghxstly-wishlist', JSON.stringify(state.wishlist)); updateWishlistBadge(); }
+  function saveCart() { localStorage.setItem('ghxstly-cart', JSON.stringify(state.cart)); updateCartBadge(); }
+
+  function updateWishlistBadge() {
+    const b = $('#wishlist-badge');
+    if (!b) return;
+    b.textContent = state.wishlist.length;
+    b.hidden = state.wishlist.length === 0;
+  }
+  function updateCartBadge() {
+    const b = $('#cart-badge');
+    if (!b) return;
+    b.textContent = state.cart.length;
+    b.hidden = state.cart.length === 0;
+  }
+
+  window.isWishlisted = function (id) { return state.wishlist.includes(id); };
+
+  window.toggleWishlist = function (id) {
+    const idx = state.wishlist.indexOf(id);
+    if (idx > -1) { state.wishlist.splice(idx, 1); toast('Removed from wishlist'); }
+    else { state.wishlist.push(id); toast('Added to wishlist'); }
+    saveWishlist();
+    renderAccounts();
+  };
+
+  window.addToCart = function (id) {
+    if (state.cart.includes(id)) { toast('Already in cart'); return; }
+    const a = state.accounts.find(x => x.id === id);
+    if (!a || !(a.stock > 0) || a.status === 'sold') { toast('Out of stock'); return; }
+    state.cart.push(id);
+    saveCart();
+    toast('Added to cart');
+  };
+
+  function removeFromCart(id) {
+    state.cart = state.cart.filter(x => x !== id);
+    saveCart();
+    renderCartModal();
+  }
+  window.removeFromCart = removeFromCart;
+
+  function cartTotal() {
+    return state.cart.reduce((sum, id) => {
+      const a = state.accounts.find(x => x.id === id);
+      return sum + (a ? a.price : 0);
+    }, 0);
+  }
+
+  window.openWishlistModal = function () {
+    const list = $('#wishlist-list');
+    if (!state.wishlist.length) {
+      list.innerHTML = '<div class="wishlist-empty">No saved accounts yet. Tap the heart on any listing to save it.</div>';
+    } else {
+      list.innerHTML = state.wishlist.map(id => {
+        const a = state.accounts.find(x => x.id === id);
+        if (!a) return '';
+        return `<div class="wish-item">
+          <div class="wish-item-info">
+            <div class="name">${a.name}</div>
+            <div class="meta">${a.skins}+ skins · ${fmt(a.price)}</div>
+          </div>
+          <div class="wish-item-actions">
+            <button class="wish-add-cart" onclick="addToCart(${a.id})">Add to cart</button>
+            <button class="wish-remove" onclick="removeFromWishlist(${a.id})">Remove</button>
+          </div>
+        </div>`;
+      }).join('');
+    }
+    $('#wishlist-modal-overlay').classList.add('show');
+  };
+  window.closeWishlistModal = function () { $('#wishlist-modal-overlay').classList.remove('show'); };
+
+  window.removeFromWishlist = function (id) {
+    state.wishlist = state.wishlist.filter(x => x !== id);
+    saveWishlist();
+    openWishlistModal();
+    renderAccounts();
+  };
+
+  window.openCartModal = function () {
+    renderCartModal();
+    $('#cart-modal-overlay').classList.add('show');
+  };
+  window.closeCartModal = function () { $('#cart-modal-overlay').classList.remove('show'); };
+
+  function renderCartModal() {
+    const list = $('#cart-list');
+    const footer = $('#cart-footer');
+    // Remove items that are no longer available
+    state.cart = state.cart.filter(id => {
+      const a = state.accounts.find(x => x.id === id);
+      return a && (a.stock > 0) && a.status !== 'sold';
+    });
+    saveCart();
+    if (!state.cart.length) {
+      list.innerHTML = '<div class="cart-empty">Your cart is empty. Browse listings and tap the cart icon to add an account.</div>';
+      footer.hidden = true;
+      return;
+    }
+    list.innerHTML = state.cart.map(id => {
+      const a = state.accounts.find(x => x.id === id);
+      if (!a) return '';
+      return `<div class="cart-item">
+        <div class="cart-item-info">
+          <div class="name">${a.name}</div>
+          <div class="meta">${a.tier} · ${a.skins}+ skins</div>
+        </div>
+        <div class="cart-item-price">${fmt(a.price)}</div>
+        <button class="cart-item-remove" onclick="removeFromCart(${a.id})" title="Remove">
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 6 6 18M6 6l12 12"/></svg>
+        </button>
+      </div>`;
+    }).join('');
+    const total = cartTotal();
+    const balance = state.balance || 0;
+    $('#cart-total').textContent = fmt(total);
+    $('#cart-balance').textContent = fmt(balance);
+    $('#cart-after').textContent = fmt(Math.max(0, balance - total));
+    footer.hidden = false;
+    // Disable checkout if insufficient balance
+    const btn = $('#cart-checkout-btn');
+    if (balance < total) { btn.disabled = true; btn.textContent = `Insufficient balance (${fmt(total - balance)} short)`; }
+    else { btn.disabled = false; btn.textContent = 'Buy all from wallet'; }
+  }
+
+  window.checkoutCart = async function () {
+    const discord = ($('#cart-discord') || {}).value;
+    if (!discord || discord.trim().length < 3) { toast('Enter your Discord username'); return; }
+    const btn = $('#cart-checkout-btn');
+    btn.disabled = true;
+    btn.textContent = 'Processing...';
+    let successCount = 0;
+    const codes = [];
+    for (const id of [...state.cart]) {
+      try {
+        const data = await api('/api/checkout', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ accountId: id, discordName: discord.trim(), promoCode: '' })
+        });
+        if (data.ok) { successCount++; codes.push(data.orderCode); }
+      } catch (err) { /* skip failed */ }
+    }
+    state.cart = state.cart.filter(id => {
+      const a = state.accounts.find(x => x.id === id);
+      return a && (a.stock > 0) && a.status !== 'sold';
+    });
+    saveCart();
+    await refreshWallet();
+    if (successCount > 0) {
+      toast(`${successCount} account(s) purchased!`);
+      closeCartModal();
+      const codesStr = codes.join('\n');
+      navigator.clipboard.writeText(codesStr).catch(() => {});
+      $('#delivery-note').textContent = `You bought ${successCount} account(s). Order codes copied — paste them in a Discord ticket.`;
+      $('#delivery-order-code').textContent = codesStr;
+      $('#delivery-creds').hidden = true;
+      $('#delivery-note-custom').hidden = true;
+      const ticketBtn = $('#open-ticket-btn');
+      if (ticketBtn) ticketBtn.href = 'https://discord.com/channels/@me';
+      $('#delivery-modal-overlay').classList.add('show');
+    } else {
+      toast('Some purchases failed. Try buying one at a time.');
+      btn.disabled = false;
+      btn.textContent = 'Buy all from wallet';
+    }
   };
 
   const DEMO_ACCOUNTS = [
@@ -173,6 +344,7 @@
   async function refreshWallet() {
     try {
       const data = await api('/api/wallet');
+      state.balance = data.balance;
       $('#wallet-balance-value').textContent = fmt(data.balance);
       $('#wallet-modal-balance').textContent = fmt(data.balance);
       renderWalletUser(data.user || null);
@@ -221,6 +393,9 @@
         <div class="acc-thumb" onclick="openModal(${a.id})">
           ${accountIcon(a.tierVar)}
           <span class="warranty-badge">${a.warranty}</span>
+          <button type="button" class="wish-btn ${isWishlisted(a.id) ? 'active' : ''}" onclick="event.stopPropagation(); toggleWishlist(${a.id})" aria-label="Toggle wishlist">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="${isWishlisted(a.id) ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
+          </button>
         </div>
         <div class="acc-body">
           <span class="acc-tag">${a.tier}</span>
@@ -228,7 +403,12 @@
           <span class="acc-stats">${a.skins}+ skins · <b class="stock-badge ${out ? 'sold' : ''}">${out ? 'OUT OF STOCK' : `in stock: ${a.stock}`}</b></span>
           <div class="acc-foot">
             <span class="price">${fmt(a.price)}</span>
-            <button type="button" class="card-buy ${out ? 'sold' : ''}" onclick="openCheckout(${a.id})">${out ? 'Out of stock' : 'Buy'}</button>
+            <div class="acc-foot-btns">
+              ${out ? '' : `<button type="button" class="card-cart-btn" onclick="event.stopPropagation(); addToCart(${a.id})" title="Add to cart">
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>
+              </button>`}
+              <button type="button" class="card-buy ${out ? 'sold' : ''}" onclick="openCheckout(${a.id})">${out ? 'Out of stock' : 'Buy'}</button>
+            </div>
           </div>
           ${isOwner ? `<button type="button" class="card-admin" onclick="adminStock(${a.id}, ${a.status === 'sold' ? 'false' : 'true'})">${a.status === 'sold' ? 'Restore to shop' : 'Mark sold'}</button>` : ''}
         </div>
@@ -954,7 +1134,7 @@
   /* ---------- Wire up ---------- */
   document.addEventListener('keydown', e => {
     if (e.key === 'Escape') {
-      closeModal(); closeCheckoutModal(); closeWalletModal(); closeDeliveryModal(); closeCustomModal(); closeImageViewer(); closeDgConfirm(); closeHistoryModal(); closeAuthModal();
+      closeModal(); closeCheckoutModal(); closeWalletModal(); closeDeliveryModal(); closeCustomModal(); closeImageViewer(); closeDgConfirm(); closeHistoryModal(); closeAuthModal(); closeWishlistModal(); closeCartModal(); closeSupportChat();
     }
   });
 
@@ -990,4 +1170,6 @@
   loadAuth();
   loadDigitals();
   loadAccounts();
+  updateWishlistBadge();
+  updateCartBadge();
 })();

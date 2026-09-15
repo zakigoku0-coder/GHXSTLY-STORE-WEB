@@ -602,6 +602,14 @@ footer { padding: 56px 0 36px; }
 
 .card-admin { margin-top: 8px; width: 100%; background: transparent; border: 1px dashed var(--mist-dim); color: var(--mist); border-radius: 8px; padding: 6px; font-size: 12px; cursor: pointer; }
 
+/* ---------- SUPPORT CHAT OVERLAY ---------- */
+.support-overlay {
+  position: fixed; inset: 0; z-index: 9999;
+  background: rgba(0,0,0,0.75);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
 /* ---------- SUPPORT CHAT WIDGET ---------- */
 .support-toggle {
   position: fixed; bottom: 24px; right: 24px; z-index: 10000;

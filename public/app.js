@@ -1079,6 +1079,47 @@
   };
 
   /* ---------- Support Chat ---------- */
+  const SUPPORT_FAQS = [
+    { keys: ['ticket', 'deliver', 'receive', 'get my account', 'where.*account', 'hand over', 'handover', 'after.*buy', 'what.*after'], reply: '**Delivery:** Copy your order code from the store, open a ticket in our Discord and send it there. The seller hands over the account in the ticket.\n\nNeed help? [Open a Discord ticket](https://discord.com/channels/@me) for instant human support.' },
+    { keys: ['live', 'stream', 'host', 'tiktok', 'tiktoks', 'when are you live', 'giveaway', 'drop', 'when.*drop'], reply: '**Ghxstly goes live on TikTok:** https://www.tiktok.com/@ghxstlyfn\n\nLives, giveaways and restock alerts are announced there and in this Discord. Follow so you never miss a stack.' },
+    { keys: ['tournament', 'tourney', 'competition', 'cash prize', 'prize', 'compete'], reply: '**Tournaments:** Dates, times, and cash prizes are announced on TikTok and in this Discord.\n\nWant to join the next one? [Open a ticket](https://discord.com/channels/@me) and say you want in.' },
+    { keys: ['custom', 'build', 'dream', 'personalized', 'request account', 'specific skin'], reply: '**Custom Account:** Press **Custom Account** on the store, enter your Discord name, minimum skins, and the specific skins you want. The order goes straight to the store owner.' },
+    { keys: ['buy', 'purchase', 'how do i get', 'how to get', 'pay', 'order', 'checkout', 'step'], reply: '**How buying works:**\n1. Recharge your wallet with a code from the store\n2. Press **Buy** on a listing and enter your Discord name\n3. You get an order code — open a Discord ticket with it and the account is handed over there.\n\nMax price per account: **$60**.' },
+    { keys: ['price', 'cost', 'how much', 'expensive', 'cheap', 'worth'], reply: '**Every account is capped at $60.** Prices vary per locker — check the listings. Promo codes give % off at checkout when available.' },
+    { keys: ['code', 'recharge', 'balance', 'top up', 'topup', 'wallet', 'add money', 'fund'], reply: '**Recharge codes** come from the owner (TikTok lives, giveaways, Discord). Open the wallet on the store, enter the code once — each code works a single time, then it\'s dead.' },
+    { keys: ['warranty', 'refund', 'locked', 'recover', 'banned', 'guarantee', 'problem', 'issue', 'broken'], reply: '**48-hour warranty** on every account. Locked out after purchase? Open a ticket for a replacement or refund from your seller.\n\n[Open a ticket](https://discord.com/channels/@me)' },
+    { keys: ['promo', 'discount', 'sale', 'coupon', 'code.*off', '%'], reply: '**Promo codes** give a % discount at checkout. Enter yours with **Apply** before confirming the purchase. Each promo is single-use.' },
+    { keys: ['legit', 'scam', 'trust', 'safe', 'real', 'fake', 'secure'], reply: '**100% legit.** Balances, codes and purchases are secured server-side — nothing can be faked from the browser. Order codes are instant and a real human answers support tickets.' },
+    { keys: ['owner', 'admin', 'human', 'support', 'contact', 'someone', 'talk.*person'], reply: '**Need a human?** Open a ticket in our Discord — a person answers, day or night.\n\n[Open a ticket](https://discord.com/channels/@me)' },
+    { keys: ['hi', 'hello', 'hey', 'sup', "what's up", 'how are you', 'yo'], reply: '**Hey!** Welcome to Ghxstly Store. I can help you with buying accounts, prices, codes, delivery, warranties, promos, skins, and more. What do you want to know?' },
+    { keys: ['skin', 'outfit', 'cosmetic', 'rap', 'galaxy', 'og', 'renegade', 'travis', 'black knight'], reply: '**Check our listings** for specific skins — every account shows its skin count and tier. Want something specific? Press **Custom Account** to request it.' },
+    { keys: ['account.*type', 'bronze', 'silver', 'gold', 'platinum', 'diamond', 'tier'], reply: '**Account tiers** by skin count and value:\n- **Bronze:** 1–50 skins\n- **Silver:** 50–100 skins\n- **Gold:** 100–200 skins\n- **Platinum:** 200–400 skins\n- **Diamond:** 400+ skins\n\nAll capped at **$60**.' },
+    { keys: ['how many', 'stock', 'available', 'out of stock', 'restock', 'when.*restock'], reply: '**Stock levels** are shown on each listing. Sold-out items may be restocked during TikTok lives.\n\nFollow https://www.tiktok.com/@ghxstlyfn for restock alerts.' },
+    { keys: ['pay.*method', 'payment', 'card', 'paypal', 'crypto', 'apple pay', 'venmo'], reply: '**Payment method:** We use a wallet system — recharge with a single-use code from the store (given during lives, giveaways, or from the owner). No card or PayPal needed directly.' },
+    { keys: ['thank', 'thanks', 'thx', 'ty', 'appreciate'], reply: '**You\'re welcome!** If you need anything else, I\'m here. Enjoy your new locker!' },
+    { keys: ['night', 'late', 'hours', 'open', 'available', 'when.*open', '24', 'always'], reply: '**Always open** online. Human support on Discord is available day and night — just open a ticket.\n\n[Open a ticket](https://discord.com/channels/@me)' },
+    { keys: ['fortnite', 'fn', 'epic', 'epic games'], reply: '**Ghxstly Store** is an independent marketplace for Fortnite accounts. We\'re not affiliated with Epic Games. Accounts are traded peer-to-peer with buyer protection.' },
+    { keys: ['account', 'login', 'email', 'password', 'creds', 'credential'], reply: '**After purchase** you\'ll receive the account email and password in the delivery modal. You can also get them by opening a Discord ticket with your order code.\n\nCredentials are never visible before purchase.' },
+    { keys: ['swap', 'trade', 'exchange', 'switch'], reply: '**No swaps or trades** — we sell accounts directly. Browse our listings and pick the one you want.' },
+    { keys: ['fast', 'quick', 'instant', 'speed', 'how long'], reply: '**Instant delivery:** Order codes are issued the moment you pay. Handover happens in your Discord ticket — usually within minutes.' },
+    { keys: ['safe', 'ban', 'risk', 'get banned', 'will i get banned'], reply: '**Account trading carries risk** — Epic Games\' TOS may penalize it. We can\'t guarantee safety, but every account comes with a 48-hour warranty for replacements or refunds.' },
+    { keys: ['young', 'kid', 'child', 'age', 'old'], reply: '**No age restrictions** on the store, but you need a Discord account for delivery. Open a ticket if you need help setting up.' },
+    { keys: ['multiple', 'bulk', 'buy more', 'two', 'three', '4'], reply: '**Buy as many as you want!** Add accounts to your cart and checkout all at once. Each account has its own order code for delivery.' },
+    { keys: ['wallet.*empty', 'no money', 'broke', 'free', 'without.*pay'], reply: '**No free accounts.** Every listing has a price. Recharge codes are given during TikTok lives, giveaways, and Discord events.' },
+    { keys: ['update', 'change', 'edit', 'modify'], reply: '**Once purchased,** the account is yours. If there\'s an issue within 48 hours, open a ticket for a replacement or refund.' },
+  ];
+
+  function matchFaq(text) {
+    const q = String(text || '').toLowerCase().trim();
+    if (!q) return null;
+    for (const faq of SUPPORT_FAQS) {
+      for (const key of faq.keys) {
+        if (new RegExp(key, 'i').test(q)) return faq.reply;
+      }
+    }
+    return null;
+  }
+
   function appendSupportMessage(text, isUser) {
     const container = $('#support-messages');
     const div = document.createElement('div');
@@ -1097,38 +1138,37 @@
 
   window.openSupportChat = function () {
     $('#support-modal').hidden = false;
+    $('#support-overlay').hidden = false;
     $('#support-toggle').hidden = true;
     $('#support-input').focus();
     if ($('#support-messages').children.length === 0) {
-      appendSupportMessage('Hey! Ask me about prices, accounts, codes, delivery, tournaments, warranties, promos, or anything about the shop.', false);
+      appendSupportMessage('Hey! I\'m the Ghxstly assistant. Ask me anything about buying, prices, codes, delivery, warranties, skins, tournaments, or the store.', false);
     }
   };
 
   window.closeSupportChat = function () {
     $('#support-modal').hidden = true;
+    $('#support-overlay').hidden = true;
     $('#support-toggle').hidden = false;
   };
 
-  window.sendSupportMessage = async function () {
+  window.sendSupportMessage = function () {
     const input = $('#support-input');
     const text = input.value.trim();
     if (!text) return;
     appendSupportMessage(text, true);
     input.value = '';
     input.disabled = true;
-    try {
-      const data = await api('/api/support-chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: text })
-      });
-      appendSupportMessage(data.reply || 'Sorry, I did not catch that. Try asking about prices, accounts, codes, delivery, or promos.', false);
-    } catch (err) {
-      appendSupportMessage('Sorry, something went wrong. Try again or open a ticket.', false);
-    } finally {
+    setTimeout(() => {
+      const faqReply = matchFaq(text);
+      if (faqReply) {
+        appendSupportMessage(faqReply, false);
+      } else {
+        appendSupportMessage('I\'m not sure about that one. Here are some things I can help with:\n- **Prices** and accounts\n- **How to buy**\n- **Wallet codes**\n- **Delivery** and order codes\n- **Warranties** and refunds\n- **Promo codes**\n- **Custom accounts**\n- **Tournaments** and giveaways\n\nOr open a ticket for human support: [Open Ticket](https://discord.com/channels/@me)', false);
+      }
       input.disabled = false;
       input.focus();
-    }
+    }, 400);
   };
 
   document.addEventListener('keydown', e => {

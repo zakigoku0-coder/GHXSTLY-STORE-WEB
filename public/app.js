@@ -1045,6 +1045,12 @@
     try {
       const data = await api('/api/tournament/players');
       tournamentPlayers = data.players || [];
+      const savedVersion = localStorage.getItem('ghxstly-tournament-version');
+      if (data.version && savedVersion !== data.version) {
+        localStorage.removeItem('ghxstly-tournament-name');
+        localStorage.removeItem('ghxstly-tournament-registered');
+        localStorage.setItem('ghxstly-tournament-version', data.version);
+      }
     } catch { tournamentPlayers = []; }
     return tournamentPlayers;
   }

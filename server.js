@@ -1052,7 +1052,7 @@ function tournamentEmbed(epicName, count) {
       { name: 'Players', value: `${count} / 40`, inline: true },
       { name: 'Prize', value: count >= 40 ? '$5 ACTIVE' : `$5 (${40 - count} more needed)`, inline: true }
     ],
-    footer: { text: 'Ghxstly Store Tournament • Ends tomorrow!' },
+    footer: { text: 'Ghxstly Store Tournament • Ends Saturday!' },
     timestamp: new Date().toISOString()
   };
 }

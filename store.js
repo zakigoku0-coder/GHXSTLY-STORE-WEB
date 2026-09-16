@@ -227,6 +227,16 @@ function mergeSnapshot(local, remote) {
   }
   out.digitalStock = stock;
 
+  const tPlayers = new Map();
+  for (const p of (remote.tournamentPlayers || [])) {
+    if (p && p.name) tPlayers.set(p.name.toLowerCase(), { ...p });
+  }
+  for (const p of (local.tournamentPlayers || [])) {
+    if (!p || !p.name) continue;
+    if (!tPlayers.has(p.name.toLowerCase())) tPlayers.set(p.name.toLowerCase(), { ...p });
+  }
+  out.tournamentPlayers = [...tPlayers.values()];
+
   return out;
 }
 
@@ -434,13 +444,14 @@ async function bootDurable() {
       const merged = snaps.length ? snaps[0] : null;
       bootLoad.at = new Date().toISOString();
       if (merged) {
-        db.sessions = merged.sessions;
-        db.users = merged.users;
-        db.walletCodes = merged.walletCodes;
-        db.promoCodes = merged.promoCodes;
-        db.accounts = merged.accounts;
-        db.transactions = merged.transactions;
-        db.digitalStock = merged.digitalStock;
+      db.sessions = merged.sessions;
+      db.users = merged.users;
+      db.walletCodes = merged.walletCodes;
+      db.promoCodes = merged.promoCodes;
+      db.accounts = merged.accounts;
+      db.transactions = merged.transactions;
+      db.digitalStock = merged.digitalStock;
+      db.tournamentPlayers = merged.tournamentPlayers;
         bootLoad.ok = true;
         bootLoad.sessions = (merged.sessions || []).length;
         save();

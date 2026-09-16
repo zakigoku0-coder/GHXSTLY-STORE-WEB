@@ -1072,7 +1072,10 @@
 
     if (regBtn) {
       const myName = localStorage.getItem('ghxstly-tournament-name') || '';
-      const iAmRegistered = myName && tournamentPlayers.some(p => p.name.toLowerCase() === myName.toLowerCase());
+      const iAmRegistered = myName && (
+        tournamentPlayers.some(p => p.name.toLowerCase() === myName.toLowerCase()) ||
+        localStorage.getItem('ghxstly-tournament-registered') === '1'
+      );
       if (iAmRegistered) {
         regBtn.textContent = 'You are registered ✓';
         regBtn.onclick = null;
@@ -1164,6 +1167,7 @@
     hint.className = 'register-input-hint success';
 
     localStorage.setItem('ghxstly-tournament-name', name);
+    localStorage.setItem('ghxstly-tournament-registered', '1');
 
     await fetchTournamentPlayers();
     if (!tournamentPlayers.some(p => p.name.toLowerCase() === name.toLowerCase())) {

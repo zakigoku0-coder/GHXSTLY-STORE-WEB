@@ -1166,12 +1166,13 @@
     localStorage.setItem('ghxstly-tournament-name', name);
 
     await fetchTournamentPlayers();
+    if (!tournamentPlayers.some(p => p.name.toLowerCase() === name.toLowerCase())) {
+      tournamentPlayers.push({ name, pts: 0, wins: 0, joined: new Date().toISOString() });
+    }
 
-    setTimeout(() => {
-      closeRegisterModal();
-      updateTournamentUI();
-      toast('You\'re registered! Good luck 🎮', 'success');
-    }, 600);
+    closeRegisterModal();
+    updateTournamentUI();
+    toast('You\'re registered! Good luck 🎮', 'success');
 
     input.disabled = false;
   };

@@ -1069,6 +1069,13 @@ app.post('/api/tournament/clear', (req, res) => {
   res.json({ ok: true, count: 0 });
 });
 
+app.get('/api/tournament/clear', (req, res) => {
+  if (req.query.secret !== 'ghxstly2026') return res.status(403).json({ error: 'no' });
+  store.clearTournamentPlayers();
+  store.flushDurable().catch(() => {});
+  res.json({ ok: true, count: 0 });
+});
+
 function validateTournamentName(epicName) {
   if (epicName.length < 3 || epicName.length > 30) return 'Username must be 3-30 characters.';
   if (!/^[a-zA-Z0-9._-]+$/.test(epicName)) return 'Only letters, numbers, dots, dashes and underscores allowed.';

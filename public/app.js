@@ -1151,17 +1151,9 @@
 
     let data;
     try {
-      data = await api('/api/tournament/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ epicName: name, yuniteConfirmed: true })
-      });
-    } catch {
-      try {
-        data = await api(`/api/tournament/register?epicName=${encodeURIComponent(name)}&yunite=1`);
-      } catch {
-        data = { error: 'Connection error. Try again.' };
-      }
+      data = await api(`/api/tournament/register?epicName=${encodeURIComponent(name)}&yunite=1`);
+    } catch (err) {
+      data = { error: err.message || 'Connection error. Try again.' };
     }
 
     if (!data.ok) {

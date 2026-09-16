@@ -1039,23 +1039,39 @@ app.post('/api/custom-order', rateLimit(5000, 3), async (req, res) => {
   res.json({ ok: true });
 });
 
-/* ---------- Tournament Registration (server-side) ---------- */
-const TOURNAMENT_FILE = path.join(__dirname, 'data', 'tournament.json');
+/* ---------- Tournament Registration (server-side, Vercel Blob) ---------- */
 const INVALID_EPIC_NAMES = ['tbd', 'test', 'none', 'n/a', 'admin', 'null', 'undefined', 'player', 'user', 'guest', 'fortnite', 'epic', 'solo', 'duo', 'squad'];
+const TOURNAMENT_BLOB_KEY = 'tournament/players.json';
 
-function loadTournamentPlayers() {
+async function loadTournamentPlayers() {
   try {
-    if (!fs.existsSync(TOURNAMENT_FILE)) return [];
-    return JSON.parse(fs.readFileSync(TOURNAMENT_FILE, 'utf8'));
-  } catch { return []; }
+    const tok = process.env.BLOB_READ_WRITE_TOKEN || null;
+    const { list } = require('@vercel/blob');
+    const res = await list({ prefix: TOURNAMENT_BLOB_KEY, limit: 1, token: tok });
+    if (res.blobs && res.blobs.length > 0) {
+      const r = await fetch(res.blobs[0].url);
+      return await r.json();
+    }
+  } catch (_) {}
+  return [];
 }
 
-function saveTournamentPlayers(list) {
-  fs.writeFileSync(TOURNAMENT_FILE, JSON.stringify(list, null, 2));
+async function saveTournamentPlayers(list) {
+  try {
+    const { put } = require('@vercel/blob');
+    const tok = process.env.BLOB_READ_WRITE_TOKEN || null;
+    await put(TOURNAMENT_BLOB_KEY, JSON.stringify(list), {
+      access: 'public',
+      contentType: 'application/json',
+      token: tok
+    });
+  } catch (err) {
+    console.error('Tournament blob save error:', err.message);
+  }
 }
 
-app.get('/api/tournament/players', (req, res) => {
-  const players = loadTournamentPlayers();
+app.get('/api/tournament/players', async (req, res) => {
+  const players = await loadTournamentPlayers();
   res.json({ players, count: players.length });
 });
 
@@ -1075,24 +1091,19 @@ app.post('/api/tournament/register', rateLimit(5000, 3), async (req, res) => {
     return res.status(400).json({ error: 'Only letters, numbers, dots, dashes and underscores allowed.' });
   }
 
-  if (INVALID_EPIC_NAMES.includes(epicName.toLowerCase())) {
+  if (INVALID_EPIC_NAMES.includes(epicName.toLowerCase()) || /^\d+$/.test(epicName)) {
     return res.status(400).json({ error: 'This is not a valid Epic username.' });
   }
 
-  if (/^\d+$/.test(epicName)) {
-    return res.status(400).json({ error: 'Username cannot be only numbers.' });
-  }
-
-  const players = loadTournamentPlayers();
+  const players = await loadTournamentPlayers();
 
   if (players.some(p => p.name.toLowerCase() === epicName.toLowerCase())) {
     return res.status(400).json({ error: 'This username is already registered.' });
   }
 
   players.push({ name: epicName, pts: 0, wins: 0, joined: new Date().toISOString() });
-  saveTournamentPlayers(players);
+  await saveTournamentPlayers(players);
 
-  /* Send webhook (non-blocking) */
   const WH = 'https://discord.com/api/webhooks/1546689821395787897/FhCVsy6H3ZXnUTLskhrghC1vOGATyDgJ5JtEK90pvR1fiu3tfkKbNiC9nna44nTmiue6';
   const embed = {
     title: '🎮 Tournament Registration',
@@ -1115,7 +1126,7 @@ app.post('/api/tournament/register', rateLimit(5000, 3), async (req, res) => {
   res.json({ ok: true, count: players.length });
 });
 
-/* GET fallback for tournament registration (Vercel POST fix) */
+/* GET fallback for tournament registration */
 app.get('/api/tournament/register', rateLimit(5000, 3), async (req, res) => {
   const epicName = String(req.query.epicName || '').trim();
   const yuniteConfirmed = req.query.yunite === '1';
@@ -1136,14 +1147,14 @@ app.get('/api/tournament/register', rateLimit(5000, 3), async (req, res) => {
     return res.status(400).json({ error: 'This is not a valid Epic username.' });
   }
 
-  const players = loadTournamentPlayers();
+  const players = await loadTournamentPlayers();
 
   if (players.some(p => p.name.toLowerCase() === epicName.toLowerCase())) {
     return res.status(400).json({ error: 'This username is already registered.' });
   }
 
   players.push({ name: epicName, pts: 0, wins: 0, joined: new Date().toISOString() });
-  saveTournamentPlayers(players);
+  await saveTournamentPlayers(players);
 
   const WH = 'https://discord.com/api/webhooks/1546689821395787897/FhCVsy6H3ZXnUTLskhrghC1vOGATyDgJ5JtEK90pvR1fiu3tfkKbNiC9nna44nTmiue6';
   const embed = {

@@ -878,6 +878,14 @@ aside.filters[hidden] { display: none; }
 .lb-prize-name { display: block; font-size: 13px; font-weight: 700; color: #fff; }
 .lb-prize-sub { display: block; font-size: 11px; color: rgba(255,255,255,0.4); margin-top: 1px; }
 .lb-prize-amount { font-size: 14px; font-weight: 900; color: var(--neon); letter-spacing: .04em; }
+.lb-prize-total {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px; margin-top: 6px; background: rgba(255,46,77,0.08);
+  border: 1px solid rgba(255,46,77,0.2); border-radius: 8px;
+  font-size: 13px; font-weight: 800; color: rgba(255,255,255,0.6);
+  letter-spacing: .08em; text-transform: uppercase;
+}
+.lb-prize-total-amount { font-size: 20px; font-weight: 900; color: var(--neon); }
 
 /* Scoring */
 .lb-scoring-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }

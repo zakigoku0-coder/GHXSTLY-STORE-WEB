@@ -947,6 +947,10 @@ function addTournamentPlayer(player) {
   return [...db.tournamentPlayers];
 }
 
+function clearTournamentPlayers() {
+  db.tournamentPlayers = [];
+}
+
 module.exports = {
   getOrCreateSession,
   getSession,
@@ -993,5 +997,6 @@ module.exports = {
   ready,
   refreshFromDurable,
   getTournamentPlayers,
-  addTournamentPlayer
+  addTournamentPlayer,
+  clearTournamentPlayers
 };

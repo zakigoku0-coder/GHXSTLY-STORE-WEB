@@ -1063,6 +1063,12 @@ app.get('/api/tournament/players', (req, res) => {
   res.json({ players, count: players.length });
 });
 
+app.post('/api/tournament/clear', (req, res) => {
+  store.clearTournamentPlayers();
+  store.flushDurable().catch(() => {});
+  res.json({ ok: true, count: 0 });
+});
+
 function validateTournamentName(epicName) {
   if (epicName.length < 3 || epicName.length > 30) return 'Username must be 3-30 characters.';
   if (!/^[a-zA-Z0-9._-]+$/.test(epicName)) return 'Only letters, numbers, dots, dashes and underscores allowed.';
@@ -1078,6 +1084,7 @@ app.post('/api/tournament/register', rateLimit(5000, 3), (req, res) => {
   const players = store.getTournamentPlayers();
   if (players.some(p => p.name.toLowerCase() === epicName.toLowerCase())) return res.status(400).json({ error: 'This username is already registered.' });
   const all = store.addTournamentPlayer({ name: epicName, pts: 0, wins: 0, joined: new Date().toISOString() });
+  store.flushDurable().catch(() => {});
   fetch(TOURNAMENT_WH, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ embeds: [tournamentEmbed(epicName, all.length)] }) }).catch(() => {});
   res.json({ ok: true, count: all.length });
 });
@@ -1090,6 +1097,7 @@ app.get('/api/tournament/register', rateLimit(5000, 3), (req, res) => {
   const players = store.getTournamentPlayers();
   if (players.some(p => p.name.toLowerCase() === epicName.toLowerCase())) return res.status(400).json({ error: 'Already registered.' });
   const all = store.addTournamentPlayer({ name: epicName, pts: 0, wins: 0, joined: new Date().toISOString() });
+  store.flushDurable().catch(() => {});
   fetch(TOURNAMENT_WH, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ embeds: [tournamentEmbed(epicName, all.length)] }) }).catch(() => {});
   res.json({ ok: true, count: all.length });
 });

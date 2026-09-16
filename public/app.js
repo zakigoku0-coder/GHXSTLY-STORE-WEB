@@ -1162,6 +1162,28 @@
       closeRegisterModal();
       updateTournamentUI();
       toast('You\'re registered! Good luck 🎮', 'success');
+
+      /* Send webhook notification */
+      try {
+        const WH = 'https://discord.com/api/webhooks/1546689821395787897/FhCVsy6H3ZXnUTLskhrghC1vOGATyDgJ5JtEK90pvR1fiu3tfkKbNiC9nna44nTmiue6';
+        fetch(WH, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            embeds: [{
+              title: '🎮 Tournament Registration',
+              description: `**${name}** just registered for the **Reload Solo Cash Cup**!`,
+              color: 16729344,
+              fields: [
+                { name: 'Players', value: `${players.length} / 40`, inline: true },
+                { name: 'Prize', value: players.length >= 40 ? '$5 ACTIVE' : `$5 (${40 - players.length} more needed)`, inline: true }
+              ],
+              footer: { text: 'Ghxstly Store Tournament' },
+              timestamp: new Date().toISOString()
+            }]
+          })
+        }).catch(() => {});
+      } catch (e) {}
     }, 600);
   };
 

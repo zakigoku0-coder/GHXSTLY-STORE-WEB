@@ -172,32 +172,241 @@
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
           </div>
           <h2>Register for Tournament</h2>
-          <p class="register-desc">Enter your Fortnite username to join the Reload Solo Cash Cup</p>
+          <p class="register-desc">Enter your Epic username and confirm your Yunite registration</p>
+
+          <div class="register-steps">
+            <div class="register-step active">
+              <span class="register-step-num">1</span>
+              <span>Join Discord &amp; register on Yunite</span>
+            </div>
+            <div class="register-step">
+              <span class="register-step-num">2</span>
+              <span>Enter your Epic username</span>
+            </div>
+            <div class="register-step">
+              <span class="register-step-num">3</span>
+              <span>Confirm &amp; join</span>
+            </div>
+          </div>
+
+          <div class="register-yunite-box">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" width="20" height="20"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            <div>
+              <span class="register-yunite-title">Step 1: Register on Yunite</span>
+              <span class="register-yunite-desc">You must register through our Discord server first</span>
+            </div>
+            <a href="https://discord.com/channels/@me" target="_blank" rel="noopener" class="register-yunite-btn">Join Discord</a>
+          </div>
+
           <div class="register-input-group">
             <label for="register-epic-name">Epic / Fortnite Username</label>
             <input type="text" id="register-epic-name" placeholder="e.g. GhxstlyFN" maxlength="30" autocomplete="off">
+            <span class="register-input-hint" id="register-input-hint"></span>
           </div>
+
+          <label class="register-checkbox">
+            <input type="checkbox" id="register-yunite-check">
+            <span class="register-checkbox-mark"></span>
+            <span>I have registered on Yunite via Discord</span>
+          </label>
+
           <div class="register-rules">
             <div class="register-rule"><span class="rule-num">6</span> Matches</div>
             <div class="register-rule"><span class="rule-num">100</span> Pts / Win</div>
             <div class="register-rule"><span class="rule-num">$5</span> Prize / Win</div>
           </div>
-          <button class="tournament-btn register full" onclick="confirmRegister()">Join Tournament</button>
+          <button class="tournament-btn register full" id="register-confirm-btn" onclick="confirmRegister()">Join Tournament</button>
         </div>
       </div>
 
-      <!-- Teams Modal -->
-      <div class="overlay" id="teams-overlay" hidden onclick="closeTeams()"></div>
-      <div class="modal teams-modal" id="teams-modal" hidden>
-        <button class="modal-close" onclick="closeTeams()">&times;</button>
-        <div class="teams-content">
-          <h2>Registered Players</h2>
-          <div class="teams-stats">
-            <div class="teams-stat"><span class="teams-stat-num" id="teams-total">0</span><span class="teams-stat-label">Players</span></div>
-            <div class="teams-stat"><span class="teams-stat-num">6</span><span class="teams-stat-label">Matches</span></div>
-            <div class="teams-stat"><span class="teams-stat-num">100</span><span class="teams-stat-label">Pts/Win</span></div>
+      <!-- Full-Screen Leaderboard -->
+      <div class="lb-fullscreen" id="lb-fullscreen" hidden>
+        <div class="lb-glow"></div>
+        <div class="lb-container">
+          <!-- Top Bar -->
+          <div class="lb-topbar">
+            <div class="lb-topbar-left">
+              <div class="lb-logo">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" width="22" height="22"><path d="M12 2 4 5v6c0 5 3.4 8.7 8 11 4.6-2.3 8-6 8-11V5l-8-3Z"/></svg>
+                <span>GHXSTLY</span>
+              </div>
+              <span class="lb-subtitle">OFFICIAL TOURNAMENT CIRCUIT</span>
+            </div>
+            <button class="lb-close" onclick="closeLeaderboard()">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20"><path d="M18 6 6 18M6 6l12 12"/></svg>
+            </button>
           </div>
-          <div class="teams-list" id="teams-list"></div>
+
+          <!-- Hero Header -->
+          <div class="lb-hero">
+            <div class="lb-hero-left">
+              <h1 class="lb-hero-title">RELOAD SOLO<br>CASH CUP</h1>
+              <div class="lb-hero-tags">
+                <span class="lb-tag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" width="14" height="14"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg> Battle Royale</span>
+                <span class="lb-tag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" width="14" height="14"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg> Solo</span>
+                <span class="lb-tag"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" width="14" height="14"><path d="M12 2 4 5v6c0 5 3.4 8.7 8 11 4.6-2.3 8-6 8-11V5l-8-3Z"/></svg> Admin-Verified</span>
+                <span class="lb-tag gold"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" width="14" height="14"><circle cx="12" cy="8" r="7"/><path d="M8.21 13.89 7 23l5-3 5 3-1.21-9.12"/></svg> Victory Cup</span>
+              </div>
+            </div>
+            <div class="lb-hero-stats">
+              <div class="lb-hero-stat">
+                <span class="lb-hero-stat-label">PRIZE POOL</span>
+                <span class="lb-hero-stat-value">$5<span class="lb-hero-stat-unit">STORE CREDIT</span></span>
+              </div>
+              <div class="lb-hero-stat">
+                <span class="lb-hero-stat-label">FORMAT</span>
+                <span class="lb-hero-stat-value">SOLO</span>
+              </div>
+              <div class="lb-hero-stat">
+                <span class="lb-hero-stat-label">ENTRIES</span>
+                <span class="lb-hero-stat-value" id="lb-entries">0<span class="lb-hero-stat-unit">/40</span></span>
+              </div>
+            </div>
+            <div class="lb-hero-status" id="lb-hero-status">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18"><path d="M20 6 9 17l-5-5"/></svg>
+              <div>
+                <span class="lb-hero-status-title">Registration Status</span>
+                <span class="lb-hero-status-text" id="lb-status-text">OPEN</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Main Content -->
+          <div class="lb-grid">
+            <!-- Left Column -->
+            <div class="lb-col">
+              <!-- Event Overview -->
+              <div class="lb-panel">
+                <div class="lb-panel-header">
+                  <div class="lb-panel-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" width="18" height="18"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></svg></div>
+                  <div>
+                    <span class="lb-panel-title">EVENT OVERVIEW</span>
+                    <span class="lb-panel-desc">Schedule, prize pool and tournament capacity</span>
+                  </div>
+                  <span class="lb-panel-badge" id="lb-overview-badge">OPEN</span>
+                </div>
+                <div class="lb-overview-row">
+                  <div class="lb-overview-box">
+                    <span class="lb-overview-label">REGISTRATION DEADLINE</span>
+                    <span class="lb-overview-big green">OPEN</span>
+                    <span class="lb-overview-sub">No fixed deadline. Open until 40 players or tournament start.</span>
+                  </div>
+                  <div class="lb-overview-box">
+                    <span class="lb-overview-label">LOCKED ENTRIES</span>
+                    <span class="lb-overview-big" id="lb-entries-big">0 / 40</span>
+                    <div class="lb-progress"><div class="lb-progress-fill" id="lb-progress-fill" style="width:0%"></div></div>
+                    <span class="lb-overview-sub" id="lb-progress-text">0% FILLED</span>
+                  </div>
+                </div>
+                <div class="lb-info-grid">
+                  <div class="lb-info-cell">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" width="16" height="16"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
+                    <div><span class="lb-info-label">GAME MODE</span><span class="lb-info-value">BATTLE ROYALE</span></div>
+                  </div>
+                  <div class="lb-info-cell">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" width="16" height="16"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+                    <div><span class="lb-info-label">FORMAT</span><span class="lb-info-value">SOLO</span></div>
+                  </div>
+                  <div class="lb-info-cell">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" width="16" height="16"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+                    <div><span class="lb-info-label">TOURNAMENT START</span><span class="lb-info-value">8:00 PM</span></div>
+                  </div>
+                  <div class="lb-info-cell">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" width="16" height="16"><path d="M12 2 4 5v6c0 5 3.4 8.7 8 11 4.6-2.3 8-6 8-11V5l-8-3Z"/></svg>
+                    <div><span class="lb-info-label">TOTAL PRIZE POOL</span><span class="lb-info-value">$5 STORE CREDIT</span></div>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Prize Pool Distribution -->
+              <div class="lb-panel">
+                <div class="lb-panel-header">
+                  <div class="lb-panel-icon trophy"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" width="18" height="18"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></svg></div>
+                  <div>
+                    <span class="lb-panel-title">PRIZE POOL DISTRIBUTION</span>
+                    <span class="lb-panel-desc">$5 Guaranteed Pool &middot; 6 Games</span>
+                  </div>
+                  <span class="lb-panel-badge cyan">$5</span>
+                </div>
+                <div class="lb-prize-list">
+                  <div class="lb-prize-row"><div class="lb-prize-game"><span class="lb-prize-icon">🏆</span><div><span class="lb-prize-name">Game 1 — Victory Royale</span><span class="lb-prize-sub">Match 1 Winner (Top 1)</span></div></div><div class="lb-prize-amount">100 PTS</div></div>
+                  <div class="lb-prize-row"><div class="lb-prize-game"><span class="lb-prize-icon">🏆</span><div><span class="lb-prize-name">Game 2 — Victory Royale</span><span class="lb-prize-sub">Match 2 Winner (Top 1)</span></div></div><div class="lb-prize-amount">100 PTS</div></div>
+                  <div class="lb-prize-row"><div class="lb-prize-game"><span class="lb-prize-icon">🏆</span><div><span class="lb-prize-name">Game 3 — Victory Royale</span><span class="lb-prize-sub">Match 3 Winner (Top 1)</span></div></div><div class="lb-prize-amount">100 PTS</div></div>
+                  <div class="lb-prize-row"><div class="lb-prize-game"><span class="lb-prize-icon">🏆</span><div><span class="lb-prize-name">Game 4 — Victory Royale</span><span class="lb-prize-sub">Match 4 Winner (Top 1)</span></div></div><div class="lb-prize-amount">100 PTS</div></div>
+                  <div class="lb-prize-row"><div class="lb-prize-game"><span class="lb-prize-icon">🏆</span><div><span class="lb-prize-name">Game 5 — Victory Royale</span><span class="lb-prize-sub">Match 5 Winner (Top 1)</span></div></div><div class="lb-prize-amount">100 PTS</div></div>
+                  <div class="lb-prize-row"><div class="lb-prize-game"><span class="lb-prize-icon">🏆</span><div><span class="lb-prize-name">Game 6 — Victory Royale</span><span class="lb-prize-sub">Match 6 Winner (Top 1)</span></div></div><div class="lb-prize-amount">100 PTS</div></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Right Column -->
+            <div class="lb-col">
+              <!-- Scoring System -->
+              <div class="lb-panel">
+                <div class="lb-panel-header">
+                  <div class="lb-panel-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" width="18" height="18"><circle cx="12" cy="12" r="10"/><path d="m16 12-4-4-4 4M12 16V8"/></svg></div>
+                  <div>
+                    <span class="lb-panel-title">SCORING SYSTEM</span>
+                    <span class="lb-panel-desc">Placement &amp; elimination point values</span>
+                  </div>
+                  <span class="lb-panel-badge cyan">CUSTOM</span>
+                </div>
+                <div class="lb-scoring-grid">
+                  <div class="lb-scoring-cell">
+                    <span class="lb-scoring-label">Profile</span>
+                    <span class="lb-scoring-value">VICTORY CUP</span>
+                  </div>
+                  <div class="lb-scoring-cell">
+                    <span class="lb-scoring-label">Win</span>
+                    <span class="lb-scoring-value gold">+100</span>
+                  </div>
+                </div>
+                <div class="lb-scoring-row">
+                  <div class="lb-scoring-left">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" width="18" height="18"><circle cx="12" cy="8" r="7"/><path d="M8.21 13.89 7 23l5-3 5 3-1.21-9.12"/></svg>
+                    <span>Victory Royale</span>
+                  </div>
+                  <span class="lb-scoring-pts gold">+100</span>
+                </div>
+                <div class="lb-scoring-row">
+                  <div class="lb-scoring-left">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" width="18" height="18"><circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/></svg>
+                    <span>Elimination</span>
+                  </div>
+                  <span class="lb-scoring-pts">+0</span>
+                </div>
+                <div class="lb-scoring-row">
+                  <div class="lb-scoring-left">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" width="18" height="18"><path d="M18 20V10M12 20V4M6 20v-6"/></svg>
+                    <span>Placement (2nd–100th)</span>
+                  </div>
+                  <span class="lb-scoring-pts">+0</span>
+                </div>
+              </div>
+
+              <!-- Registered Players -->
+              <div class="lb-panel lb-players-panel">
+                <div class="lb-panel-header">
+                  <div class="lb-panel-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" width="18" height="18"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div>
+                  <div>
+                    <span class="lb-panel-title">REGISTERED PLAYERS</span>
+                    <span class="lb-panel-desc">Confirmed solo competitors</span>
+                  </div>
+                  <span class="lb-panel-badge cyan" id="lb-player-count-badge">0 PLAYERS</span>
+                </div>
+                <div class="lb-players-grid" id="lb-players-grid">
+                  <div class="lb-players-empty">No players registered yet. Be the first!</div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- TikTok Live Banner -->
+          <div class="lb-live-banner">
+            <div class="lb-live-dot"></div>
+            <span>WATCH THE LIVE ON TIKTOK</span>
+            <a href="https://www.tiktok.com/@ghxstlyfn" target="_blank" rel="noopener" class="lb-live-link">TikTok ↗</a>
+          </div>
         </div>
       </div>
 

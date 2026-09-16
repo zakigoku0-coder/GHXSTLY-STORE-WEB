@@ -1040,6 +1040,7 @@
   /* ---------- Tournament Registration ---------- */
   const TOURNAMENT_KEY = 'ghxstly-tournament-players';
   const TOURNAMENT_REGISTERED_KEY = 'ghxstly-tournament-registered';
+  const INVALID_NAMES = ['tbd', 'test', 'none', 'n/a', 'admin', 'null', 'undefined', 'player', 'user', 'guest', 'fortnite', 'epic', 'solo', 'duo', 'squad'];
 
   function getTournamentPlayers() {
     try { return JSON.parse(localStorage.getItem(TOURNAMENT_KEY)) || []; } catch { return []; }
@@ -1051,6 +1052,15 @@
 
   function isRegistered() {
     return localStorage.getItem(TOURNAMENT_REGISTERED_KEY) === '1';
+  }
+
+  function validateEpicName(name) {
+    if (!name || name.length < 3) return { ok: false, msg: 'Username must be at least 3 characters' };
+    if (name.length > 30) return { ok: false, msg: 'Username must be 30 characters or less' };
+    if (!/^[a-zA-Z0-9._-]+$/.test(name)) return { ok: false, msg: 'Only letters, numbers, dots, dashes and underscores allowed' };
+    if (INVALID_NAMES.includes(name.toLowerCase())) return { ok: false, msg: 'This is not a valid Epic username' };
+    if (/^\d+$/.test(name)) return { ok: false, msg: 'Username cannot be only numbers' };
+    return { ok: true, msg: '' };
   }
 
   function updateTournamentUI() {
@@ -1098,7 +1108,13 @@
     if (isRegistered()) return;
     $('#register-overlay').hidden = false;
     $('#register-modal').hidden = false;
-    setTimeout(() => $('#register-epic-name').focus(), 50);
+    const hint = $('#register-input-hint');
+    const check = $('#register-yunite-check');
+    const input = $('#register-epic-name');
+    if (hint) { hint.textContent = ''; hint.className = 'register-input-hint'; }
+    if (check) check.checked = false;
+    if (input) { input.value = ''; input.className = ''; }
+    setTimeout(() => input.focus(), 50);
   };
 
   window.closeRegisterModal = function () {
@@ -1108,65 +1124,115 @@
 
   window.confirmRegister = function () {
     const input = $('#register-epic-name');
+    const check = $('#register-yunite-check');
+    const hint = $('#register-input-hint');
     const name = (input.value || '').trim();
-    if (name.length < 2) {
-      input.style.borderColor = '#ff3355';
-      input.style.boxShadow = '0 0 0 3px rgba(255,51,85,0.2)';
-      setTimeout(() => { input.style.borderColor = ''; input.style.boxShadow = ''; }, 1500);
+
+    if (!check.checked) {
+      hint.textContent = 'You must confirm your Yunite registration first';
+      hint.className = 'register-input-hint error';
+      return;
+    }
+
+    const validation = validateEpicName(name);
+    if (!validation.ok) {
+      input.className = 'invalid';
+      hint.textContent = validation.msg;
+      hint.className = 'register-input-hint error';
       return;
     }
 
     const players = getTournamentPlayers();
     if (players.some(p => p.name.toLowerCase() === name.toLowerCase())) {
-      input.style.borderColor = '#ff3355';
-      setTimeout(() => input.style.borderColor = '', 1500);
+      input.className = 'invalid';
+      hint.textContent = 'This username is already registered';
+      hint.className = 'register-input-hint error';
       return;
     }
 
-    players.push({ name: name, pts: 0, wins: 0, joined: Date.now() });
-    saveTournamentPlayers(players);
-    localStorage.setItem(TOURNAMENT_REGISTERED_KEY, '1');
-    localStorage.setItem('ghxstly-tournament-name', name);
+    input.className = 'valid';
+    hint.textContent = 'Username verified!';
+    hint.className = 'register-input-hint success';
 
-    closeRegisterModal();
-    updateTournamentUI();
-    toast('You\'re registered! Good luck 🎮', 'success');
+    setTimeout(() => {
+      players.push({ name: name, pts: 0, wins: 0, joined: Date.now() });
+      saveTournamentPlayers(players);
+      localStorage.setItem(TOURNAMENT_REGISTERED_KEY, '1');
+      localStorage.setItem('ghxstly-tournament-name', name);
+      closeRegisterModal();
+      updateTournamentUI();
+      toast('You\'re registered! Good luck 🎮', 'success');
+    }, 600);
   };
 
+  /* ---------- Full-Screen Leaderboard ---------- */
   window.toggleTeams = function () {
-    $('#teams-overlay').hidden = false;
-    $('#teams-modal').hidden = false;
-    renderTeams();
+    $('#lb-fullscreen').hidden = false;
+    document.body.style.overflow = 'hidden';
+    renderLeaderboard();
   };
 
-  window.closeTeams = function () {
-    $('#teams-overlay').hidden = true;
-    $('#teams-modal').hidden = true;
+  window.closeLeaderboard = function () {
+    $('#lb-fullscreen').hidden = true;
+    document.body.style.overflow = '';
   };
 
-  function renderTeams() {
+  function renderLeaderboard() {
     const players = getTournamentPlayers();
-    const list = $('#teams-list');
-    const total = $('#teams-total');
+    const count = players.length;
     const myName = localStorage.getItem('ghxstly-tournament-name') || '';
 
-    if (total) total.textContent = players.length;
+    /* entries */
+    const lbEntries = $('#lb-entries');
+    const lbEntriesBig = $('#lb-entries-big');
+    if (lbEntries) lbEntries.innerHTML = `${count}<span class="lb-hero-stat-unit">/40</span>`;
+    if (lbEntriesBig) lbEntriesBig.textContent = `${count} / 40`;
 
-    if (!list) return;
+    /* progress */
+    const pct = Math.min(100, Math.round((count / 40) * 100));
+    const fill = $('#lb-progress-fill');
+    const ptext = $('#lb-progress-text');
+    if (fill) fill.style.width = pct + '%';
+    if (ptext) ptext.textContent = pct + '% FILLED';
+
+    /* status */
+    const statusText = $('#lb-status-text');
+    const overviewBadge = $('#lb-overview-badge');
+    const heroStatus = $('#lb-hero-status');
+    if (statusText) statusText.textContent = count >= 40 ? 'CLOSED — FULL' : 'OPEN';
+    if (overviewBadge) {
+      overviewBadge.textContent = count >= 40 ? 'CLOSED' : 'OPEN';
+      overviewBadge.className = 'lb-panel-badge ' + (count >= 40 ? 'red' : 'green');
+    }
+    if (heroStatus) {
+      heroStatus.style.borderColor = count >= 40 ? 'rgba(255,51,85,0.2)' : 'rgba(0,212,255,0.2)';
+      heroStatus.style.background = count >= 40 ? 'rgba(255,51,85,0.06)' : 'rgba(0,212,255,0.06)';
+    }
+
+    /* player count badge */
+    const countBadge = $('#lb-player-count-badge');
+    if (countBadge) countBadge.textContent = count + ' PLAYER' + (count !== 1 ? 'S' : '');
+
+    /* players grid */
+    const grid = $('#lb-players-grid');
+    if (!grid) return;
     if (players.length === 0) {
-      list.innerHTML = '<div class="teams-empty">No players registered yet. Be the first!</div>';
+      grid.innerHTML = '<div class="lb-players-empty">No players registered yet. Be the first!</div>';
       return;
     }
 
-    list.innerHTML = players
+    grid.innerHTML = players
       .sort((a, b) => b.pts - a.pts || a.name.localeCompare(b.name))
-      .map((p, i) => `
-        <div class="team-row ${p.name.toLowerCase() === myName.toLowerCase() ? 'team-you' : ''}">
-          <div class="team-rank">${i + 1}</div>
-          <div class="team-name">${escapeHtml(p.name)}</div>
-          <div class="team-pts"><span>${p.pts}</span> pts</div>
-        </div>
-      `).join('');
+      .map(p => {
+        const isYou = p.name.toLowerCase() === myName.toLowerCase();
+        return `
+          <div class="lb-player-chip ${isYou ? 'you' : ''}">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+            <span class="lb-player-chip-name">${escapeHtml(p.name)}</span>
+            <span class="lb-player-badge">CONFIRMED</span>
+          </div>
+        `;
+      }).join('');
   }
 
   window.registerTournament = openRegisterModal;

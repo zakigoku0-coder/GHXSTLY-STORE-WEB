@@ -1076,7 +1076,7 @@
       const myName = localStorage.getItem('ghxstly-tournament-name') || '';
       const iAmRegistered = myName && tournamentPlayers.some(p => p.name.toLowerCase() === myName.toLowerCase());
       if (iAmRegistered) {
-        regBtn.textContent = 'Registered ✓';
+        regBtn.textContent = 'You are registered ✓';
         regBtn.onclick = null;
         regBtn.style.opacity = '.5';
         regBtn.style.cursor = 'default';
@@ -1086,6 +1086,8 @@
         regBtn.style.opacity = '1';
         regBtn.style.cursor = 'pointer';
       }
+      const teamsWrap = $('#tournament-teams-wrap');
+      if (teamsWrap) teamsWrap.style.display = iAmRegistered ? '' : 'none';
     }
   }
 

@@ -1039,144 +1039,59 @@ app.post('/api/custom-order', rateLimit(5000, 3), async (req, res) => {
   res.json({ ok: true });
 });
 
-/* ---------- Tournament Registration (server-side, Vercel Blob) ---------- */
+/* ---------- Tournament Registration ---------- */
 const INVALID_EPIC_NAMES = ['tbd', 'test', 'none', 'n/a', 'admin', 'null', 'undefined', 'player', 'user', 'guest', 'fortnite', 'epic', 'solo', 'duo', 'squad'];
-const TOURNAMENT_BLOB_PREFIX = 'ghxstly-tournament-players';
 
-async function loadTournamentPlayers() {
-  try {
-    const tok = process.env.BLOB_READ_WRITE_TOKEN || null;
-    const { list } = require('@vercel/blob');
-    const res = await list({ prefix: TOURNAMENT_BLOB_PREFIX, limit: 1, token: tok, mode: 'expanded' });
-    if (res.blobs && res.blobs.length > 0) {
-      const r = await fetch(res.blobs[0].url);
-      return await r.json();
-    }
-  } catch (_) {}
-  return [];
+function tournamentEmbed(epicName, count) {
+  return {
+    title: '🎮 Tournament Registration',
+    description: `**${epicName}** just registered for the **Reload Solo Cash Cup**!`,
+    color: 16729344,
+    fields: [
+      { name: 'Epic Username', value: epicName, inline: true },
+      { name: 'Players', value: `${count} / 40`, inline: true },
+      { name: 'Prize', value: count >= 40 ? '$5 ACTIVE' : `$5 (${40 - count} more needed)`, inline: true }
+    ],
+    footer: { text: 'Ghxstly Store Tournament • Ends tomorrow!' },
+    timestamp: new Date().toISOString()
+  };
 }
+const TOURNAMENT_WH = 'https://discord.com/api/webhooks/1546689821395787897/FhCVsy6H3ZXnUTLskhrghC1vOGATyDgJ5JtEK90pvR1fiu3tfkKbNiC9nna44nTmiue6';
 
-async function saveTournamentPlayers(list) {
-  try {
-    const { put } = require('@vercel/blob');
-    const tok = process.env.BLOB_READ_WRITE_TOKEN || null;
-    const key = `${TOURNAMENT_BLOB_PREFIX}-${Date.now()}.json`;
-    await put(key, JSON.stringify(list), {
-      access: 'public',
-      contentType: 'application/json',
-      token: tok
-    });
-  } catch (err) {
-    console.error('Tournament blob save error:', err.message);
-  }
-}
-
-app.get('/api/tournament/players', async (req, res) => {
-  const players = await loadTournamentPlayers();
+app.get('/api/tournament/players', (req, res) => {
+  const players = store.getTournamentPlayers();
   res.json({ players, count: players.length });
 });
 
-app.post('/api/tournament/register', rateLimit(5000, 3), async (req, res) => {
+function validateTournamentName(epicName) {
+  if (epicName.length < 3 || epicName.length > 30) return 'Username must be 3-30 characters.';
+  if (!/^[a-zA-Z0-9._-]+$/.test(epicName)) return 'Only letters, numbers, dots, dashes and underscores allowed.';
+  if (INVALID_EPIC_NAMES.includes(epicName.toLowerCase()) || /^\d+$/.test(epicName)) return 'This is not a valid Epic username.';
+  return null;
+}
+
+app.post('/api/tournament/register', rateLimit(5000, 3), (req, res) => {
   const epicName = String(req.body.epicName || '').trim();
-  const yuniteConfirmed = req.body.yuniteConfirmed === true;
-
-  if (!yuniteConfirmed) {
-    return res.status(400).json({ error: 'You must confirm your Yunite registration first.' });
-  }
-
-  if (epicName.length < 3 || epicName.length > 30) {
-    return res.status(400).json({ error: 'Username must be 3-30 characters.' });
-  }
-
-  if (!/^[a-zA-Z0-9._-]+$/.test(epicName)) {
-    return res.status(400).json({ error: 'Only letters, numbers, dots, dashes and underscores allowed.' });
-  }
-
-  if (INVALID_EPIC_NAMES.includes(epicName.toLowerCase()) || /^\d+$/.test(epicName)) {
-    return res.status(400).json({ error: 'This is not a valid Epic username.' });
-  }
-
-  const players = await loadTournamentPlayers();
-
-  if (players.some(p => p.name.toLowerCase() === epicName.toLowerCase())) {
-    return res.status(400).json({ error: 'This username is already registered.' });
-  }
-
-  players.push({ name: epicName, pts: 0, wins: 0, joined: new Date().toISOString() });
-  await saveTournamentPlayers(players);
-
-  const WH = 'https://discord.com/api/webhooks/1546689821395787897/FhCVsy6H3ZXnUTLskhrghC1vOGATyDgJ5JtEK90pvR1fiu3tfkKbNiC9nna44nTmiue6';
-  const embed = {
-    title: '🎮 Tournament Registration',
-    description: `**${epicName}** just registered for the **Reload Solo Cash Cup**!`,
-    color: 16729344,
-    fields: [
-      { name: 'Epic Username', value: epicName, inline: true },
-      { name: 'Players', value: `${players.length} / 40`, inline: true },
-      { name: 'Prize', value: players.length >= 40 ? '$5 ACTIVE' : `$5 (${40 - players.length} more needed)`, inline: true }
-    ],
-    footer: { text: 'Ghxstly Store Tournament' },
-    timestamp: new Date().toISOString()
-  };
-  fetch(WH, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ embeds: [embed] })
-  }).catch(err => console.error('Tournament webhook error:', err.message));
-
-  res.json({ ok: true, count: players.length });
+  if (req.body.yuniteConfirmed !== true) return res.status(400).json({ error: 'You must confirm your Yunite registration first.' });
+  const err = validateTournamentName(epicName);
+  if (err) return res.status(400).json({ error: err });
+  const players = store.getTournamentPlayers();
+  if (players.some(p => p.name.toLowerCase() === epicName.toLowerCase())) return res.status(400).json({ error: 'This username is already registered.' });
+  const all = store.addTournamentPlayer({ name: epicName, pts: 0, wins: 0, joined: new Date().toISOString() });
+  fetch(TOURNAMENT_WH, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ embeds: [tournamentEmbed(epicName, all.length)] }) }).catch(() => {});
+  res.json({ ok: true, count: all.length });
 });
 
-/* GET fallback for tournament registration */
-app.get('/api/tournament/register', rateLimit(5000, 3), async (req, res) => {
+app.get('/api/tournament/register', rateLimit(5000, 3), (req, res) => {
   const epicName = String(req.query.epicName || '').trim();
-  const yuniteConfirmed = req.query.yunite === '1';
-
-  if (!yuniteConfirmed || !epicName) {
-    return res.status(400).json({ error: 'Missing parameters.' });
-  }
-
-  if (epicName.length < 3 || epicName.length > 30) {
-    return res.status(400).json({ error: 'Username must be 3-30 characters.' });
-  }
-
-  if (!/^[a-zA-Z0-9._-]+$/.test(epicName)) {
-    return res.status(400).json({ error: 'Only letters, numbers, dots, dashes and underscores allowed.' });
-  }
-
-  if (INVALID_EPIC_NAMES.includes(epicName.toLowerCase()) || /^\d+$/.test(epicName)) {
-    return res.status(400).json({ error: 'This is not a valid Epic username.' });
-  }
-
-  const players = await loadTournamentPlayers();
-
-  if (players.some(p => p.name.toLowerCase() === epicName.toLowerCase())) {
-    return res.status(400).json({ error: 'This username is already registered.' });
-  }
-
-  players.push({ name: epicName, pts: 0, wins: 0, joined: new Date().toISOString() });
-  await saveTournamentPlayers(players);
-
-  const WH = 'https://discord.com/api/webhooks/1546689821395787897/FhCVsy6H3ZXnUTLskhrghC1vOGATyDgJ5JtEK90pvR1fiu3tfkKbNiC9nna44nTmiue6';
-  const embed = {
-    title: '🎮 Tournament Registration',
-    description: `**${epicName}** just registered for the **Reload Solo Cash Cup**!`,
-    color: 16729344,
-    fields: [
-      { name: 'Epic Username', value: epicName, inline: true },
-      { name: 'Players', value: `${players.length} / 40`, inline: true },
-      { name: 'Prize', value: players.length >= 40 ? '$5 ACTIVE' : `$5 (${40 - players.length} more needed)`, inline: true }
-    ],
-    footer: { text: 'Ghxstly Store Tournament' },
-    timestamp: new Date().toISOString()
-  };
-  fetch(WH, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ embeds: [embed] })
-  }).catch(err => console.error('Tournament webhook error:', err.message));
-
-  res.json({ ok: true, count: players.length });
+  if (req.query.yunite !== '1' || !epicName) return res.status(400).json({ error: 'Missing parameters.' });
+  const err = validateTournamentName(epicName);
+  if (err) return res.status(400).json({ error: err });
+  const players = store.getTournamentPlayers();
+  if (players.some(p => p.name.toLowerCase() === epicName.toLowerCase())) return res.status(400).json({ error: 'Already registered.' });
+  const all = store.addTournamentPlayer({ name: epicName, pts: 0, wins: 0, joined: new Date().toISOString() });
+  fetch(TOURNAMENT_WH, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ embeds: [tournamentEmbed(epicName, all.length)] }) }).catch(() => {});
+  res.json({ ok: true, count: all.length });
 });
 
 /* ---------- Support Chat (public, no auth, no secrets) ---------- */

@@ -347,7 +347,8 @@ const DEFAULT_DB = {
   promoCodes: [],
   transactions: [],
   sessions: [],
-  users: []
+  users: [],
+  tournamentPlayers: []
 };
 
 let db = load();
@@ -936,6 +937,16 @@ function markNotified(id) {
   return null;
 }
 
+function getTournamentPlayers() {
+  return [...(db.tournamentPlayers || [])];
+}
+
+function addTournamentPlayer(player) {
+  if (!db.tournamentPlayers) db.tournamentPlayers = [];
+  db.tournamentPlayers.push(player);
+  return [...db.tournamentPlayers];
+}
+
 module.exports = {
   getOrCreateSession,
   getSession,
@@ -980,5 +991,7 @@ module.exports = {
   readMergedSnapshots,
   mergeSnapshot,
   ready,
-  refreshFromDurable
+  refreshFromDurable,
+  getTournamentPlayers,
+  addTournamentPlayer
 };

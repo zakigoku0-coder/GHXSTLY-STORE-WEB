@@ -1060,7 +1060,7 @@ const TOURNAMENT_WH = 'https://discord.com/api/webhooks/1546689821395787897/FhCV
 
 app.get('/api/tournament/players', (req, res) => {
   const players = store.getTournamentPlayers();
-  res.json({ players, count: players.length, version: '2026-reset' });
+  res.json({ players, count: players.length, version: '2026-reset-v2' });
 });
 
 app.post('/api/tournament/clear', (req, res) => {

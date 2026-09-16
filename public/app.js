@@ -1038,34 +1038,24 @@
   };
 
   /* ---------- Tournament Registration ---------- */
-  const TOURNAMENT_KEY = 'ghxstly-tournament-players';
   const TOURNAMENT_REGISTERED_KEY = 'ghxstly-tournament-registered';
-  const INVALID_NAMES = ['tbd', 'test', 'none', 'n/a', 'admin', 'null', 'undefined', 'player', 'user', 'guest', 'fortnite', 'epic', 'solo', 'duo', 'squad'];
 
-  function getTournamentPlayers() {
-    try { return JSON.parse(localStorage.getItem(TOURNAMENT_KEY)) || []; } catch { return []; }
-  }
+  let tournamentPlayers = [];
 
-  function saveTournamentPlayers(list) {
-    localStorage.setItem(TOURNAMENT_KEY, JSON.stringify(list));
+  async function fetchTournamentPlayers() {
+    try {
+      const data = await api('/api/tournament/players');
+      tournamentPlayers = data.players || [];
+    } catch { tournamentPlayers = []; }
+    return tournamentPlayers;
   }
 
   function isRegistered() {
     return localStorage.getItem(TOURNAMENT_REGISTERED_KEY) === '1';
   }
 
-  function validateEpicName(name) {
-    if (!name || name.length < 3) return { ok: false, msg: 'Username must be at least 3 characters' };
-    if (name.length > 30) return { ok: false, msg: 'Username must be 30 characters or less' };
-    if (!/^[a-zA-Z0-9._-]+$/.test(name)) return { ok: false, msg: 'Only letters, numbers, dots, dashes and underscores allowed' };
-    if (INVALID_NAMES.includes(name.toLowerCase())) return { ok: false, msg: 'This is not a valid Epic username' };
-    if (/^\d+$/.test(name)) return { ok: false, msg: 'Username cannot be only numbers' };
-    return { ok: true, msg: '' };
-  }
-
   function updateTournamentUI() {
-    const players = getTournamentPlayers();
-    const count = players.length;
+    const count = tournamentPlayers.length;
     const countEl = $('#tournament-player-count');
     const prizeEl = $('#tournament-prize-info');
     const regBtn = $('#tournament-register-btn');
@@ -1122,7 +1112,7 @@
     $('#register-modal').hidden = true;
   };
 
-  window.confirmRegister = function () {
+  window.confirmRegister = async function () {
     const input = $('#register-epic-name');
     const check = $('#register-yunite-check');
     const hint = $('#register-input-hint');
@@ -1134,61 +1124,73 @@
       return;
     }
 
-    const validation = validateEpicName(name);
-    if (!validation.ok) {
+    if (name.length < 3 || name.length > 30) {
       input.className = 'invalid';
-      hint.textContent = validation.msg;
+      hint.textContent = 'Username must be 3-30 characters';
       hint.className = 'register-input-hint error';
       return;
     }
 
-    const players = getTournamentPlayers();
-    if (players.some(p => p.name.toLowerCase() === name.toLowerCase())) {
+    if (!/^[a-zA-Z0-9._-]+$/.test(name)) {
       input.className = 'invalid';
-      hint.textContent = 'This username is already registered';
+      hint.textContent = 'Only letters, numbers, dots, dashes and underscores allowed';
       hint.className = 'register-input-hint error';
       return;
     }
 
-    input.className = 'valid';
-    hint.textContent = 'Username verified!';
-    hint.className = 'register-input-hint success';
+    const INVALID = ['tbd', 'test', 'none', 'n/a', 'admin', 'null', 'undefined', 'player', 'user', 'guest', 'fortnite', 'epic', 'solo', 'duo', 'squad'];
+    if (INVALID.includes(name.toLowerCase()) || /^\d+$/.test(name)) {
+      input.className = 'invalid';
+      hint.textContent = 'This is not a valid Epic username';
+      hint.className = 'register-input-hint error';
+      return;
+    }
 
-    setTimeout(() => {
-      players.push({ name: name, pts: 0, wins: 0, joined: Date.now() });
-      saveTournamentPlayers(players);
+    input.disabled = true;
+    hint.textContent = 'Registering...';
+    hint.className = 'register-input-hint';
+
+    try {
+      const data = await api('/api/tournament/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ epicName: name, yuniteConfirmed: true })
+      });
+
+      if (!data.ok) {
+        input.className = 'invalid';
+        hint.textContent = data.error || 'Registration failed';
+        hint.className = 'register-input-hint error';
+        input.disabled = false;
+        return;
+      }
+
+      input.className = 'valid';
+      hint.textContent = 'Username verified!';
+      hint.className = 'register-input-hint success';
+
       localStorage.setItem(TOURNAMENT_REGISTERED_KEY, '1');
       localStorage.setItem('ghxstly-tournament-name', name);
-      closeRegisterModal();
-      updateTournamentUI();
-      toast('You\'re registered! Good luck 🎮', 'success');
 
-      /* Send webhook notification */
-      try {
-        const WH = 'https://discord.com/api/webhooks/1546689821395787897/FhCVsy6H3ZXnUTLskhrghC1vOGATyDgJ5JtEK90pvR1fiu3tfkKbNiC9nna44nTmiue6';
-        fetch(WH, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            embeds: [{
-              title: '🎮 Tournament Registration',
-              description: `**${name}** just registered for the **Reload Solo Cash Cup**!`,
-              color: 16729344,
-              fields: [
-                { name: 'Players', value: `${players.length} / 40`, inline: true },
-                { name: 'Prize', value: players.length >= 40 ? '$5 ACTIVE' : `$5 (${40 - players.length} more needed)`, inline: true }
-              ],
-              footer: { text: 'Ghxstly Store Tournament' },
-              timestamp: new Date().toISOString()
-            }]
-          })
-        }).catch(() => {});
-      } catch (e) {}
-    }, 600);
+      await fetchTournamentPlayers();
+
+      setTimeout(() => {
+        closeRegisterModal();
+        updateTournamentUI();
+        toast('You\'re registered! Good luck 🎮', 'success');
+      }, 600);
+    } catch (err) {
+      input.className = 'invalid';
+      hint.textContent = 'Connection error. Try again.';
+      hint.className = 'register-input-hint error';
+    } finally {
+      input.disabled = false;
+    }
   };
 
   /* ---------- Full-Screen Leaderboard ---------- */
-  window.toggleTeams = function () {
+  window.toggleTeams = async function () {
+    await fetchTournamentPlayers();
     $('#lb-fullscreen').hidden = false;
     document.body.style.overflow = 'hidden';
     renderLeaderboard();
@@ -1200,7 +1202,7 @@
   };
 
   function renderLeaderboard() {
-    const players = getTournamentPlayers();
+    const players = tournamentPlayers;
     const count = players.length;
     const myName = localStorage.getItem('ghxstly-tournament-name') || '';
 
@@ -1271,7 +1273,7 @@
   };
 
   /* init tournament UI on load */
-  setTimeout(updateTournamentUI, 100);
+  fetchTournamentPlayers().then(updateTournamentUI);
 
   let pendingDigital = null;
   window.buyDigitalItem = function (id) {

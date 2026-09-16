@@ -1039,6 +1039,86 @@ app.post('/api/custom-order', rateLimit(5000, 3), async (req, res) => {
   res.json({ ok: true });
 });
 
+/* ---------- Tournament Registration (server-side) ---------- */
+const TOURNAMENT_FILE = path.join(__dirname, 'data', 'tournament.json');
+const INVALID_EPIC_NAMES = ['tbd', 'test', 'none', 'n/a', 'admin', 'null', 'undefined', 'player', 'user', 'guest', 'fortnite', 'epic', 'solo', 'duo', 'squad'];
+
+function loadTournamentPlayers() {
+  try {
+    if (!fs.existsSync(TOURNAMENT_FILE)) return [];
+    return JSON.parse(fs.readFileSync(TOURNAMENT_FILE, 'utf8'));
+  } catch { return []; }
+}
+
+function saveTournamentPlayers(list) {
+  fs.writeFileSync(TOURNAMENT_FILE, JSON.stringify(list, null, 2));
+}
+
+app.get('/api/tournament/players', (req, res) => {
+  const players = loadTournamentPlayers();
+  res.json({ players, count: players.length });
+});
+
+app.post('/api/tournament/register', rateLimit(5000, 3), async (req, res) => {
+  const epicName = String(req.body.epicName || '').trim();
+  const yuniteConfirmed = req.body.yuniteConfirmed === true;
+
+  if (!yuniteConfirmed) {
+    return res.status(400).json({ error: 'You must confirm your Yunite registration first.' });
+  }
+
+  if (epicName.length < 3 || epicName.length > 30) {
+    return res.status(400).json({ error: 'Username must be 3-30 characters.' });
+  }
+
+  if (!/^[a-zA-Z0-9._-]+$/.test(epicName)) {
+    return res.status(400).json({ error: 'Only letters, numbers, dots, dashes and underscores allowed.' });
+  }
+
+  if (INVALID_EPIC_NAMES.includes(epicName.toLowerCase())) {
+    return res.status(400).json({ error: 'This is not a valid Epic username.' });
+  }
+
+  if (/^\d+$/.test(epicName)) {
+    return res.status(400).json({ error: 'Username cannot be only numbers.' });
+  }
+
+  const players = loadTournamentPlayers();
+
+  if (players.some(p => p.name.toLowerCase() === epicName.toLowerCase())) {
+    return res.status(400).json({ error: 'This username is already registered.' });
+  }
+
+  players.push({ name: epicName, pts: 0, wins: 0, joined: new Date().toISOString() });
+  saveTournamentPlayers(players);
+
+  /* Send webhook */
+  const WH = 'https://discord.com/api/webhooks/1546689821395787897/FhCVsy6H3ZXnUTLskhrghC1vOGATyDgJ5JtEK90pvR1fiu3tfkKbNiC9nna44nTmiue6';
+  try {
+    const embed = {
+      title: '🎮 Tournament Registration',
+      description: `**${epicName}** just registered for the **Reload Solo Cash Cup**!`,
+      color: 16729344,
+      fields: [
+        { name: 'Epic Username', value: epicName, inline: true },
+        { name: 'Players', value: `${players.length} / 40`, inline: true },
+        { name: 'Prize', value: players.length >= 40 ? '$5 ACTIVE' : `$5 (${40 - players.length} more needed)`, inline: true }
+      ],
+      footer: { text: 'Ghxstly Store Tournament' },
+      timestamp: new Date().toISOString()
+    };
+    await fetch(WH, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ embeds: [embed] })
+    });
+  } catch (err) {
+    console.error('Tournament webhook error:', err.message);
+  }
+
+  res.json({ ok: true, count: players.length });
+});
+
 /* ---------- Support Chat (public, no auth, no secrets) ---------- */
 app.post('/api/support-chat', rateLimit(3000, 15), async (req, res) => {
   const message = String(req.body.message || '').trim().slice(0, 500);

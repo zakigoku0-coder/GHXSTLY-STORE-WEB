@@ -1078,7 +1078,7 @@ app.get('/api/tournament/clear', (req, res) => {
 
 function validateTournamentName(epicName) {
   if (epicName.length < 3 || epicName.length > 30) return 'Username must be 3-30 characters.';
-  if (!/^[a-zA-Z0-9._-]+$/.test(epicName)) return 'Only letters, numbers, dots, dashes and underscores allowed.';
+  if (!/^[a-zA-Z0-9._!?\- ]+$/.test(epicName)) return 'Only letters, numbers, spaces, dots, dashes, ! and ? allowed.';
   if (INVALID_EPIC_NAMES.includes(epicName.toLowerCase()) || /^\d+$/.test(epicName)) return 'This is not a valid Epic username.';
   return null;
 }

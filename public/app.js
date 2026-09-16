@@ -1116,9 +1116,9 @@
       return;
     }
 
-    if (!/^[a-zA-Z0-9._-]+$/.test(name)) {
+    if (!/^[a-zA-Z0-9._!?\- ]+$/.test(name)) {
       input.className = 'invalid';
-      hint.textContent = 'Only letters, numbers, dots, dashes and underscores allowed';
+      hint.textContent = 'Only letters, numbers, spaces, dots, dashes, ! and ? allowed';
       hint.className = 'register-input-hint error';
       return;
     }

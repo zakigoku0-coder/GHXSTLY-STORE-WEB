@@ -1041,13 +1041,13 @@ app.post('/api/custom-order', rateLimit(5000, 3), async (req, res) => {
 
 /* ---------- Tournament Registration (server-side, Vercel Blob) ---------- */
 const INVALID_EPIC_NAMES = ['tbd', 'test', 'none', 'n/a', 'admin', 'null', 'undefined', 'player', 'user', 'guest', 'fortnite', 'epic', 'solo', 'duo', 'squad'];
-const TOURNAMENT_BLOB_KEY = 'tournament/players.json';
+const TOURNAMENT_BLOB_PREFIX = 'ghxstly-tournament-players';
 
 async function loadTournamentPlayers() {
   try {
     const tok = process.env.BLOB_READ_WRITE_TOKEN || null;
     const { list } = require('@vercel/blob');
-    const res = await list({ prefix: TOURNAMENT_BLOB_KEY, limit: 1, token: tok });
+    const res = await list({ prefix: TOURNAMENT_BLOB_PREFIX, limit: 1, token: tok, mode: 'expanded' });
     if (res.blobs && res.blobs.length > 0) {
       const r = await fetch(res.blobs[0].url);
       return await r.json();
@@ -1060,7 +1060,8 @@ async function saveTournamentPlayers(list) {
   try {
     const { put } = require('@vercel/blob');
     const tok = process.env.BLOB_READ_WRITE_TOKEN || null;
-    await put(TOURNAMENT_BLOB_KEY, JSON.stringify(list), {
+    const key = `${TOURNAMENT_BLOB_PREFIX}-${Date.now()}.json`;
+    await put(key, JSON.stringify(list), {
       access: 'public',
       contentType: 'application/json',
       token: tok

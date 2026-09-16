@@ -1094,7 +1094,7 @@
         regBtn.style.cursor = 'pointer';
       }
       const teamsWrap = $('#tournament-teams-wrap');
-      if (teamsWrap) teamsWrap.style.display = iAmRegistered ? '' : 'none';
+      if (teamsWrap) teamsWrap.style.display = '';
     }
   }
 

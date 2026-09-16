@@ -1038,8 +1038,6 @@
   };
 
   /* ---------- Tournament Registration ---------- */
-  localStorage.removeItem('ghxstly-tournament-registered');
-  localStorage.removeItem('ghxstly-tournament-name');
 
   let tournamentPlayers = [];
 
@@ -1165,7 +1163,6 @@
     hint.textContent = 'Username verified!';
     hint.className = 'register-input-hint success';
 
-    localStorage.setItem(TOURNAMENT_REGISTERED_KEY, '1');
     localStorage.setItem('ghxstly-tournament-name', name);
 
     await fetchTournamentPlayers();

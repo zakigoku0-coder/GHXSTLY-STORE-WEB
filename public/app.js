@@ -1063,7 +1063,6 @@
     const infoPrize = $('#info-prize-text');
 
     if (countEl) countEl.textContent = count;
-    if (teamsWrap) teamsWrap.hidden = count === 0;
 
     if (prizeEl) {
       if (count >= 40) {

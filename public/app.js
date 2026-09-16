@@ -1011,19 +1011,44 @@
     `).join('');
   }
   function renderMarket() {
+    const tp = $('#tournament-panel');
+    const grid = $('#market-grid');
+    const aside = document.querySelector('.filters');
+    if (state.activeTab === 'Tournaments') {
+      if (tp) tp.hidden = false;
+      if (grid) grid.hidden = true;
+      if (aside) aside.hidden = true;
+      return;
+    }
+    if (tp) tp.hidden = true;
+    if (grid) grid.hidden = false;
     if (state.activeTab === 'accounts') {
       renderAccounts();
+      if (aside) aside.hidden = false;
     } else {
       renderDigitals(state.activeTab);
+      if (aside) aside.hidden = true;
     }
   }
 
   window.switchTab = function (tab) {
     state.activeTab = tab;
     $$('.shop-tab').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
-    const aside = document.querySelector('.filters');
-    if (aside) aside.hidden = tab !== 'accounts';
     renderMarket();
+  };
+
+  window.registerTournament = function () {
+    window.open('https://discord.com/channels/@me', '_blank');
+  };
+
+  window.openTournamentInfo = function () {
+    $('#tournament-info-overlay').hidden = false;
+    $('#tournament-info-modal').hidden = false;
+  };
+
+  window.closeTournamentInfo = function () {
+    $('#tournament-info-overlay').hidden = true;
+    $('#tournament-info-modal').hidden = true;
   };
 
   let pendingDigital = null;

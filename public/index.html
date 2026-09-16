@@ -120,6 +120,7 @@
       <button type="button" class="shop-tab active" data-tab="accounts" onclick="switchTab('accounts')">Accounts</button>
       <button type="button" class="shop-tab" data-tab="Tweaks" onclick="switchTab('Tweaks')">Tweaks</button>
       <button type="button" class="shop-tab" data-tab="Macro" onclick="switchTab('Macro')">Macros</button>
+      <button type="button" class="shop-tab" data-tab="Tournaments" onclick="switchTab('Tournaments')">Tournaments</button>
     </nav>
 
     <div class="market-layout">
@@ -141,6 +142,76 @@
       </aside>
 
       <div class="market-grid" id="market-grid"></div>
+
+      <!-- Tournaments Panel -->
+      <div class="tournament-panel" id="tournament-panel" hidden>
+        <div class="tournament-card">
+          <div class="tournament-card-header">
+            <span class="tournament-badge">LIVE</span>
+            <span class="tournament-time">8:00 PM</span>
+          </div>
+          <h3 class="tournament-title">Reload Solo Cash Cup</h3>
+          <p class="tournament-sub">Win = <strong>$5 store credit</strong> per victory</p>
+          <div class="tournament-actions">
+            <button class="tournament-btn register" onclick="registerTournament()">Register</button>
+            <button class="tournament-btn info" onclick="openTournamentInfo()">Info</button>
+          </div>
+        </div>
+
+        <div class="tournament-card">
+          <div class="tournament-card-header">
+            <span class="tournament-badge upcoming">UPCOMING</span>
+            <span class="tournament-time">TBD</span>
+          </div>
+          <h3 class="tournament-title">Battle Royale Duos</h3>
+          <p class="tournament-sub">Prize pool announced before start</p>
+          <div class="tournament-actions">
+            <button class="tournament-btn register" disabled>Coming Soon</button>
+            <button class="tournament-btn info" onclick="openTournamentInfo()">Info</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tournament Info Modal -->
+      <div class="overlay" id="tournament-info-overlay" hidden onclick="closeTournamentInfo()"></div>
+      <div class="modal tournament-info-modal" id="tournament-info-modal" hidden>
+        <button class="modal-close" onclick="closeTournamentInfo()">&times;</button>
+        <div class="tournament-info-content">
+          <span class="tournament-info-badge">TOURNAMENT</span>
+          <h2>Reload Solo Cash Cup</h2>
+          <div class="tournament-info-detail">
+            <div class="tournament-info-row">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+              <div>
+                <span class="tournament-info-label">Start Time</span>
+                <span class="tournament-info-value">8:00 PM</span>
+              </div>
+            </div>
+            <div class="tournament-info-row">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 2 4 5v6c0 5 3.4 8.7 8 11 4.6-2.3 8-6 8-11V5l-8-3Z"/></svg>
+              <div>
+                <span class="tournament-info-label">Prize</span>
+                <span class="tournament-info-value">$5 store credit per win</span>
+              </div>
+            </div>
+            <div class="tournament-info-row">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+              <div>
+                <span class="tournament-info-label">Format</span>
+                <span class="tournament-info-value">Solo Reload</span>
+              </div>
+            </div>
+          </div>
+          <div class="tournament-info-live">
+            <p>Watch the live on TikTok:</p>
+            <a href="https://www.tiktok.com/@ghxstlyfn" target="_blank" rel="noopener" class="tournament-tiktok-btn">
+              <svg viewBox="0 0 24 24" fill="currentColor" width="18" height="18"><path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-2.88 2.5 2.89 2.89 0 0 1-2.89-2.89 2.89 2.89 0 0 1 2.89-2.89c.28 0 .54.04.79.1v-3.51a6.37 6.37 0 0 0-.79-.05A6.34 6.34 0 0 0 3.15 15.2a6.34 6.34 0 0 0 10.86 4.48V13a8.28 8.28 0 0 0 5.58 2.15v-3.45a4.85 4.85 0 0 1-2.58-.78V6.69h2.58z"/></svg>
+              Watch the live
+            </a>
+          </div>
+          <button class="tournament-btn register full" onclick="registerTournament()">Register Now</button>
+        </div>
+      </div>
     </div>
   </div>
 </section>

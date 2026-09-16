@@ -151,24 +151,53 @@
             <span class="tournament-time">8:00 PM</span>
           </div>
           <h3 class="tournament-title">Reload Solo Cash Cup</h3>
-          <p class="tournament-sub">Win = <strong>$5 store credit</strong> per victory</p>
+          <p class="tournament-sub">6 matches &middot; Win = <strong>$5 store credit</strong></p>
+          <p class="tournament-sub" id="tournament-prize-info"></p>
           <div class="tournament-actions">
-            <button class="tournament-btn register" onclick="registerTournament()">Register</button>
+            <button class="tournament-btn register" id="tournament-register-btn" onclick="openRegisterModal()">Register</button>
             <button class="tournament-btn info" onclick="openTournamentInfo()">Info</button>
+          </div>
+          <div class="tournament-teams-wrap" id="tournament-teams-wrap" hidden>
+            <button class="tournament-btn teams-toggle" onclick="toggleTeams()">Teams (<span id="tournament-player-count">0</span>)</button>
           </div>
         </div>
+      </div>
 
-        <div class="tournament-card">
-          <div class="tournament-card-header">
-            <span class="tournament-badge upcoming">UPCOMING</span>
-            <span class="tournament-time">TBD</span>
+      <!-- Register Modal -->
+      <div class="overlay" id="register-overlay" hidden onclick="closeRegisterModal()"></div>
+      <div class="modal register-modal" id="register-modal" hidden>
+        <button class="modal-close" onclick="closeRegisterModal()">&times;</button>
+        <div class="register-content">
+          <div class="register-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
           </div>
-          <h3 class="tournament-title">Battle Royale Duos</h3>
-          <p class="tournament-sub">Prize pool announced before start</p>
-          <div class="tournament-actions">
-            <button class="tournament-btn register" disabled>Coming Soon</button>
-            <button class="tournament-btn info" onclick="openTournamentInfo()">Info</button>
+          <h2>Register for Tournament</h2>
+          <p class="register-desc">Enter your Fortnite username to join the Reload Solo Cash Cup</p>
+          <div class="register-input-group">
+            <label for="register-epic-name">Epic / Fortnite Username</label>
+            <input type="text" id="register-epic-name" placeholder="e.g. GhxstlyFN" maxlength="30" autocomplete="off">
           </div>
+          <div class="register-rules">
+            <div class="register-rule"><span class="rule-num">6</span> Matches</div>
+            <div class="register-rule"><span class="rule-num">100</span> Pts / Win</div>
+            <div class="register-rule"><span class="rule-num">$5</span> Prize / Win</div>
+          </div>
+          <button class="tournament-btn register full" onclick="confirmRegister()">Join Tournament</button>
+        </div>
+      </div>
+
+      <!-- Teams Modal -->
+      <div class="overlay" id="teams-overlay" hidden onclick="closeTeams()"></div>
+      <div class="modal teams-modal" id="teams-modal" hidden>
+        <button class="modal-close" onclick="closeTeams()">&times;</button>
+        <div class="teams-content">
+          <h2>Registered Players</h2>
+          <div class="teams-stats">
+            <div class="teams-stat"><span class="teams-stat-num" id="teams-total">0</span><span class="teams-stat-label">Players</span></div>
+            <div class="teams-stat"><span class="teams-stat-num">6</span><span class="teams-stat-label">Matches</span></div>
+            <div class="teams-stat"><span class="teams-stat-num">100</span><span class="teams-stat-label">Pts/Win</span></div>
+          </div>
+          <div class="teams-list" id="teams-list"></div>
         </div>
       </div>
 
@@ -195,10 +224,24 @@
               </div>
             </div>
             <div class="tournament-info-row">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></svg>
               <div>
                 <span class="tournament-info-label">Format</span>
-                <span class="tournament-info-value">Solo Reload</span>
+                <span class="tournament-info-value">Solo Reload &middot; 6 Matches</span>
+              </div>
+            </div>
+            <div class="tournament-info-row">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+              <div>
+                <span class="tournament-info-label">Points</span>
+                <span class="tournament-info-value">Win = 100 pts &middot; Everything else = 0</span>
+              </div>
+            </div>
+            <div class="tournament-info-row">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 2 4 5v6c0 5 3.4 8.7 8 11 4.6-2.3 8-6 8-11V5l-8-3Z"/></svg>
+              <div>
+                <span class="tournament-info-label">Cash Prize</span>
+                <span class="tournament-info-value" id="info-prize-text">$5 if 40+ players register</span>
               </div>
             </div>
           </div>
@@ -209,7 +252,7 @@
               Watch the live
             </a>
           </div>
-          <button class="tournament-btn register full" onclick="registerTournament()">Register Now</button>
+          <button class="tournament-btn register full" onclick="closeTournamentInfo();openRegisterModal()">Register Now</button>
         </div>
       </div>
     </div>

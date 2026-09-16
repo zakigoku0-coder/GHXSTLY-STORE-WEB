@@ -1037,11 +1037,142 @@
     renderMarket();
   };
 
-  window.registerTournament = function () {
-    window.open('https://discord.com/channels/@me', '_blank');
+  /* ---------- Tournament Registration ---------- */
+  const TOURNAMENT_KEY = 'ghxstly-tournament-players';
+  const TOURNAMENT_REGISTERED_KEY = 'ghxstly-tournament-registered';
+
+  function getTournamentPlayers() {
+    try { return JSON.parse(localStorage.getItem(TOURNAMENT_KEY)) || []; } catch { return []; }
+  }
+
+  function saveTournamentPlayers(list) {
+    localStorage.setItem(TOURNAMENT_KEY, JSON.stringify(list));
+  }
+
+  function isRegistered() {
+    return localStorage.getItem(TOURNAMENT_REGISTERED_KEY) === '1';
+  }
+
+  function updateTournamentUI() {
+    const players = getTournamentPlayers();
+    const count = players.length;
+    const countEl = $('#tournament-player-count');
+    const prizeEl = $('#tournament-prize-info');
+    const regBtn = $('#tournament-register-btn');
+    const teamsWrap = $('#tournament-teams-wrap');
+    const infoPrize = $('#info-prize-text');
+
+    if (countEl) countEl.textContent = count;
+    if (teamsWrap) teamsWrap.hidden = count === 0;
+
+    if (prizeEl) {
+      if (count >= 40) {
+        prizeEl.innerHTML = '<strong style="color:#7fe097">40+ players — $5 prize is active!</strong>';
+      } else {
+        prizeEl.innerHTML = `<span style="color:var(--faint)">${count}/40 players for $5 prize</span>`;
+      }
+    }
+
+    if (infoPrize) {
+      infoPrize.textContent = count >= 40 ? '$5 prize is ACTIVE (40+ players!)' : `$5 if 40+ players register (${count}/40)`;
+    }
+
+    if (regBtn) {
+      if (isRegistered()) {
+        regBtn.textContent = 'Registered ✓';
+        regBtn.classList.add('registered');
+        regBtn.onclick = null;
+        regBtn.style.opacity = '.6';
+        regBtn.style.cursor = 'default';
+      } else {
+        regBtn.textContent = 'Register';
+        regBtn.classList.remove('registered');
+        regBtn.onclick = openRegisterModal;
+        regBtn.style.opacity = '1';
+        regBtn.style.cursor = 'pointer';
+      }
+    }
+  }
+
+  window.openRegisterModal = function () {
+    if (isRegistered()) return;
+    $('#register-overlay').hidden = false;
+    $('#register-modal').hidden = false;
+    setTimeout(() => $('#register-epic-name').focus(), 50);
   };
 
+  window.closeRegisterModal = function () {
+    $('#register-overlay').hidden = true;
+    $('#register-modal').hidden = true;
+  };
+
+  window.confirmRegister = function () {
+    const input = $('#register-epic-name');
+    const name = (input.value || '').trim();
+    if (name.length < 2) {
+      input.style.borderColor = '#ff3355';
+      input.style.boxShadow = '0 0 0 3px rgba(255,51,85,0.2)';
+      setTimeout(() => { input.style.borderColor = ''; input.style.boxShadow = ''; }, 1500);
+      return;
+    }
+
+    const players = getTournamentPlayers();
+    if (players.some(p => p.name.toLowerCase() === name.toLowerCase())) {
+      input.style.borderColor = '#ff3355';
+      setTimeout(() => input.style.borderColor = '', 1500);
+      return;
+    }
+
+    players.push({ name: name, pts: 0, wins: 0, joined: Date.now() });
+    saveTournamentPlayers(players);
+    localStorage.setItem(TOURNAMENT_REGISTERED_KEY, '1');
+    localStorage.setItem('ghxstly-tournament-name', name);
+
+    closeRegisterModal();
+    updateTournamentUI();
+    toast('You\'re registered! Good luck 🎮', 'success');
+  };
+
+  window.toggleTeams = function () {
+    $('#teams-overlay').hidden = false;
+    $('#teams-modal').hidden = false;
+    renderTeams();
+  };
+
+  window.closeTeams = function () {
+    $('#teams-overlay').hidden = true;
+    $('#teams-modal').hidden = true;
+  };
+
+  function renderTeams() {
+    const players = getTournamentPlayers();
+    const list = $('#teams-list');
+    const total = $('#teams-total');
+    const myName = localStorage.getItem('ghxstly-tournament-name') || '';
+
+    if (total) total.textContent = players.length;
+
+    if (!list) return;
+    if (players.length === 0) {
+      list.innerHTML = '<div class="teams-empty">No players registered yet. Be the first!</div>';
+      return;
+    }
+
+    list.innerHTML = players
+      .sort((a, b) => b.pts - a.pts || a.name.localeCompare(b.name))
+      .map((p, i) => `
+        <div class="team-row ${p.name.toLowerCase() === myName.toLowerCase() ? 'team-you' : ''}">
+          <div class="team-rank">${i + 1}</div>
+          <div class="team-name">${escapeHtml(p.name)}</div>
+          <div class="team-pts"><span>${p.pts}</span> pts</div>
+        </div>
+      `).join('');
+  }
+
+  window.registerTournament = openRegisterModal;
+
   window.openTournamentInfo = function () {
+    updateTournamentUI();
     $('#tournament-info-overlay').hidden = false;
     $('#tournament-info-modal').hidden = false;
   };
@@ -1050,6 +1181,9 @@
     $('#tournament-info-overlay').hidden = true;
     $('#tournament-info-modal').hidden = true;
   };
+
+  /* init tournament UI on load */
+  setTimeout(updateTournamentUI, 100);
 
   let pendingDigital = null;
   window.buyDigitalItem = function (id) {

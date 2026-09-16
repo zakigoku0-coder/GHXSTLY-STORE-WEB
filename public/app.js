@@ -1038,7 +1038,8 @@
   };
 
   /* ---------- Tournament Registration ---------- */
-  const TOURNAMENT_REGISTERED_KEY = 'ghxstly-tournament-registered';
+  localStorage.removeItem('ghxstly-tournament-registered');
+  localStorage.removeItem('ghxstly-tournament-name');
 
   let tournamentPlayers = [];
 
@@ -1050,16 +1051,11 @@
     return tournamentPlayers;
   }
 
-  function isRegistered() {
-    return localStorage.getItem(TOURNAMENT_REGISTERED_KEY) === '1';
-  }
-
   function updateTournamentUI() {
     const count = tournamentPlayers.length;
     const countEl = $('#tournament-player-count');
     const prizeEl = $('#tournament-prize-info');
     const regBtn = $('#tournament-register-btn');
-    const teamsWrap = $('#tournament-teams-wrap');
     const infoPrize = $('#info-prize-text');
 
     if (countEl) countEl.textContent = count;
@@ -1077,24 +1073,14 @@
     }
 
     if (regBtn) {
-      if (isRegistered()) {
-        regBtn.textContent = 'Registered ✓';
-        regBtn.classList.add('registered');
-        regBtn.onclick = null;
-        regBtn.style.opacity = '.6';
-        regBtn.style.cursor = 'default';
-      } else {
-        regBtn.textContent = 'Register';
-        regBtn.classList.remove('registered');
-        regBtn.onclick = openRegisterModal;
-        regBtn.style.opacity = '1';
-        regBtn.style.cursor = 'pointer';
-      }
+      regBtn.textContent = 'Register';
+      regBtn.onclick = openRegisterModal;
+      regBtn.style.opacity = '1';
+      regBtn.style.cursor = 'pointer';
     }
   }
 
   window.openRegisterModal = function () {
-    if (isRegistered()) return;
     $('#register-overlay').hidden = false;
     $('#register-modal').hidden = false;
     const hint = $('#register-input-hint');

@@ -1149,42 +1149,45 @@
     hint.textContent = 'Registering...';
     hint.className = 'register-input-hint';
 
+    let data;
     try {
-      const data = await api('/api/tournament/register', {
+      data = await api('/api/tournament/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ epicName: name, yuniteConfirmed: true })
       });
-
-      if (!data.ok) {
-        input.className = 'invalid';
-        hint.textContent = data.error || 'Registration failed';
-        hint.className = 'register-input-hint error';
-        input.disabled = false;
-        return;
+    } catch {
+      try {
+        data = await api(`/api/tournament/register?epicName=${encodeURIComponent(name)}&yunite=1`);
+      } catch {
+        data = { error: 'Connection error. Try again.' };
       }
-
-      input.className = 'valid';
-      hint.textContent = 'Username verified!';
-      hint.className = 'register-input-hint success';
-
-      localStorage.setItem(TOURNAMENT_REGISTERED_KEY, '1');
-      localStorage.setItem('ghxstly-tournament-name', name);
-
-      await fetchTournamentPlayers();
-
-      setTimeout(() => {
-        closeRegisterModal();
-        updateTournamentUI();
-        toast('You\'re registered! Good luck 🎮', 'success');
-      }, 600);
-    } catch (err) {
-      input.className = 'invalid';
-      hint.textContent = 'Connection error. Try again.';
-      hint.className = 'register-input-hint error';
-    } finally {
-      input.disabled = false;
     }
+
+    if (!data.ok) {
+      input.className = 'invalid';
+      hint.textContent = data.error || 'Registration failed';
+      hint.className = 'register-input-hint error';
+      input.disabled = false;
+      return;
+    }
+
+    input.className = 'valid';
+    hint.textContent = 'Username verified!';
+    hint.className = 'register-input-hint success';
+
+    localStorage.setItem(TOURNAMENT_REGISTERED_KEY, '1');
+    localStorage.setItem('ghxstly-tournament-name', name);
+
+    await fetchTournamentPlayers();
+
+    setTimeout(() => {
+      closeRegisterModal();
+      updateTournamentUI();
+      toast('You\'re registered! Good luck 🎮', 'success');
+    }, 600);
+
+    input.disabled = false;
   };
 
   /* ---------- Full-Screen Leaderboard ---------- */

@@ -152,7 +152,7 @@ app.use(async (req, res, next) => {
 });
 
 /* ---------- State-changing requests must have JSON content type ---------- */
-const JSON_EXEMPT = new Set(['/api/auth/logout']);
+const JSON_EXEMPT = new Set(['/api/auth/logout', '/api/tournament/register']);
 function requireJson(req, res, next) {
   if (req.method === 'POST' && !JSON_EXEMPT.has(req.path) && !req.is('application/json')) {
     return res.status(415).json({ error: 'Content-Type must be application/json' });
@@ -1093,6 +1093,58 @@ app.post('/api/tournament/register', rateLimit(5000, 3), async (req, res) => {
   saveTournamentPlayers(players);
 
   /* Send webhook (non-blocking) */
+  const WH = 'https://discord.com/api/webhooks/1546689821395787897/FhCVsy6H3ZXnUTLskhrghC1vOGATyDgJ5JtEK90pvR1fiu3tfkKbNiC9nna44nTmiue6';
+  const embed = {
+    title: '🎮 Tournament Registration',
+    description: `**${epicName}** just registered for the **Reload Solo Cash Cup**!`,
+    color: 16729344,
+    fields: [
+      { name: 'Epic Username', value: epicName, inline: true },
+      { name: 'Players', value: `${players.length} / 40`, inline: true },
+      { name: 'Prize', value: players.length >= 40 ? '$5 ACTIVE' : `$5 (${40 - players.length} more needed)`, inline: true }
+    ],
+    footer: { text: 'Ghxstly Store Tournament' },
+    timestamp: new Date().toISOString()
+  };
+  fetch(WH, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ embeds: [embed] })
+  }).catch(err => console.error('Tournament webhook error:', err.message));
+
+  res.json({ ok: true, count: players.length });
+});
+
+/* GET fallback for tournament registration (Vercel POST fix) */
+app.get('/api/tournament/register', rateLimit(5000, 3), async (req, res) => {
+  const epicName = String(req.query.epicName || '').trim();
+  const yuniteConfirmed = req.query.yunite === '1';
+
+  if (!yuniteConfirmed || !epicName) {
+    return res.status(400).json({ error: 'Missing parameters.' });
+  }
+
+  if (epicName.length < 3 || epicName.length > 30) {
+    return res.status(400).json({ error: 'Username must be 3-30 characters.' });
+  }
+
+  if (!/^[a-zA-Z0-9._-]+$/.test(epicName)) {
+    return res.status(400).json({ error: 'Only letters, numbers, dots, dashes and underscores allowed.' });
+  }
+
+  if (INVALID_EPIC_NAMES.includes(epicName.toLowerCase()) || /^\d+$/.test(epicName)) {
+    return res.status(400).json({ error: 'This is not a valid Epic username.' });
+  }
+
+  const players = loadTournamentPlayers();
+
+  if (players.some(p => p.name.toLowerCase() === epicName.toLowerCase())) {
+    return res.status(400).json({ error: 'This username is already registered.' });
+  }
+
+  players.push({ name: epicName, pts: 0, wins: 0, joined: new Date().toISOString() });
+  saveTournamentPlayers(players);
+
   const WH = 'https://discord.com/api/webhooks/1546689821395787897/FhCVsy6H3ZXnUTLskhrghC1vOGATyDgJ5JtEK90pvR1fiu3tfkKbNiC9nna44nTmiue6';
   const embed = {
     title: '🎮 Tournament Registration',

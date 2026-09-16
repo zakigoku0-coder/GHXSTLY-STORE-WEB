@@ -1073,10 +1073,19 @@
     }
 
     if (regBtn) {
-      regBtn.textContent = 'Register';
-      regBtn.onclick = openRegisterModal;
-      regBtn.style.opacity = '1';
-      regBtn.style.cursor = 'pointer';
+      const myName = localStorage.getItem('ghxstly-tournament-name') || '';
+      const iAmRegistered = myName && tournamentPlayers.some(p => p.name.toLowerCase() === myName.toLowerCase());
+      if (iAmRegistered) {
+        regBtn.textContent = 'Registered ✓';
+        regBtn.onclick = null;
+        regBtn.style.opacity = '.5';
+        regBtn.style.cursor = 'default';
+      } else {
+        regBtn.textContent = 'Register';
+        regBtn.onclick = openRegisterModal;
+        regBtn.style.opacity = '1';
+        regBtn.style.cursor = 'pointer';
+      }
     }
   }
 

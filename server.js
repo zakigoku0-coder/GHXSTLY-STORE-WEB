@@ -1092,29 +1092,25 @@ app.post('/api/tournament/register', rateLimit(5000, 3), async (req, res) => {
   players.push({ name: epicName, pts: 0, wins: 0, joined: new Date().toISOString() });
   saveTournamentPlayers(players);
 
-  /* Send webhook */
+  /* Send webhook (non-blocking) */
   const WH = 'https://discord.com/api/webhooks/1546689821395787897/FhCVsy6H3ZXnUTLskhrghC1vOGATyDgJ5JtEK90pvR1fiu3tfkKbNiC9nna44nTmiue6';
-  try {
-    const embed = {
-      title: '🎮 Tournament Registration',
-      description: `**${epicName}** just registered for the **Reload Solo Cash Cup**!`,
-      color: 16729344,
-      fields: [
-        { name: 'Epic Username', value: epicName, inline: true },
-        { name: 'Players', value: `${players.length} / 40`, inline: true },
-        { name: 'Prize', value: players.length >= 40 ? '$5 ACTIVE' : `$5 (${40 - players.length} more needed)`, inline: true }
-      ],
-      footer: { text: 'Ghxstly Store Tournament' },
-      timestamp: new Date().toISOString()
-    };
-    await fetch(WH, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ embeds: [embed] })
-    });
-  } catch (err) {
-    console.error('Tournament webhook error:', err.message);
-  }
+  const embed = {
+    title: '🎮 Tournament Registration',
+    description: `**${epicName}** just registered for the **Reload Solo Cash Cup**!`,
+    color: 16729344,
+    fields: [
+      { name: 'Epic Username', value: epicName, inline: true },
+      { name: 'Players', value: `${players.length} / 40`, inline: true },
+      { name: 'Prize', value: players.length >= 40 ? '$5 ACTIVE' : `$5 (${40 - players.length} more needed)`, inline: true }
+    ],
+    footer: { text: 'Ghxstly Store Tournament' },
+    timestamp: new Date().toISOString()
+  };
+  fetch(WH, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ embeds: [embed] })
+  }).catch(err => console.error('Tournament webhook error:', err.message));
 
   res.json({ ok: true, count: players.length });
 });

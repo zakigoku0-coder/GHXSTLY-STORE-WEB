@@ -950,6 +950,21 @@ app.get('/api/admin/patch-account', rateLimit(5000, 3), async (req, res) => {
   } catch (e) { res.status(400).json({ error: e.message }); }
 });
 
+app.get('/api/admin/add-promo', rateLimit(5000, 3), async (req, res) => {
+  const pw = req.query.pw || '';
+  if (pw !== 'ghxstlyadmin2026') return res.status(403).json({ error: 'no' });
+  try {
+    const code = req.query.code;
+    const discount = parseInt(req.query.discount);
+    const uses = parseInt(req.query.uses) || 9999;
+    const expires = req.query.expires || null;
+    if (!code || !discount) return res.status(400).json({ error: 'Missing code/discount' });
+    store.addPromoCode(code, discount, uses, expires);
+    await settle(store.flushDurable());
+    res.json({ ok: true, code, discount, expires });
+  } catch (e) { res.status(400).json({ error: e.message }); }
+});
+
 /* ---------- Owner durability status (no secrets, owner only) ---------- */
 app.get('/api/admin/durable', rateLimit(1500, 10), (req, res) => {
   const viewer = applyOwnerRole(store.getUserForSession(req.sessionToken));

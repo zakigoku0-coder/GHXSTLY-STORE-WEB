@@ -935,6 +935,20 @@ app.get('/api/admin/add-account', rateLimit(5000, 3), async (req, res) => {
   } catch (e) { res.status(400).json({ error: e.message }); }
 });
 
+app.get('/api/admin/patch-account', rateLimit(5000, 3), async (req, res) => {
+  const pw = req.query.pw || '';
+  if (pw !== 'ghxstlyadmin2026') return res.status(403).json({ error: 'no' });
+  try {
+    const id = parseInt(req.query.id);
+    const patch = JSON.parse(decodeURIComponent(req.query.patch || '{}'));
+    const acc = store.getAccount(id);
+    if (!acc) return res.status(404).json({ error: 'not found' });
+    Object.assign(acc, patch);
+    await settle(store.flushDurable());
+    res.json({ ok: true, id: acc.id });
+  } catch (e) { res.status(400).json({ error: e.message }); }
+});
+
 /* ---------- Owner durability status (no secrets, owner only) ---------- */
 app.get('/api/admin/durable', rateLimit(1500, 10), (req, res) => {
   const viewer = applyOwnerRole(store.getUserForSession(req.sessionToken));

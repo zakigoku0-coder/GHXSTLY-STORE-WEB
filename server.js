@@ -742,6 +742,7 @@ app.get('/api/accounts', (req, res) => {
       tier: a.tier,
       tierVar: a.tierVar,
       price: a.price,
+      originalPrice: a.originalPrice || null,
       skins: a.skins,
       warranty: a.warranty,
       stock: a.stock,

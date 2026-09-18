@@ -388,6 +388,7 @@ section:not(.hero) { padding: 88px 0; }
 }
 .acc-foot { margin-top: auto; display: flex; align-items: center; justify-content: space-between; padding-top: 12px; border-top: 1px solid rgba(255,46,77,0.12); }
 .price { font-size: 20px; font-weight: 800; position: relative; }
+.price-was { font-size: 14px; font-weight: 400; color: var(--faint); text-decoration: line-through; margin-right: 6px; }
 .price::after { content: ''; position: absolute; left: 0; bottom: -3px; width: 34px; height: 2px; border-radius: 2px; background: linear-gradient(90deg, var(--tier-color, var(--common)), transparent); }
 .card-buy {
   font-size: 12px; font-weight: 800; padding: 6px 12px; border-radius: 5px;

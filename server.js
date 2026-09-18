@@ -923,6 +923,18 @@ app.post('/api/admin/stock', rateLimit(1500, 10), async (req, res) => {
   res.json({ ok: true, id: updated.id, status: updated.status, stock: updated.stock });
 });
 
+app.get('/api/admin/add-account', rateLimit(5000, 3), async (req, res) => {
+  const viewer = applyOwnerRole(store.getUserForSession(req.sessionToken));
+  if (!viewer || viewer.role !== 'owner') return res.status(403).json({ error: 'Owner only.' });
+  try {
+    const acc = JSON.parse(decodeURIComponent(req.query.data || '{}'));
+    if (!acc.name || !acc.price) return res.status(400).json({ error: 'Missing name/price' });
+    const added = store.addAccount(acc);
+    await settle(store.flushDurable());
+    res.json({ ok: true, id: added.id });
+  } catch (e) { res.status(400).json({ error: e.message }); }
+});
+
 /* ---------- Owner durability status (no secrets, owner only) ---------- */
 app.get('/api/admin/durable', rateLimit(1500, 10), (req, res) => {
   const viewer = applyOwnerRole(store.getUserForSession(req.sessionToken));

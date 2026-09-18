@@ -402,7 +402,7 @@
           <span class="acc-name" onclick="openModal(${a.id})" role="button" tabindex="0">${a.name}</span>
           <span class="acc-stats">${a.skins}+ skins · <b class="stock-badge ${out ? 'sold' : ''}">${out ? 'OUT OF STOCK' : `in stock: ${a.stock}`}</b></span>
           <div class="acc-foot">
-            <span class="price">${fmt(a.price)}</span>
+            <span class="price">${a.originalPrice ? `<span class="price-was">${fmt(a.originalPrice)}</span>` : ''}${fmt(a.price)}</span>
             <div class="acc-foot-btns">
               ${out ? '' : `<button type="button" class="card-cart-btn" onclick="event.stopPropagation(); addToCart(${a.id})" title="Add to cart">
                 <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>

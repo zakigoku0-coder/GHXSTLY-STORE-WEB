@@ -870,13 +870,14 @@ function unusedWalletCodes() {
 
 /* ---------- Promo codes ---------- */
 
-function addPromoCode(code, discountPercent, maxUses) {
+function addPromoCode(code, discountPercent, maxUses, expiresAt) {
   const existing = db.promoCodes.find(p => p.code === code);
   if (existing) {
     existing.discount = discountPercent;
     existing.maxUses = maxUses;
+    if (expiresAt) existing.expiresAt = expiresAt;
   } else {
-    db.promoCodes.push({ code, discount: discountPercent, maxUses, uses: 0 });
+    db.promoCodes.push({ code, discount: discountPercent, maxUses, uses: 0, expiresAt: expiresAt || null });
   }
   save();
   return getPromoCode(code);
@@ -885,6 +886,7 @@ function addPromoCode(code, discountPercent, maxUses) {
 function getPromoCode(code) {
   const promo = db.promoCodes.find(p => p.code === code);
   if (!promo) return null;
+  if (promo.expiresAt && Date.now() > new Date(promo.expiresAt).getTime()) return null;
   return promo.maxUses > 0 && promo.uses >= promo.maxUses ? null : { ...promo };
 }
 

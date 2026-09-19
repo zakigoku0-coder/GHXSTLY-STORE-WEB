@@ -532,6 +532,22 @@ aside.filters[hidden] { display: none; }
   background: rgba(255,200,50,0.15); color: #ffc832; border-color: rgba(255,200,50,0.4);
   animation: none;
 }
+.tournament-badge.soon {
+  background: rgba(255,255,255,0.08); color: var(--faint); border-color: rgba(255,255,255,0.15);
+  animation: none;
+}
+.tournament-grid {
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px;
+}
+.tournament-card.coming-soon {
+  opacity: 0.65; cursor: default;
+}
+.tournament-card.coming-soon:hover {
+  opacity: 0.85;
+}
+.tournament-coming-soon-text {
+  font-size: 14px; font-weight: 800; color: var(--faint); letter-spacing: .1em; text-transform: uppercase; margin-top: 12px;
+}
 .tournament-time {
   font-size: 13px; font-weight: 700; color: var(--mist); letter-spacing: .04em;
 }

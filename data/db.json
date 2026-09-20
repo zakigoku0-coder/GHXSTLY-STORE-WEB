@@ -385,7 +385,7 @@
       "tier": "Rare",
       "tierVar": "--rare",
       "warranty": "24h warranty",
-      "desc": "61 skins â€” most affordable way into a stacked locker.",
+      "desc": "61 skins most affordable way into a stacked locker.",
       "chips": [
         {
           "label": "61 skins"
@@ -480,10 +480,30 @@
       "tier": "Legendary",
       "tierVar": "--legendary",
       "warranty": "48h warranty",
-      "desc": "399 skins â€” near-max locker, insane collection of everything.",
+      "desc": "399 skins  near-max locker, insane collection of everything.",
       "chips": [
         {
           "label": "399 skins",
+          "gold": true
+        },
+        {
+          "label": "Top-Tier Locker",
+          "gold": true
+        },
+        {
+          "label": "Rare Gliders & Emotes"
+        }
+        {
+      "name": "Whale 600 skins",
+      "skins": 600,
+      "price": 60,
+      "tier": "Legendary",
+      "tierVar": "--legendary",
+      "warranty": "48h warranty",
+      "desc": "600 skins near-max locker, insane collection of everything.",
+      "chips": [
+        {
+          "label": "600 skins",
           "gold": true
         },
         {

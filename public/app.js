@@ -356,10 +356,22 @@
   async function refreshWallet() {
     try {
       const data = await api('/api/wallet');
-      state.balance = data.balance;
-      paintBalance(data.balance);
-      renderWalletUser(data.user || null);
-      saveAuthCache();
+      if (data.user) {
+        // Session is bound to a user server-side: server is source of truth.
+        state.balance = data.balance;
+        paintBalance(data.balance);
+        renderWalletUser(data.user);
+        saveAuthCache();
+      } else if (authUser) {
+        // Server lost the session (restart) but we have a cached identity:
+        // NEVER clobber the last-known balance with a fresh $0 session.
+        if (typeof state.balance === 'number') paintBalance(state.balance);
+        renderWalletUser(authUser);
+      } else {
+        state.balance = data.balance;
+        paintBalance(data.balance);
+        renderWalletUser(null);
+      }
     } catch (_) {
       if (typeof state.balance === 'number') {
         paintBalance(state.balance);

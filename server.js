@@ -736,7 +736,7 @@ app.get('/api/auth/me', (req, res) => {
 });
 
 app.get('/api/wallet', (req, res) => {
-  const session = store.getSession(req.sessionToken);
+  const session = store.getOrCreateSession(req.sessionToken);
   const user = applyOwnerRole(store.getUserForSession(req.sessionToken));
   res.json({ balance: session.balance, currency: CURRENCY, user: user ? { name: user.name, email: user.email, picture: user.picture, role: user.role || null } : null });
 });
@@ -938,7 +938,7 @@ app.post('/api/checkout', rateLimit(1500, 4), async (req, res) => {
   }
 
   const price = Math.max(0, Math.round(account.price * (1 - discount / 100) * 100) / 100);
-  const session = store.getSession(req.sessionToken);
+  const session = store.getOrCreateSession(req.sessionToken);
   if (session.balance < price) {
     return res.status(400).json({
       error: 'Insufficient wallet balance.',

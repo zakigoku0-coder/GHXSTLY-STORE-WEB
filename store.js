@@ -102,6 +102,82 @@ async function loadDurable() {
   }
 }
 
+/* ---------- Gist mirror (shared state while blob is suspended) ----------
+   One file (db.json) in a secret gist. Every instance unions it into memory
+   on boot/refresh (forward-safe: used flags OR, balances newest-wins, sold
+   sticky) and overwrites it on every durable push. Last-writer-wins on the
+   file itself; the merge heals divergence on read. */
+const GIST_DB_ID = process.env.GITHUB_DB_GIST || '';
+const GIST_DB_TOKEN = process.env.GITHUB_LEDGER_TOKEN || '';
+const GIST_DB_FILE = 'db.json';
+const GIST_DB_TTL_MS = 20000;
+const gistDbCache = { at: 0, snap: null };
+const gistDbPush = { at: null, ok: null, error: null };
+
+async function gistDbFetchFresh() {
+  const r = await fetch(`https://api.github.com/gists/${GIST_DB_ID}`, {
+    headers: { Authorization: `Bearer ${GIST_DB_TOKEN}`, Accept: 'application/vnd.github+json' },
+    signal: AbortSignal.timeout(8000)
+  });
+  if (!r.ok) throw new Error(`gist db read ${r.status}`);
+  const g = await r.json();
+  const f = g.files && g.files[GIST_DB_FILE];
+  if (!f) throw new Error('gist db file missing');
+  let content = f.content;
+  if ((f.truncated || content == null) && f.raw_url) {
+    const rr = await fetch(f.raw_url, {
+      headers: { Authorization: `Bearer ${GIST_DB_TOKEN}` },
+      signal: AbortSignal.timeout(8000)
+    });
+    if (!rr.ok) throw new Error(`gist db raw ${rr.status}`);
+    content = await rr.text();
+  }
+  const snap = JSON.parse(content);
+  if (!snap || !Array.isArray(snap.users)) throw new Error('bad gist snapshot');
+  return { ...DEFAULT_DB, ...snap };
+}
+
+async function gistDbRead() {
+  if (!GIST_DB_ID || !GIST_DB_TOKEN) return null;
+  try {
+    if (Date.now() - gistDbCache.at < GIST_DB_TTL_MS && gistDbCache.snap) return gistDbCache.snap;
+    const snap = await gistDbFetchFresh();
+    gistDbCache.at = Date.now();
+    gistDbCache.snap = snap;
+    return snap;
+  } catch (_) {
+    return gistDbCache.snap;
+  }
+}
+
+async function gistDbWrite(snap) {
+  if (!GIST_DB_ID || !GIST_DB_TOKEN) return false;
+  const r = await fetch(`https://api.github.com/gists/${GIST_DB_ID}`, {
+    method: 'PATCH',
+    headers: { Authorization: `Bearer ${GIST_DB_TOKEN}`, Accept: 'application/vnd.github+json', 'Content-Type': 'application/json' },
+    body: JSON.stringify({ files: { [GIST_DB_FILE]: { content: JSON.stringify(snap) } } }),
+    signal: AbortSignal.timeout(10000)
+  });
+  if (!r.ok) throw new Error(`gist db write ${r.status}`);
+  gistDbCache.at = Date.now();
+  gistDbCache.snap = { ...snap };
+  return true;
+}
+
+function applyGistSnap(snap) {
+  if (!snap) return false;
+  const merged = mergeSnapshot(db, snap);
+  db.sessions = merged.sessions;
+  db.users = merged.users;
+  db.walletCodes = merged.walletCodes;
+  db.promoCodes = merged.promoCodes;
+  db.accounts = merged.accounts;
+  db.transactions = merged.transactions;
+  db.digitalStock = merged.digitalStock;
+  db.tournamentPlayers = merged.tournamentPlayers;
+  return true;
+}
+
 const lastPush = { at: null, ok: null, error: null };
 
 // Merge a remote snapshot into memory without losing anything:
@@ -303,7 +379,17 @@ async function pushDurable() {
       lastPush.error = String(err && err.message || err).slice(0, 300);
       console.error('Durable snapshot failed:', err.message);
     }
-    return;
+  }
+  // Gist mirror (works even while blob is suspended). Bounded wait, never throws.
+  try {
+    await withTimeout(gistDbWrite(db), 12000, 'gist mirror timed out');
+    gistDbPush.at = new Date().toISOString();
+    gistDbPush.ok = true;
+    gistDbPush.error = null;
+  } catch (err) {
+    gistDbPush.at = new Date().toISOString();
+    gistDbPush.ok = false;
+    gistDbPush.error = String(err && err.message || err).slice(0, 200);
   }
   if (!kv || !kvAvailable) return;
   try { await kv.set(KV_KEY, db); } catch (_) {}
@@ -314,6 +400,11 @@ function durableStatus() {
     hasToken: !!blobToken(),
     hasClient: !!blobClient,
     kv: !!(kv && kvAvailable),
+    gist: {
+      configured: !!(GIST_DB_ID && GIST_DB_TOKEN),
+      lastPush: gistDbPush,
+      cacheAgeMs: gistDbCache.at ? Date.now() - gistDbCache.at : null
+    },
     lastPush,
     bootLoad
   };
@@ -347,6 +438,10 @@ async function refreshFromDurable() {
         return true;
       }
     }
+  } catch (_) {}
+  try {
+    const gsnap = await gistDbRead();
+    if (gsnap && applyGistSnap(gsnap)) return true;
   } catch (_) {}
   return false;
 }
@@ -463,9 +558,17 @@ async function bootDurable() {
       bootLoad.at = new Date().toISOString();
       bootLoad.ok = false;
       bootLoad.error = String(err && err.message || err).slice(0, 200);
-    } finally {
-      try { bootReadyResolve(); } catch (_) {}
     }
+    try {
+      const gsnap = await withTimeout(gistDbFetchFresh(), 8000, 'gist boot timed out');
+      if (applyGistSnap(gsnap)) {
+        bootLoad.ok = true;
+        bootLoad.gist = true;
+        bootLoad.sessions = (db.sessions || []).length;
+        try { save(); } catch (_) {}
+      }
+    } catch (_) {}
+    try { bootReadyResolve(); } catch (_) {}
     return;
   }
   loadDurable().then(snap => {

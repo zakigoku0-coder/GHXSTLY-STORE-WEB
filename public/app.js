@@ -233,7 +233,7 @@
     el.style.borderColor = cls === 'err' ? '#f29b9b' : 'var(--mist-dim)';
     el.classList.add('show');
     clearTimeout(toastTimer);
-    toastTimer = setTimeout(() => el.classList.remove('show'), 3500);
+    toastTimer = setTimeout(() => el.classList.remove('show'), 10000);
   }
   window.__toast = toast;
 

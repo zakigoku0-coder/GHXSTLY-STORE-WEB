@@ -1455,7 +1455,7 @@ footer { padding: 56px 0 36px; }
 
 /* ---------- TOAST SLIDE IN ---------- */
 .toast {
-  animation: toast-in .4s cubic-bezier(.22,1,.36,1), toast-out .4s ease 3s forwards;
+  animation: toast-in .4s cubic-bezier(.22,1,.36,1), toast-out .4s ease 10s forwards;
 }
 @keyframes toast-in { from { transform: translateY(30px) scale(.95); opacity: 0; } to { transform: translateY(0) scale(1); opacity: 1; } }
 @keyframes toast-out { to { transform: translateY(-20px); opacity: 0; } }

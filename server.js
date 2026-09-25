@@ -787,6 +787,68 @@ app.post('/api/auth/logout', async (req, res) => {
   res.json({ ok: true });
 });
 
+/* ---------- Global one-time recharge ledger (secret gist) ----------
+   Serverless instances share no memory and the blob store is suspended,
+   so single-use is enforced here: a code must be absent from the ledger's
+   used list, and is burned there BEFORE any balance is credited. Every
+   check fails closed: any ledger error rejects the redeem. */
+const LEDGER_GIST = process.env.GITHUB_LEDGER_GIST || '';
+const LEDGER_TOKEN = process.env.GITHUB_LEDGER_TOKEN || '';
+const LEDGER_FILE = 'used-codes.json';
+
+async function ledgerFetch() {
+  const r = await fetch(`https://api.github.com/gists/${LEDGER_GIST}`, {
+    headers: { Authorization: `Bearer ${LEDGER_TOKEN}`, Accept: 'application/vnd.github+json' },
+    signal: AbortSignal.timeout(8000)
+  });
+  if (!r.ok) throw new Error(`ledger read ${r.status}`);
+  const g = await r.json();
+  const f = g.files && g.files[LEDGER_FILE];
+  if (!f || typeof f.content !== 'string') throw new Error('ledger file missing');
+  const parsed = JSON.parse(f.content);
+  return {
+    issued: (parsed.issued && typeof parsed.issued === 'object') ? parsed.issued : {},
+    used: Array.isArray(parsed.used) ? parsed.used : []
+  };
+}
+
+async function ledgerWrite(state) {
+  const r = await fetch(`https://api.github.com/gists/${LEDGER_GIST}`, {
+    method: 'PATCH',
+    headers: { Authorization: `Bearer ${LEDGER_TOKEN}`, Accept: 'application/vnd.github+json', 'Content-Type': 'application/json' },
+    body: JSON.stringify({ files: { [LEDGER_FILE]: { content: JSON.stringify({ issued: state.issued, used: state.used }) } } }),
+    signal: AbortSignal.timeout(8000)
+  });
+  if (!r.ok) throw new Error(`ledger write ${r.status}`);
+}
+
+// Returns the authorized amount, or throws. Burns the code first so a second
+// concurrent redeem on any instance loses the race and is rejected.
+async function ledgerAuthorize(code, localAmount) {
+  if (!LEDGER_GIST || !LEDGER_TOKEN) throw new Error('ledger not configured');
+  const cur = await ledgerFetch();
+  if (cur.used.includes(code)) { const e = new Error('used'); e.used = true; throw e; }
+  const issuedAmt = cur.issued[code] ? Number(cur.issued[code].amount) : NaN;
+  const amount = (localAmount != null) ? localAmount : issuedAmt;
+  if (!Number.isFinite(amount) || amount <= 0) { const e = new Error('invalid'); e.invalid = true; throw e; }
+  const fresh = await ledgerFetch();
+  if (fresh.used.includes(code)) { const e = new Error('used'); e.used = true; throw e; }
+  const issued = { ...fresh.issued };
+  if (!issued[code]) issued[code] = { amount, at: new Date().toISOString() };
+  await ledgerWrite({ issued, used: [...fresh.used, code] });
+  const verify = await ledgerFetch();
+  if (!verify.used.includes(code)) { const e = new Error('invalid'); e.invalid = true; throw e; }
+  return amount;
+}
+
+async function ledgerIssue(code, amount) {
+  if (!LEDGER_GIST || !LEDGER_TOKEN) throw new Error('ledger not configured');
+  const cur = await ledgerFetch();
+  if (cur.used.includes(code)) throw new Error('already used');
+  const issued = { ...cur.issued, [code]: { amount, at: new Date().toISOString() } };
+  await ledgerWrite({ issued, used: cur.used });
+}
+
 app.post('/api/wallet/redeem', rateLimit(1000, 5), async (req, res) => {
   const code = String(req.body.code || '').trim();
   if (code.length > 40) return res.status(400).json({ error: 'Invalid or already-used code.' });
@@ -813,9 +875,24 @@ app.post('/api/wallet/redeem', rateLimit(1000, 5), async (req, res) => {
     return res.json({ ok: true, added: ownerTopupAmount, balance: sum, currency: CURRENCY });
   }
 
-  const result = store.redeemWalletCode(code, req.sessionToken);
-  if (!result.ok) {
+  // Global single-use gate: burns the code in the shared ledger BEFORE
+  // crediting anything. Same-instance repeats die on the local used flag;
+  // cross-instance repeats die here.
+  const local = store.getWalletCode(code);
+  if (local && local.used) {
+    return res.status(400).json({ error: 'Invalid or already-used code.' });
+  }
+  let amount;
+  try {
+    amount = await ledgerAuthorize(code, local && !local.used ? local.amount : null);
+  } catch (_) {
     // Deliberately identical message: never reveal whether a code exists or is spent.
+    return res.status(400).json({ error: 'Invalid or already-used code.' });
+  }
+  const result = local && !local.used
+    ? store.redeemWalletCode(code, req.sessionToken)
+    : store.creditSession(req.sessionToken, amount);
+  if (!result.ok) {
     return res.status(400).json({ error: 'Invalid or already-used code.' });
   }
   await settle(store.flushDurable());
@@ -990,9 +1067,15 @@ app.get('/api/admin/add-recharge', rateLimit(5000, 3), async (req, res) => {
   try {
     const amount = Number(req.query.amount);
     if (!Number.isFinite(amount) || amount <= 0 || amount > 1000000000) return res.status(400).json({ error: 'Bad amount (max 1,000,000,000).' });
-    const codes = store.createWalletCodes(amount, 1);
+    const code = `GHX-${Math.round(amount)}-${store.generateCode(10)}`;
+    try {
+      await ledgerIssue(code, amount);
+    } catch (e) {
+      return res.status(500).json({ error: 'Ledger unavailable, try again.' });
+    }
+    store.addWalletCode(code, amount);
     await settle(store.flushDurable());
-    res.json({ ok: true, code: codes[0], amount });
+    res.json({ ok: true, code, amount });
   } catch (e) { res.status(400).json({ error: e.message }); }
 });
 

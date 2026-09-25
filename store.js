@@ -867,6 +867,26 @@ function createWalletCodes(amount, count) {
   return codes;
 }
 
+function addWalletCode(code, amount) {
+  const existing = db.walletCodes.find(c => c.code === code);
+  if (existing) return { ...existing };
+  const entry = { code, amount, used: false, usedBy: null, usedAt: null };
+  db.walletCodes.push(entry);
+  save();
+  return { ...entry };
+}
+
+function getWalletCode(code) {
+  const entry = db.walletCodes.find(c => c.code === code);
+  return entry ? { code: entry.code, amount: entry.amount, used: !!entry.used } : null;
+}
+
+function creditSession(sessionToken, amount) {
+  const session = getOrCreateSession(sessionToken);
+  const balance = setBalance(sessionToken, session.balance + amount);
+  return { ok: true, amount, balance };
+}
+
 function redeemWalletCode(code, sessionToken) {
   const entry = db.walletCodes.find(c => c.code === code);
   if (!entry) return { ok: false, reason: 'invalid' };
@@ -1006,6 +1026,9 @@ module.exports = {
   restoreAccount,
   setStock,
   createWalletCodes,
+  addWalletCode,
+  getWalletCode,
+  creditSession,
   redeemWalletCode,
   unusedWalletCodes,
   addPromoCode,

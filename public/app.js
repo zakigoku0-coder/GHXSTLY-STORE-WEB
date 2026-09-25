@@ -8,6 +8,7 @@
   const state = {
     currency: '$',
     accounts: [],
+    balance: null,
     selectedAccount: null,
     selectedVbuck: null,
     promo: { code: null, discount: 0 },
@@ -347,15 +348,22 @@
     initGoogle();
   }
 
+  function paintBalance(n) {
+    const t = fmt(n);
+    $('#wallet-balance-value').textContent = t;
+    $('#wallet-modal-balance').textContent = t;
+  }
   async function refreshWallet() {
     try {
       const data = await api('/api/wallet');
       state.balance = data.balance;
-      $('#wallet-balance-value').textContent = fmt(data.balance);
-      $('#wallet-modal-balance').textContent = fmt(data.balance);
+      paintBalance(data.balance);
       renderWalletUser(data.user || null);
+      saveAuthCache();
     } catch (_) {
-      if (!state.online) {
+      if (typeof state.balance === 'number') {
+        paintBalance(state.balance);
+      } else if (!state.online) {
         $('#wallet-balance-value').textContent = '—';
         $('#wallet-modal-balance').textContent = '—';
       }
@@ -706,6 +714,33 @@
   let authUser = null;
   let authMode = 'login';
 
+  /* ---------- Local remember layer (instant restore on refresh) ---------- */
+  const AUTH_CACHE_KEY = 'ghxstly-auth-cache';
+  function saveAuthCache() {
+    try {
+      if (authUser) localStorage.setItem(AUTH_CACHE_KEY, JSON.stringify({ user: authUser, balance: state.balance ?? null, at: Date.now() }));
+    } catch (_) {}
+  }
+  function loadAuthCache() {
+    try {
+      const raw = localStorage.getItem(AUTH_CACHE_KEY);
+      if (!raw) return null;
+      const parsed = JSON.parse(raw);
+      return parsed && parsed.user ? parsed : null;
+    } catch (_) { return null; }
+  }
+  function clearAuthCache() {
+    try { localStorage.removeItem(AUTH_CACHE_KEY); } catch (_) {}
+  }
+  // Apply cached identity instantly so refresh never flashes logged-out UI.
+  (function restoreAuthCache() {
+    const cached = loadAuthCache();
+    if (cached) {
+      authUser = cached.user;
+      if (typeof cached.balance === 'number') state.balance = cached.balance;
+    }
+  })();
+
   function applyAuthUi() {
     const logged = !!authUser;
     $('#user-chip').hidden = !logged;
@@ -722,7 +757,7 @@
     }
     renderWalletUser(authUser);
     refreshHistoryBadge();
-    if (state.activeTab === 'accounts') renderAccounts();
+    if (state.activeTab === 'accounts' && state.accounts.length) renderAccounts();
   }
 
   function avatarColor(seed) {
@@ -735,6 +770,14 @@
   window.openAuthModal = function (mode) {
     authMode = mode === 'signup' ? 'signup' : 'login';
     renderAuthTabs();
+    try {
+      const emailInput = $('#auth-email');
+      if (emailInput && !emailInput.value) {
+        const cached = loadAuthCache();
+        const remembered = (cached && cached.user && cached.user.email) || localStorage.getItem('ghxstly-remember-email');
+        if (remembered) emailInput.value = remembered;
+      }
+    } catch (_) {}
     $('#auth-modal-overlay').classList.add('show');
     setTimeout(() => $('#auth-email').focus(), 50);
   };
@@ -771,6 +814,7 @@
       closeAuthModal();
       applyAuthUi();
       await refreshWallet();
+      saveAuthCache();
       toast(`Welcome${authMode === 'signup' ? ' to the store' : ' back'}, ${authUser.name}!`);
     } catch (err) {
       toast(err.message, 'err');
@@ -877,6 +921,7 @@
       closeAuthModal();
       applyAuthUi();
       await refreshWallet();
+      saveAuthCache();
       toast(`Signed in as ${authUser.name}`);
     } catch (err) {
       toast(err.message, 'err');
@@ -886,8 +931,15 @@
   async function loadAuth() {
     try {
       const data = await api('/api/auth/me');
-      authUser = data.user;
-    } catch (_) { authUser = null; }
+      if (data.user) {
+        authUser = data.user;
+        saveAuthCache();
+      } else if (!authUser) {
+        authUser = null;
+      }
+      // else: server lost the session (cold start) — keep the cached identity
+      // so refresh never kicks the buyer out; actions revalidate server-side.
+    } catch (_) { /* network failure — keep cached identity */ }
     applyAuthUi();
   }
 
@@ -913,7 +965,13 @@
   async function signOut() {
     try { await api('/api/auth/logout', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' }); } catch (_) {}
     try { if (window.google && google.accounts) google.accounts.id.disableAutoSelect(); } catch (_) {}
+    try {
+      const cached = loadAuthCache();
+      if (cached && cached.user && cached.user.email) localStorage.setItem('ghxstly-remember-email', cached.user.email);
+    } catch (_) {}
     authUser = null;
+    state.balance = null;
+    clearAuthCache();
     applyAuthUi();
     await refreshWallet();
     toast('Signed out.');
@@ -1624,6 +1682,10 @@
   initParticles();
   initReveal();
   initSpotlight();
+  // Instant restore: cached identity + balance paint before any network call,
+  // so a refresh never flashes a logged-out screen.
+  applyAuthUi();
+  if (typeof state.balance === 'number') paintBalance(state.balance);
   loadMeta();
   refreshWallet();
   loadAuth();

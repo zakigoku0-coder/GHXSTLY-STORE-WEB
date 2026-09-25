@@ -24,6 +24,15 @@ const PORT = process.env.PORT || config.port || 3000;
 const CURRENCY = config.currency || '$';
 const MAX_PRICE = config.maxPrice || 60;
 
+// Listing serial: stable per product (same for all stock units), while the
+// order code is unique per purchase.
+function listingSerial(accountOrId) {
+  const id = (accountOrId && typeof accountOrId === 'object') ? accountOrId.id : accountOrId;
+  if (Number.isInteger(id)) return 'GHX-ACC-' + String(id).padStart(4, '0');
+  const slug = String(id == null ? '' : id).toUpperCase().replace(/[^A-Z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 24);
+  return slug ? 'GHX-' + slug : 'GHX-UNKNOWN';
+}
+
 function accountCredentials(account) {
   if (account && account.credentials) return account.credentials;
   if (account && account.credsEnv) {
@@ -194,8 +203,9 @@ async function sendPurchaseNotification(tx) {
       fields: [
         { name: 'Buyer Discord', value: tx.discordName || 'Not provided', inline: true },
         { name: 'Account ID', value: String(tx.accountId), inline: true },
+        { name: 'Account Serial', value: listingSerial(tx.accountId), inline: true },
         { name: 'Price', value: `${CURRENCY}${tx.amount.toFixed(2)}`, inline: true },
-        { name: 'Order code', value: tx.orderCode, inline: false },
+        { name: 'Order code (unique per purchase)', value: tx.orderCode, inline: false },
         { name: 'Promo used', value: tx.promoCode ? `${tx.promoCode} (-${tx.discount}%)` : 'None', inline: true },
         { name: 'Status', value: 'Payment confirmed â€” hand over account via ticket.', inline: false }
       ],
@@ -876,6 +886,7 @@ app.post('/api/checkout', rateLimit(1500, 4), async (req, res) => {
   res.json({
     ok: true,
     orderCode: tx.orderCode,
+    serial: listingSerial(accountId),
     amount: tx.amount,
     currency: CURRENCY,
     accountName: tx.accountName,
@@ -891,6 +902,7 @@ app.get('/api/orders', (req, res) => {
     : store.listBySession(req.sessionToken);
   const orders = list.map(t => ({
     orderCode: t.orderCode,
+    serial: listingSerial(t.accountId),
     accountName: t.accountName,
     amount: t.amount,
     currency: CURRENCY,
@@ -1027,7 +1039,7 @@ app.post('/api/digital/buy', rateLimit(1500, 4), async (req, res) => {
   );
   await settle(store.flushDurable());
 
-  res.json({ ok: true, orderCode: tx.orderCode, itemName: tx.accountName, amount: tx.amount, currency: CURRENCY });
+  res.json({ ok: true, orderCode: tx.orderCode, serial: listingSerial(itemId), itemName: tx.accountName, amount: tx.amount, currency: CURRENCY });
 });
 
 app.post('/api/custom-order', rateLimit(5000, 3), async (req, res) => {
@@ -1075,6 +1087,51 @@ app.post('/api/custom-order', rateLimit(5000, 3), async (req, res) => {
       if (!r.ok) console.error('Custom-order webhook failed:', r.status, (await r.text()).slice(0, 200));
     } catch (err) {
       console.error('Custom-order webhook error:', err.message);
+    }
+  })(), 6000);
+
+  res.json({ ok: true });
+});
+
+app.post('/api/custom-steam-order', rateLimit(5000, 3), async (req, res) => {
+  const discordName = String(req.body.discordName || '').trim().slice(0, 80);
+  const gameCount = Math.min(Number(req.body.gameCount) || 0, 100000);
+  const budget = String(req.body.budget || '').trim().slice(0, 40);
+  const notes = String(req.body.notes || '').trim().slice(0, 500);
+  const games = Array.isArray(req.body.games)
+    ? req.body.games.map(g => String(g).trim().slice(0, 60)).filter(Boolean).slice(0, 12)
+    : [];
+
+  if (discordName.length < 3 || discordName.length > 80) {
+    return res.status(400).json({ error: 'Please enter your Discord username.' });
+  }
+
+  const createdAt = new Date().toISOString();
+  await settle((async () => {
+    if (!config.webhookUrl) return;
+    const embed = {
+      title: 'Custom Steam Account Request',
+      color: 0x66c0f4,
+      fields: [
+        { name: 'Buyer Discord', value: discordName, inline: false },
+        { name: 'Minimum games', value: `${Number.isFinite(gameCount) ? gameCount : 0}+`, inline: true },
+        { name: 'Budget', value: budget || 'None specified', inline: true },
+        { name: 'Specific games wanted', value: games.length ? games.join(', ') : 'None specified', inline: false },
+        { name: 'Notes', value: notes || 'None', inline: false }
+      ],
+      timestamp: createdAt
+    };
+    const post = (content) => fetch(config.webhookUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content, embeds: [embed] })
+    });
+    try {
+      let r = await post('@here NEW CUSTOM STEAM ORDER');
+      if (!r.ok) r = await post('');
+      if (!r.ok) console.error('Custom-steam webhook failed:', r.status, (await r.text()).slice(0, 200));
+    } catch (err) {
+      console.error('Custom-steam webhook error:', err.message);
     }
   })(), 6000);
 

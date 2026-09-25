@@ -569,7 +569,13 @@ const DIGITAL_CATALOG = [
   { id: 'vbucks-800', type: 'V-Bucks', name: '800 V-Bucks', price: 9.99, limited: false },
   { id: 'vbucks-2400', type: 'V-Bucks', name: '2,400 V-Bucks', price: 23.99, limited: false },
   { id: 'vbucks-4500', type: 'V-Bucks', name: '4,500 V-Bucks', price: 41.99, limited: false },
-  { id: 'vbucks-12500', type: 'V-Bucks', name: '12,500 V-Bucks', price: 94.99, limited: false }
+  { id: 'vbucks-12500', type: 'V-Bucks', name: '12,500 V-Bucks', price: 94.99, limited: false },
+  { id: 'steam-openworld', type: 'Steam', name: 'Open World King — 200 games', price: 25, limited: false, desc: '200-game Steam library loaded with open-world giants. Full access, email change included.', games: ['GTA V', 'Red Dead Redemption 2', 'Elden Ring', 'Cyberpunk 2077', 'The Witcher 3'] },
+  { id: 'steam-indie', type: 'Steam', name: 'Indie Vault — 150 games', price: 15, limited: false, desc: '150-game library stacked with award-winning indies. Full access, email change included.', games: ['Hades', 'Hollow Knight', 'Stardew Valley', 'Celeste', 'Dead Cells'] },
+  { id: 'steam-spiderman', type: 'Steam', name: 'Spider-Man Collection — 120 games', price: 18, limited: false, desc: '120-game library headlined by Spider-Man. Full access, email change included.', games: ["Marvel's Spider-Man Remastered", 'Spider-Man: Miles Morales', 'Batman Arkham Knight', 'Tomb Raider', 'Uncharted: Legacy of Thieves'] },
+  { id: 'steam-gow', type: 'Steam', name: 'God of War Saga — 100 games', price: 18, limited: false, desc: '100-game library headlined by God of War. Full access, email change included.', games: ['God of War (2018)', 'God of War Ragnarök', 'Sekiro', 'Ghost of Tsushima', 'Demon Souls-like Pack'] },
+  { id: 'steam-fps', type: 'Steam', name: 'FPS Arsenal — 80 games', price: 15, limited: false, desc: '80-game library for shooter fans. Full access, email change included.', games: ['Call of Duty HQ', 'Battlefield 2042', 'DOOM Eternal', 'Titanfall 2', 'Payday 3'] },
+  { id: 'steam-racing', type: 'Steam', name: 'Racing & Sports — 50 games', price: 15, limited: false, desc: '50-game library for racing and sports fans. Full access, email change included.', games: ['Forza Horizon 5', 'F1 24', 'Need for Speed Unbound', 'Rocket League', 'EA FC 25'] }
 ];
 
 function listDigitals() {
@@ -582,7 +588,9 @@ function listDigitals() {
       price: i.price,
       limited: i.limited,
       stock,
-      saleable: !i.limited || stock > 0
+      saleable: !i.limited || stock > 0,
+      desc: i.desc || null,
+      games: i.games || null
     };
   });
 }

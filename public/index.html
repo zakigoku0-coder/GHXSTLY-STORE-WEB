@@ -127,6 +127,7 @@
       <button type="button" class="shop-tab" data-tab="Tweaks" onclick="switchTab('Tweaks')">Tweaks</button>
       <button type="button" class="shop-tab" data-tab="Macro" onclick="switchTab('Macro')">Macros</button>
       <button type="button" class="shop-tab" data-tab="V-Bucks" onclick="switchTab('V-Bucks')">V-Bucks</button>
+      <button type="button" class="shop-tab" data-tab="Steam" onclick="switchTab('Steam')">Steam</button>
       <button type="button" class="shop-tab" data-tab="Tournaments" onclick="switchTab('Tournaments')">Tournaments</button>
     </nav>
 
@@ -681,6 +682,7 @@
       <p id="promo-status" class="form-hint"></p>
     </div>
     <button type="button" class="btn-primary full btn-glow" id="checkout-buy" onclick="confirmPurchase()">Confirm purchase</button>
+    <p class="steam-checkout-note" id="checkout-steam-note" hidden>Want the full game list first? Open a ticket on Discord — we will show you every game inside this account.</p>
   </div>
 </div>
 
@@ -692,7 +694,7 @@
     <h3>Payment received</h3>
     <p class="desc" id="delivery-note">The order was sent to the store. Open a Discord ticket and give them this order code to receive your order.</p>
     <p class="delivery-note-custom" id="delivery-note-custom" hidden></p>
-    <div class="chip-row"><span class="chip gold" id="delivery-order-code">ORDER CODE</span></div>
+    <div class="chip-row"><span class="chip gold" id="delivery-order-code">ORDER CODE</span><span class="chip" id="delivery-serial">SERIAL</span></div>
     <div class="creds-box" id="delivery-creds" hidden>
       <p class="desc">Account credentials — log in with these:</p>
       <div class="form-group">
@@ -837,6 +839,46 @@
       <div class="form-group">
         <label for="custom-notes">Additional notes</label>
         <input type="text" id="custom-notes" autocomplete="off" placeholder="Pickaxes, budget…">
+      </div>
+      <button type="submit" class="btn-primary full btn-glow">Send order to the store</button>
+    </form>
+  </div>
+</div>
+
+<!-- Custom Steam account modal -->
+<div class="modal-overlay" id="custom-steam-modal-overlay" onclick="if(event.target===this)closeCustomSteamModal()">
+  <div class="modal custom-border steam-border">
+    <button type="button" class="modal-close" onclick="closeCustomSteamModal()"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M4 4l12 12M18 4L4 18"/></svg></button>
+    <div class="modal-eyebrow" style="color:var(--steam)">CUSTOM STEAM BUILDER</div>
+    <h3>Build your dream library</h3>
+    <p class="desc">Tell us what games you want. The order goes straight to the store owner on Discord.</p>
+    <form id="custom-steam-form">
+      <div class="form-group">
+        <label for="custom-steam-discord">Your Discord username / tag</label>
+        <input type="text" id="custom-steam-discord" required autocomplete="off" placeholder="e.g. Username#0000 or @handle">
+      </div>
+      <div class="form-group">
+        <label for="custom-steam-count">Minimum game count</label>
+        <input type="number" id="custom-steam-count" min="10" value="50" required>
+      </div>
+      <div class="form-group">
+        <label>Specific games wanted</label>
+        <div class="checkbox-grid">
+          <label><input type="checkbox" name="custom-steam-game" value="Spider-Man"> Spider-Man</label>
+          <label><input type="checkbox" name="custom-steam-game" value="God of War"> God of War</label>
+          <label><input type="checkbox" name="custom-steam-game" value="GTA V"> GTA V</label>
+          <label><input type="checkbox" name="custom-steam-game" value="Elden Ring"> Elden Ring</label>
+          <label><input type="checkbox" name="custom-steam-game" value="Red Dead Redemption 2"> Red Dead 2</label>
+          <label><input type="checkbox" name="custom-steam-game" value="Other AAA"> Other AAA</label>
+        </div>
+      </div>
+      <div class="form-group">
+        <label for="custom-steam-budget">Budget</label>
+        <input type="text" id="custom-steam-budget" autocomplete="off" placeholder="e.g. $25">
+      </div>
+      <div class="form-group">
+        <label for="custom-steam-notes">Additional notes</label>
+        <input type="text" id="custom-steam-notes" autocomplete="off" placeholder="Region, extras…">
       </div>
       <button type="submit" class="btn-primary full btn-glow">Send order to the store</button>
     </form>

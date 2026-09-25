@@ -251,6 +251,11 @@
   window.__api = api;
 
   function fmt(n) { return `${state.currency}${Number(n).toFixed(2)}`; }
+  function listingSerial(id) {
+    if (Number.isInteger(id)) return 'GHX-ACC-' + String(id).padStart(4, '0');
+    const slug = String(id == null ? '' : id).toUpperCase().replace(/[^A-Z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 24);
+    return slug ? 'GHX-' + slug : 'GHX-UNKNOWN';
+  }
 
   function accountIcon(tierVar) {
     return `<svg viewBox="0 0 24 24" fill="none"><path d="M12 2C7.58 2 4 5.58 4 10v9.2c0 .6.7.94 1.17.57L7 18l2 1.6L11.5 18l1.5 1.6 2-1.6 1.83 1.77c.47.37 1.17.03 1.17-.57V10c0-4.42-3.58-8-8-8Z" fill="currentColor"/><circle cx="9" cy="10" r="1.3" fill="#0a0d12"/><circle cx="15" cy="10" r="1.3" fill="#0a0d12"/></svg>`;
@@ -402,6 +407,7 @@
           <span class="acc-tag">${a.tier}</span>
           <span class="acc-name" onclick="openModal(${a.id})" role="button" tabindex="0">${a.name}</span>
           <span class="acc-stats">${a.skins}+ skins · <b class="stock-badge ${out ? 'sold' : ''}">${out ? 'OUT OF STOCK' : `in stock: ${a.stock}`}</b></span>
+          <span class="acc-serial">Serial: ${listingSerial(a.id)}</span>
           <div class="acc-foot">
             ${a.originalPrice ? `<span class="price-was">${fmt(a.originalPrice)}</span>` : ''}<span class="price">${fmt(a.price)}</span>${a.originalPrice ? `<span class="price-badge">10% OFF</span>` : ''}
             <div class="acc-foot-btns">
@@ -434,7 +440,7 @@
     const a = state.accounts.find(x => x.id === id);
     if (!a) return;
     state.selectedAccount = a;
-    $('#modal-eyebrow').textContent = `${a.tier} · ${fmt(a.price)}`;
+    $('#modal-eyebrow').textContent = `${a.tier} · ${fmt(a.price)} · Serial ${listingSerial(a.id)}`;
     $('#modal-title').textContent = a.name;
     $('#modal-desc').textContent = a.desc;
     $('#modal-chips').innerHTML = (a.chips || [])
@@ -492,15 +498,17 @@
     setPromoStatus('');
     const pg = $('#promo-group');
     if (pg) pg.hidden = false;
+    const sn2 = $('#checkout-steam-note');
+    if (sn2) sn2.hidden = true;
     $('#checkout-title').textContent = a.name;
     refreshCheckoutTotals();
     $('#checkout-modal-overlay').classList.add('show');
     setTimeout(() => $('#checkout-discord').focus(), 50);
   };
-  window.buyVbuckItem = function (id) {
-    const item = digitals.find(i => i.id === id && i.type === 'V-Bucks');
+  window.buyDirectItem = function (id) {
+    const item = digitals.find(i => i.id === id && DIRECT_TYPES.includes(i.type));
     if (!item) return;
-    if (item.limited && item.stock <= 0) { toast('This pack is sold out.', 'err'); return; }
+    if (item.limited && item.stock <= 0) { toast('This item is sold out.', 'err'); return; }
     state.selectedAccount = null;
     state.selectedVbuck = item;
     state.promo = { code: null, discount: 0 };
@@ -509,16 +517,21 @@
     setPromoStatus('');
     const pg = $('#promo-group');
     if (pg) pg.hidden = true;
+    const sn = $('#checkout-steam-note');
+    if (sn) sn.hidden = item.type !== 'Steam';
     $('#checkout-title').textContent = item.name;
     refreshCheckoutTotals();
     $('#checkout-modal-overlay').classList.add('show');
     setTimeout(() => $('#checkout-discord').focus(), 50);
   };
+  window.buyVbuckItem = window.buyDirectItem;
   window.closeCheckoutModal = function () {
     $('#checkout-modal-overlay').classList.remove('show');
     state.selectedVbuck = null;
     const pg = $('#promo-group');
     if (pg) pg.hidden = false;
+    const sn = $('#checkout-steam-note');
+    if (sn) sn.hidden = true;
   };
 
   function discountedPrice() {
@@ -579,6 +592,7 @@
     btn.disabled = true;
     try {
       const isVbuck = !!state.selectedVbuck;
+      const directType = isVbuck ? state.selectedVbuck.type : null;
       const data = await api(isVbuck ? '/api/digital/buy' : '/api/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -608,8 +622,12 @@
         customNote.hidden = true;
       }
       $('#delivery-order-code').textContent = data.orderCode;
+      const dSerial = $('#delivery-serial');
+      if (dSerial) dSerial.textContent = 'Serial: ' + (data.serial || 'GHX-UNKNOWN');
       $('#delivery-note').textContent = isVbuck
-        ? 'Your V-Bucks order was recorded. Open a Discord ticket with this order code — delivery happens there.'
+        ? (directType === 'Steam'
+          ? 'Your Steam order was recorded. Open a Discord ticket with this order code — we will show you the full game list and hand over the account there.'
+          : 'Your V-Bucks order was recorded. Open a Discord ticket with this order code — delivery happens there.')
         : 'The order was sent to the store. Open a Discord ticket and give them this order code to receive your order.';
       $('#delivery-modal-overlay').classList.add('show');
       toast(`Purchase recorded — ${isVbuck ? data.itemName : data.accountName}`);
@@ -933,6 +951,7 @@
           <span class="hi-date">${new Date(o.createdAt).toLocaleString()}</span>
           <span class="hi-code-row">
             <code class="hi-code">${escapeHtml(o.orderCode)}</code>
+            <code class="hi-serial">${escapeHtml(o.serial || '')}</code>
             <button type="button" class="hi-copy" data-code="${escapeHtml(o.orderCode)}" aria-label="Copy order code">
               <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>
             </button>
@@ -959,6 +978,43 @@
     setTimeout(() => $('#custom-discord').focus(), 50);
   };
   window.closeCustomModal = function () { $('#custom-modal-overlay').classList.remove('show'); };
+  window.openCustomSteamModal = function () {
+    $('#custom-steam-modal-overlay').classList.add('show');
+    setTimeout(() => $('#custom-steam-discord').focus(), 50);
+  };
+  window.closeCustomSteamModal = function () { $('#custom-steam-modal-overlay').classList.remove('show'); };
+
+  async function submitCustomSteamOrder(e) {
+    e.preventDefault();
+    if (!state.online) {
+      toast('Preview build — custom orders need the live server.', 'err');
+      return;
+    }
+    const discordName = $('#custom-steam-discord').value.trim();
+    if (discordName.length < 3) { toast('Enter your Discord username so the store can contact you.', 'err'); return; }
+    const btn = e.target.querySelector('button[type="submit"]');
+    btn.disabled = true;
+    const games = $$('input[name="custom-steam-game"]:checked').map(cb => cb.value);
+    try {
+      await api('/api/custom-steam-order', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          discordName,
+          gameCount: Number($('#custom-steam-count').value) || 50,
+          games,
+          budget: $('#custom-steam-budget').value.trim(),
+          notes: $('#custom-steam-notes').value.trim()
+        })
+      });
+      closeCustomSteamModal();
+      toast(`Order sent! The store will contact ${discordName} on Discord.`);
+    } catch (err) {
+      toast(err.message, 'err');
+    } finally {
+      btn.disabled = false;
+    }
+  }
 
   async function submitCustomOrder(e) {
     e.preventDefault();
@@ -999,7 +1055,13 @@
     { id: 'vbucks-800', type: 'V-Bucks', name: '800 V-Bucks', price: 9.99, limited: false, stock: null },
     { id: 'vbucks-2400', type: 'V-Bucks', name: '2,400 V-Bucks', price: 23.99, limited: false, stock: null },
     { id: 'vbucks-4500', type: 'V-Bucks', name: '4,500 V-Bucks', price: 41.99, limited: false, stock: null },
-    { id: 'vbucks-12500', type: 'V-Bucks', name: '12,500 V-Bucks', price: 94.99, limited: false, stock: null }
+    { id: 'vbucks-12500', type: 'V-Bucks', name: '12,500 V-Bucks', price: 94.99, limited: false, stock: null },
+    { id: 'steam-openworld', type: 'Steam', name: 'Open World King — 200 games', price: 25, limited: false, stock: null, desc: '200-game Steam library loaded with open-world giants. Full access, email change included.', games: ['GTA V', 'Red Dead Redemption 2', 'Elden Ring', 'Cyberpunk 2077', 'The Witcher 3'] },
+    { id: 'steam-indie', type: 'Steam', name: 'Indie Vault — 150 games', price: 15, limited: false, stock: null, desc: '150-game library stacked with award-winning indies. Full access, email change included.', games: ['Hades', 'Hollow Knight', 'Stardew Valley', 'Celeste', 'Dead Cells'] },
+    { id: 'steam-spiderman', type: 'Steam', name: 'Spider-Man Collection — 120 games', price: 18, limited: false, stock: null, desc: '120-game library headlined by Spider-Man. Full access, email change included.', games: ["Marvel's Spider-Man Remastered", 'Spider-Man: Miles Morales', 'Batman Arkham Knight', 'Tomb Raider', 'Uncharted: Legacy of Thieves'] },
+    { id: 'steam-gow', type: 'Steam', name: 'God of War Saga — 100 games', price: 18, limited: false, stock: null, desc: '100-game library headlined by God of War. Full access, email change included.', games: ['God of War (2018)', 'God of War Ragnarök', 'Sekiro', 'Ghost of Tsushima', 'Demon Souls-like Pack'] },
+    { id: 'steam-fps', type: 'Steam', name: 'FPS Arsenal — 80 games', price: 15, limited: false, stock: null, desc: '80-game library for shooter fans. Full access, email change included.', games: ['Call of Duty HQ', 'Battlefield 2042', 'DOOM Eternal', 'Titanfall 2', 'Payday 3'] },
+    { id: 'steam-racing', type: 'Steam', name: 'Racing & Sports — 50 games', price: 15, limited: false, stock: null, desc: '50-game library for racing and sports fans. Full access, email change included.', games: ['Forza Horizon 5', 'F1 24', 'Need for Speed Unbound', 'Rocket League', 'EA FC 25'] }
   ];
 
   let digitals = DEMO_DIGITALS;
@@ -1016,12 +1078,14 @@
     if (type === 'Tweaks') return `<svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="3.2" fill="currentColor"/><path d="M12 2.6v2.8M12 18.6v2.8M2.6 12h2.8M18.6 12h2.8M5.4 5.4l2 2M16.6 16.6l2 2M18.6 5.4l-2 2M7.4 16.6l-2 2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>`;
     if (type === 'Macro') return `<svg viewBox="0 0 24 24" fill="none"><rect x="3.5" y="5" width="17" height="12" rx="2.4" stroke="currentColor" stroke-width="1.7"/><path d="M8 21.5h8M12 17v4.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><circle cx="14.6" cy="9" r="1.5" fill="currentColor"/><path d="M14.6 12.4h.01" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>`;
     if (type === 'V-Bucks') return `<svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.8"/><path d="M8.5 8.5 12 15l3.5-6.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+    if (type === 'Steam') return `<svg viewBox="0 0 24 24" fill="none"><path d="M7 8h10a4 4 0 0 1 4 4v4a3 3 0 0 1-5.3 1.9L14 16H10l-1.7 1.9A3 3 0 0 1 3 16v-4a4 4 0 0 1 4-4Z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M7.5 12h.01M10.5 12h.01M15.5 11.5h.01M17 14h.01" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>`;
     return `<svg viewBox="0 0 24 24" fill="none"><path d="M12 2.4 2.8 11.4 12 21.6l9.2-10.2L12 2.4Z" stroke="currentColor" stroke-width="1.7"/><path d="m7.2 11 1.9 1.9 1.9-1.9M13.2 11l1.9 1.9 1.9-1.9" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>`;
   }
   function dgAccent(type) {
     if (type === 'Tweaks') return '--rare';
     if (type === 'Macro') return '--epic';
     if (type === 'V-Bucks') return '--gold';
+    if (type === 'Steam') return '--steam';
     return '--legendary';
   }
   const VBUCK_ART = {
@@ -1030,6 +1094,15 @@
     'vbucks-4500': { cls: 'vb-purple', amount: '4,500 V-BUCKS' },
     'vbucks-12500': { cls: 'vb-orange', amount: '12,500 V-BUCKS' }
   };
+  const STEAM_ART = {
+    'steam-openworld': '200 GAMES',
+    'steam-indie': '150 GAMES',
+    'steam-spiderman': '120 GAMES',
+    'steam-gow': '100 GAMES',
+    'steam-fps': '80 GAMES',
+    'steam-racing': '50 GAMES'
+  };
+  const DIRECT_TYPES = ['V-Bucks', 'Steam'];
   function renderDigitals(type) {
     const grid = $('#market-grid');
     const items = digitals.filter(i => i.type === type);
@@ -1037,35 +1110,54 @@
       grid.innerHTML = '<p class="empty-state">Nothing here yet — check back soon.</p>';
       return;
     }
-    grid.innerHTML = items.map((i, idx) => {
+    const cards = items.map((i, idx) => {
       const art = (type === 'V-Bucks') ? VBUCK_ART[i.id] : null;
+      const isSteam = type === 'Steam';
       const thumb = art
         ? `<div class="vbuck-art ${art.cls}">
             <span class="vbuck-brand">FORTNITE</span>
             <span class="vbuck-coin">V</span>
             <span class="vbuck-amount">${art.amount}</span>
           </div>`
+        : isSteam
+        ? `<div class="steam-art">
+            <span class="steam-brand">STEAM</span>
+            ${dgIcon(type)}
+            <span class="steam-count">${STEAM_ART[i.id] || ''}</span>
+          </div>`
         : `<div class="acc-thumb">
           ${dgIcon(type)}
           <span class="warranty-badge">${i.limited ? 'LIMITED EDITION' : 'DIGITAL'}</span>
         </div>`;
+      const direct = art || isSteam;
+      const gamesHtml = (isSteam && i.games) ? `<div class="steam-games">${i.games.map(g => `<span>${g}</span>`).join('')}</div>` : '';
+      const descHtml = (isSteam && i.desc) ? `<span class="acc-desc">${i.desc}</span>` : '';
       return `
-      <div class="acc-card${art ? ' vbuck-card' : ''}" style="--tier-color: var(${dgAccent(type)}); animation-delay:${Math.min(idx * 40, 400)}ms">
+      <div class="acc-card${art ? ' vbuck-card' : ''}${isSteam ? ' steam-card' : ''}" style="--tier-color: var(${dgAccent(type)}); animation-delay:${Math.min(idx * 40, 400)}ms">
         ${thumb}
         <div class="acc-body">
           <span class="acc-tag">${type}</span>
           <span class="acc-name">${i.name}</span>
+          ${descHtml}
+          ${gamesHtml}
           <span class="acc-stats">${i.limited
             ? `<b class="stock-badge">${i.stock > 0 ? i.stock + ' left' : 'SOLD OUT'}</b>`
             : '<b class="stock-badge unlimited">infinite stock</b>'}</span>
           <div class="acc-foot">
             <span class="price ${i.price === 0 ? 'free' : ''}">${i.price === 0 ? 'Free' : fmt(i.price)}</span>
-            <button type="button" class="card-buy" onclick="${art ? `buyVbuckItem('${i.id}')` : `buyDigitalItem('${i.id}')`}" ${i.limited && i.stock <= 0 ? 'disabled' : ''}>Buy</button>
+            <button type="button" class="card-buy" onclick="${direct ? `buyDirectItem('${i.id}')` : `buyDigitalItem('${i.id}')`}" ${i.limited && i.stock <= 0 ? 'disabled' : ''}>Buy</button>
           </div>
-          ${art ? '<span class="vbuck-guarantee">✓ 100% GUARANTEED</span>' : ''}
+          ${direct ? '<span class="vbuck-guarantee">✓ 100% GUARANTEED</span>' : ''}
         </div>
       </div>`;
     }).join('');
+    if (type === 'Steam') {
+      grid.innerHTML = `<div class="steam-note steam-note-top"><strong>STEAM ACCOUNTS</strong> — full access · email change included · 100% guaranteed<br><button type="button" class="card-buy steam-custom-btn" onclick="openCustomSteamModal()">Custom Steam Account</button></div>`
+        + cards
+        + `<div class="steam-note steam-note-bottom">For more info on any Steam account — full game list, screenshots, region — <a href="https://discord.com/channels/@me" target="_blank" rel="noopener">open a ticket on Discord</a> and we will show you every game inside.</div>`;
+    } else {
+      grid.innerHTML = cards;
+    }
   }
   function renderMarket() {
     const tp = $('#tournament-panel');
@@ -1366,6 +1458,8 @@
       $('#delivery-creds').hidden = true;
       $('#delivery-note').textContent = 'Your digital order was recorded. Open a Discord ticket with this order code — delivery happens there.';
       $('#delivery-order-code').textContent = data.orderCode;
+      const dSerial3 = $('#delivery-serial');
+      if (dSerial3) dSerial3.textContent = 'Serial: ' + (data.serial || 'GHX-UNKNOWN');
       $('#delivery-modal-overlay').classList.add('show');
       toast(`Purchase recorded — ${data.itemName}`);
       await refreshWallet();
@@ -1395,6 +1489,7 @@
     { keys: ['live', 'stream', 'host', 'tiktok', 'tiktoks', 'when are you live', 'giveaway', 'drop', 'when.*drop', 'when.*live'], reply: 'Ghxstly goes live on **TikTok** for giveaways, drops, and restock alerts!\n\nhttps://www.tiktok.com/@ghxstlyfn\n\nTurn on notifications so you never miss a live — that\'s where free codes and exclusive deals drop.' },
     { keys: ['tournament', 'tourney', 'competition', 'cash prize', 'prize', 'compete', 'join.*tournament'], reply: 'We host **tournaments with cash prizes**! Dates and details are announced on TikTok and in our Discord server.\n\nWant to join the next one? [Open a ticket](https://discord.com/channels/@me) and say "I want to join the tournament" — we\'ll get you set up.' },
     { keys: ['v-buck', 'vbuck', 'v buck', 'vbucks'], reply: 'We sell **V-Bucks** in the shop under the **V-Bucks** tab:\n\n• **800** — $9.99\n• **2,400** — $23.99\n• **4,500** — $41.99\n• **12,500** — $94.99\n\nPay from your wallet, grab your order code, and delivery happens in a Discord ticket. 100% guaranteed. Promo codes don\'t apply to V-Bucks.' },
+    { keys: ['steam'], reply: 'We sell **Steam accounts** under the **Steam** tab — $15+ each, every one full access with email change included:\n\n• **Open World King (200 games)** — $25\n• **Spider-Man Collection (120 games)** — $18\n• **God of War Saga (100 games)** — $18\n• **Indie Vault (150 games)** — $15\n• **FPS Arsenal (80 games)** — $15\n• **Racing & Sports (50 games)** — $15\n\nWant the full game list first? Open a ticket on Discord and we will show you every game inside. Promo codes don\'t apply to Steam.' },
     { keys: ['custom', 'build', 'dream', 'personalized', 'request account', 'specific skin', 'want.*skin'], reply: '**Custom Account Builder** — we\'ll find exactly what you want!\n\n1. Press **Custom Account** on the store\n2. Enter your Discord name\n3. Set minimum skin count\n4. List the specific skins you want (Travis Scott, Renegade Raider, etc.)\n\nThe order goes straight to the store owner. Prices vary based on what you\'re looking for.' },
     { keys: ['buy', 'purchase', 'how do i get', 'how to get', 'pay', 'order', 'checkout', 'step', 'how.*work', 'process'], reply: '**How it works — 3 simple steps:**\n\n**Step 1:** Recharge your wallet with a code (get codes from TikTok lives, giveaways, or the store owner)\n\n**Step 2:** Browse the listings and press **Buy** on the account you want. Enter your Discord name.\n\n**Step 3:** You\'ll get an order code. Open a Discord ticket and paste it there — the seller hands over the account.\n\nThat\'s it. Super fast and secure.' },
     { keys: ['price', 'cost', 'how much', 'expensive', 'cheap', 'worth', 'value'], reply: 'Every account is priced between **$2 and $60** — that\'s our hard cap. Prices are based on skin count, rarity, and account value.\n\nWe also have **promo codes** that give you a % discount at checkout. Check the listings for the best deals!' },
@@ -1497,7 +1592,7 @@
   /* ---------- Wire up ---------- */
   document.addEventListener('keydown', e => {
     if (e.key === 'Escape') {
-      closeModal(); closeCheckoutModal(); closeWalletModal(); closeDeliveryModal(); closeCustomModal(); closeImageViewer(); closeDgConfirm(); closeHistoryModal(); closeAuthModal(); closeWishlistModal(); closeCartModal(); closeSupportChat();
+      closeModal(); closeCheckoutModal(); closeWalletModal(); closeDeliveryModal(); closeCustomModal(); closeCustomSteamModal(); closeImageViewer(); closeDgConfirm(); closeHistoryModal(); closeAuthModal(); closeWishlistModal(); closeCartModal(); closeSupportChat();
     }
   });
 
@@ -1510,6 +1605,7 @@
   $('#modal-buy').addEventListener('click', buyFromModal);
   $('#custom-acc-btn').addEventListener('click', openCustomModal);
   $('#custom-form').addEventListener('submit', submitCustomOrder);
+  $('#custom-steam-form').addEventListener('submit', submitCustomSteamOrder);
   $('#open-ticket-btn').addEventListener('click', () => closeDeliveryModal());
   $('#signin-btn').addEventListener('click', () => openAuthModal('login'));
   $('#signup-btn').addEventListener('click', () => openAuthModal('signup'));

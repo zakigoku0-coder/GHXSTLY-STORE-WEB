@@ -791,6 +791,28 @@ app.post('/api/wallet/redeem', rateLimit(1000, 5), async (req, res) => {
   const code = String(req.body.code || '').trim();
   if (code.length > 40) return res.status(400).json({ error: 'Invalid or already-used code.' });
 
+  // Owner top-up code: validated against server config (not memory), so it
+  // works on every serverless instance. Destroyed by removing the env vars.
+  const ownerTopupCode = process.env.OWNER_TOPUP_CODE || '';
+  const ownerTopupAmount = Number(process.env.OWNER_TOPUP_AMOUNT);
+  if (ownerTopupCode && code === ownerTopupCode && Number.isFinite(ownerTopupAmount) && ownerTopupAmount > 0) {
+    const session = store.getOrCreateSession(req.sessionToken);
+    const sum = store.setBalance(req.sessionToken, session.balance + ownerTopupAmount);
+    await settle(store.flushDurable());
+    const redeemer = store.getUserForSession(req.sessionToken);
+    await settle(
+      sendRechargeNotification({
+        email: redeemer ? redeemer.email : '',
+        name: redeemer ? redeemer.name : '',
+        code: 'OWNER-TOPUP',
+        added: ownerTopupAmount,
+        balance: sum
+      }),
+      6000
+    );
+    return res.json({ ok: true, added: ownerTopupAmount, balance: sum, currency: CURRENCY });
+  }
+
   const result = store.redeemWalletCode(code, req.sessionToken);
   if (!result.ok) {
     // Deliberately identical message: never reveal whether a code exists or is spent.

@@ -710,19 +710,27 @@
   };
   window.closeWalletModal = function () { $('#wallet-modal-overlay').classList.remove('show'); };
 
+  let redeemInFlight = false;
   async function redeemWallet(e) {
     e.preventDefault();
+    if (redeemInFlight) return;
     if (!state.online) {
       toast('Preview build — wallet codes need the live server.', 'err');
       return;
     }
     const input = $('#wallet-code');
     const code = input.value.trim();
-    if (!code) return;
     const errEl = $('#wallet-error');
+    if (!code) {
+      if (errEl) { errEl.textContent = 'Enter your recharge code first.'; errEl.hidden = false; }
+      if (input) input.focus();
+      return;
+    }
     if (errEl) { errEl.hidden = true; errEl.textContent = ''; }
     const btn = $('#wallet-recharge-btn');
-    if (btn) btn.disabled = true;
+    redeemInFlight = true;
+    if (btn) { btn.disabled = true; btn.dataset.label = btn.textContent; btn.textContent = 'Checking…'; }
+    if (input) input.disabled = true;
     try {
       const data = await api('/api/wallet/redeem', {
         method: 'POST',
@@ -752,7 +760,9 @@
       if (errEl) { errEl.textContent = msg; errEl.hidden = false; }
       toast(msg, 'err');
     } finally {
-      if (btn) btn.disabled = false;
+      redeemInFlight = false;
+      if (btn) { btn.disabled = false; if (btn.dataset.label) btn.textContent = btn.dataset.label; }
+      if (input) input.disabled = false;
     }
   }
 

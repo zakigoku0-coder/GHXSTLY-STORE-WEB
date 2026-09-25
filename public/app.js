@@ -682,6 +682,12 @@
   window.openWalletModal = function () {
     refreshWallet();
     $('#wallet-code').value = '';
+    const err = $('#wallet-error');
+    if (err) { err.hidden = true; err.textContent = ''; }
+    $('#wallet-form').hidden = false;
+    $('#wallet-success').hidden = true;
+    const btn = $('#wallet-recharge-btn');
+    if (btn) btn.disabled = false;
     $('#wallet-modal-overlay').classList.add('show');
     setTimeout(() => $('#wallet-code').focus(), 50);
   };
@@ -696,17 +702,29 @@
     const input = $('#wallet-code');
     const code = input.value.trim();
     if (!code) return;
+    const errEl = $('#wallet-error');
+    if (errEl) { errEl.hidden = true; errEl.textContent = ''; }
+    const btn = $('#wallet-recharge-btn');
+    if (btn) btn.disabled = true;
     try {
       const data = await api('/api/wallet/redeem', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ code })
       });
-      closeWalletModal();
-      toast(`${fmt(data.added)} added to your wallet. New balance: ${fmt(data.balance)}`);
+      $('#wallet-form').hidden = true;
+      $('#wallet-success').hidden = false;
+      $('#wallet-success-amount').textContent = '+' + fmt(data.added);
+      $('#wallet-success-balance').textContent = fmt(data.balance);
       await refreshWallet();
     } catch (err) {
-      toast(err.message, 'err');
+      const msg = (err.message || '').toLowerCase().includes('invalid')
+        ? 'This code is invalid or already used.'
+        : err.message;
+      if (errEl) { errEl.textContent = msg; errEl.hidden = false; }
+      toast(msg, 'err');
+    } finally {
+      if (btn) btn.disabled = false;
     }
   }
 

@@ -749,9 +749,17 @@
       <div class="form-group">
         <label for="wallet-code">Recharge code</label>
 <input type="text" id="wallet-code" required autocomplete="off" placeholder="Enter recharge code">
+        <p id="wallet-error" class="form-error" hidden></p>
       </div>
-      <button type="submit" class="btn-primary full btn-glow">Recharge</button>
+      <button type="submit" class="btn-primary full btn-glow" id="wallet-recharge-btn">Recharge</button>
     </form>
+    <div id="wallet-success" hidden>
+      <div class="wallet-success-icon">✓</div>
+      <p class="wallet-success-title">Balance recharged!</p>
+      <p class="wallet-success-amount" id="wallet-success-amount">$0.00</p>
+      <p class="modal-note thin">New balance: <strong id="wallet-success-balance">$0.00</strong></p>
+      <button type="button" class="btn-primary full btn-glow" onclick="closeWalletModal()">Done</button>
+    </div>
   </div>
 </div>
 

@@ -1072,6 +1072,17 @@ aside.filters[hidden] { display: none; }
 .form-hint { min-height: 18px; margin-top: 8px; font-size: 12px; color: var(--faint); }
 .form-hint.ok { color: var(--mist); text-shadow: 0 0 8px rgba(255,46,77,0.45); }
 .form-hint.err { color: var(--danger); }
+.form-error { margin-top: 8px; font-size: 13px; font-weight: 700; color: #f29b9b; }
+#wallet-success { text-align: center; padding: 10px 0 4px; }
+.wallet-success-icon {
+  width: 54px; height: 54px; margin: 0 auto 10px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 26px; font-weight: 900; color: #06210f;
+  background: linear-gradient(135deg, #7fe097, #3ecf6e);
+  box-shadow: 0 0 24px rgba(127,224,151,0.45);
+}
+.wallet-success-title { font-size: 16px; font-weight: 800; }
+.wallet-success-amount { font-size: 30px; font-weight: 900; color: #7fe097; margin: 4px 0 8px; }
 .checkbox-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px 12px; }
 .checkbox-grid label { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #ffffff; cursor: pointer; }
 .checkbox-grid label:hover { color: var(--mist); }

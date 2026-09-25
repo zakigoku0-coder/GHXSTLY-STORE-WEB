@@ -1697,10 +1697,8 @@ img, svg, iframe { max-width: 100%; }
   .brand { font-size: 14px; letter-spacing: .12em; }
   .brand-mark { width: 20px; height: 20px; }
   .nav-actions-right {
-    flex: 1 1 100%; flex-wrap: nowrap; justify-content: flex-start;
-    overflow-x: auto; -webkit-overflow-scrolling: touch; gap: 8px; padding-bottom: 2px;
+    flex: 1 1 100%; flex-wrap: wrap; justify-content: flex-end; gap: 8px;
   }
-  .nav-actions-right > * { flex-shrink: 0; }
   .btn-signin, .btn-signup, .btn-history, .btn-custom-acc, .nav-cta, .btn-tiktok, .wallet-balance {
     font-size: 11px; padding: 7px 10px; height: 32px;
   }
@@ -1711,12 +1709,8 @@ img, svg, iframe { max-width: 100%; }
   .hero { padding: 48px 0 40px; }
   .gradient-text { font-size: clamp(26px, 8vw, 36px); }
   .hero p.lede { font-size: 14px; }
-  .hero-actions { flex-direction: column; align-items: stretch; }
-  .btn-primary, .btn-ghost { width: 100%; }
-
-  /* SHOP TABS: scroll row */
-  .shop-tabs { flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; padding-bottom: 4px; }
-  .shop-tab { white-space: nowrap; flex-shrink: 0; padding: 9px 16px; font-size: 12px; }
+  .hero-actions { flex-wrap: wrap; }
+  .shop-tab { padding: 9px 16px; font-size: 12px; }
 
   /* FILTERS */
   .filters { position: static; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }

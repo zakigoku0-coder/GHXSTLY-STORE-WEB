@@ -693,15 +693,18 @@
   /* ---------- Wallet ---------- */
   window.openWalletModal = function () {
     refreshWallet();
-    $('#wallet-code').value = '';
+    const codeInput = $('#wallet-code');
+    if (codeInput) codeInput.value = '';
     const err = $('#wallet-error');
     if (err) { err.hidden = true; err.textContent = ''; }
-    $('#wallet-form').hidden = false;
-    $('#wallet-success').hidden = true;
+    const form = $('#wallet-form');
+    if (form) form.hidden = false;
+    const suc = $('#wallet-success');
+    if (suc) suc.hidden = true;
     const btn = $('#wallet-recharge-btn');
     if (btn) btn.disabled = false;
     $('#wallet-modal-overlay').classList.add('show');
-    setTimeout(() => $('#wallet-code').focus(), 50);
+    setTimeout(() => { const ci = $('#wallet-code'); if (ci) ci.focus(); }, 50);
   };
   window.closeWalletModal = function () { $('#wallet-modal-overlay').classList.remove('show'); };
 
@@ -724,10 +727,19 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ code })
       });
-      $('#wallet-form').hidden = true;
-      $('#wallet-success').hidden = false;
-      $('#wallet-success-amount').textContent = '+' + fmt(data.added);
-      $('#wallet-success-balance').textContent = fmt(data.balance);
+      const form2 = $('#wallet-form');
+      if (form2) form2.hidden = true;
+      const suc2 = $('#wallet-success');
+      const amt2 = $('#wallet-success-amount');
+      const bal2 = $('#wallet-success-balance');
+      if (suc2 && amt2 && bal2) {
+        suc2.hidden = false;
+        amt2.textContent = '+' + fmt(data.added);
+        bal2.textContent = fmt(data.balance);
+      } else {
+        closeWalletModal();
+        toast(`${fmt(data.added)} added to your wallet. New balance: ${fmt(data.balance)}`);
+      }
       await refreshWallet();
     } catch (err) {
       const msg = (err.message || '').toLowerCase().includes('invalid')

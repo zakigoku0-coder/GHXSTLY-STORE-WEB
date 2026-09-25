@@ -9,6 +9,7 @@
     currency: '$',
     accounts: [],
     balance: null,
+    balanceAt: null,
     selectedAccount: null,
     selectedVbuck: null,
     promo: { code: null, discount: 0 },
@@ -358,17 +359,17 @@
       const data = await api('/api/wallet');
       if (data.user) {
         // Session is bound to a user server-side: server is source of truth.
-        state.balance = data.balance;
+        acceptBalance(data.balance);
         paintBalance(data.balance);
         renderWalletUser(data.user);
         saveAuthCache();
-      } else if (authUser) {
-        // Server lost the session (restart) but we have a cached identity:
-        // NEVER clobber the last-known balance with a fresh $0 session.
+      } else if (authUser || cacheIsFresh()) {
+        // Server lost the session (restart) but we hold a fresh known balance:
+        // NEVER clobber it with a fresh $0 session.
         if (typeof state.balance === 'number') paintBalance(state.balance);
         renderWalletUser(authUser);
       } else {
-        state.balance = data.balance;
+        acceptBalance(data.balance);
         paintBalance(data.balance);
         renderWalletUser(null);
       }
@@ -651,6 +652,7 @@
         : 'The order was sent to the store. Open a Discord ticket and give them this order code to receive your order.';
       $('#delivery-modal-overlay').classList.add('show');
       toast(`Purchase recorded — ${isVbuck ? data.itemName : data.accountName}`);
+      if (typeof state.balance === 'number' && Number.isFinite(data.amount)) acceptBalance(Math.max(0, Math.round((state.balance - data.amount) * 100) / 100));
       await refreshWallet();
       if (isVbuck) loadDigitals(); else await loadAccounts();
     } catch (err) {
@@ -727,6 +729,8 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ code })
       });
+      acceptBalance(data.balance);
+      saveAuthCache();
       const form2 = $('#wallet-form');
       if (form2) form2.hidden = true;
       const suc2 = $('#wallet-success');
@@ -763,6 +767,13 @@
       if (authUser) localStorage.setItem(AUTH_CACHE_KEY, JSON.stringify({ user: authUser, balance: state.balance ?? null, at: Date.now() }));
     } catch (_) {}
   }
+  function acceptBalance(n) {
+    state.balance = n;
+    state.balanceAt = Date.now();
+  }
+  function cacheIsFresh() {
+    return typeof state.balance === 'number' && state.balanceAt && (Date.now() - state.balanceAt < 15 * 60 * 1000);
+  }
   function loadAuthCache() {
     try {
       const raw = localStorage.getItem(AUTH_CACHE_KEY);
@@ -779,7 +790,10 @@
     const cached = loadAuthCache();
     if (cached) {
       authUser = cached.user;
-      if (typeof cached.balance === 'number') state.balance = cached.balance;
+      if (typeof cached.balance === 'number') {
+        state.balance = cached.balance;
+        state.balanceAt = cached.at || Date.now();
+      }
     }
   })();
 
@@ -1013,6 +1027,7 @@
     } catch (_) {}
     authUser = null;
     state.balance = null;
+    state.balanceAt = null;
     clearAuthCache();
     applyAuthUi();
     await refreshWallet();
@@ -1562,6 +1577,7 @@
       if (dSerial3) dSerial3.textContent = 'Serial: ' + (data.serial || 'GHX-UNKNOWN');
       $('#delivery-modal-overlay').classList.add('show');
       toast(`Purchase recorded — ${data.itemName}`);
+      if (typeof state.balance === 'number' && Number.isFinite(data.amount)) acceptBalance(Math.max(0, Math.round((state.balance - data.amount) * 100) / 100));
       await refreshWallet();
       loadDigitals();
     } catch (err) {

@@ -490,9 +490,17 @@ async function bootDurable() {
 bootDurable();
 
 function load() {
-  if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
-  if (!fs.existsSync(DB_FILE)) {
-    fs.writeFileSync(DB_FILE, JSON.stringify(DEFAULT_DB, null, 2));
+  // Never throw: on serverless (read-only FS) a missing/corrupt seed must
+  // fall back to in-memory defaults — durable blob snapshots overlay on boot.
+  try {
+    if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
+  } catch (_) {}
+  try {
+    if (!fs.existsSync(DB_FILE)) {
+      try { fs.writeFileSync(DB_FILE, JSON.stringify(DEFAULT_DB, null, 2)); } catch (_) {}
+      return { ...DEFAULT_DB };
+    }
+  } catch (_) {
     return { ...DEFAULT_DB };
   }
   try {
@@ -500,7 +508,7 @@ function load() {
     return { ...DEFAULT_DB, ...parsed };
   } catch (err) {
     console.error('Corrupt database file, starting fresh:', err.message);
-    fs.writeFileSync(DB_FILE, JSON.stringify(DEFAULT_DB, null, 2));
+    try { fs.writeFileSync(DB_FILE, JSON.stringify(DEFAULT_DB, null, 2)); } catch (_) {}
     return { ...DEFAULT_DB };
   }
 }

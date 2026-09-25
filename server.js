@@ -962,6 +962,18 @@ app.get('/api/admin/patch-account', rateLimit(5000, 3), async (req, res) => {
   } catch (e) { res.status(400).json({ error: e.message }); }
 });
 
+app.get('/api/admin/add-recharge', rateLimit(5000, 3), async (req, res) => {
+  const pw = req.query.pw || '';
+  if (pw !== 'ghxstlyadmin2026') return res.status(403).json({ error: 'no' });
+  try {
+    const amount = Number(req.query.amount);
+    if (!Number.isFinite(amount) || amount <= 0 || amount > 1000000000) return res.status(400).json({ error: 'Bad amount (max 1,000,000,000).' });
+    const codes = store.createWalletCodes(amount, 1);
+    await settle(store.flushDurable());
+    res.json({ ok: true, code: codes[0], amount });
+  } catch (e) { res.status(400).json({ error: e.message }); }
+});
+
 app.get('/api/admin/add-promo', rateLimit(5000, 3), async (req, res) => {
   const pw = req.query.pw || '';
   if (pw !== 'ghxstlyadmin2026') return res.status(403).json({ error: 'no' });

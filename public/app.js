@@ -646,7 +646,7 @@
       if (dSerial) dSerial.textContent = 'Serial: ' + (data.serial || 'GHX-UNKNOWN');
       $('#delivery-note').textContent = isVbuck
         ? (directType === 'Steam'
-          ? 'Your Steam order was recorded. Open a Discord ticket with this order code — we will show you the full game list and hand over the account there.'
+          ? 'Your Steam order was recorded. Delivery takes at least 1 day — it is NOT instant. Open a Discord ticket with this order code — we will show you the full game list and hand over the account there.'
           : 'Your V-Bucks order was recorded. Open a Discord ticket with this order code — delivery happens there.')
         : 'The order was sent to the store. Open a Discord ticket and give them this order code to receive your order.';
       $('#delivery-modal-overlay').classList.add('show');

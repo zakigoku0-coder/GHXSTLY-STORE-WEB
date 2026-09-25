@@ -164,6 +164,26 @@ async function gistDbWrite(snap) {
   return true;
 }
 
+// Read-merge-write: never let a stale instance clobber another instance's
+// sessions/balances. Converges via the same forward-safe union as boot.
+async function gistDbWriteMerged() {
+  if (!GIST_DB_ID || !GIST_DB_TOKEN) return false;
+  const fresh = await gistDbFetchFresh().catch(() => null);
+  const base = fresh ? mergeSnapshot(db, fresh) : db;
+  const ok = await gistDbWrite(base);
+  if (ok && fresh) {
+    db.sessions = base.sessions;
+    db.users = base.users;
+    db.walletCodes = base.walletCodes;
+    db.promoCodes = base.promoCodes;
+    db.accounts = base.accounts;
+    db.transactions = base.transactions;
+    db.digitalStock = base.digitalStock;
+    db.tournamentPlayers = base.tournamentPlayers;
+  }
+  return ok;
+}
+
 function applyGistSnap(snap) {
   if (!snap) return false;
   const merged = mergeSnapshot(db, snap);
@@ -382,7 +402,7 @@ async function pushDurable() {
   }
   // Gist mirror (works even while blob is suspended). Bounded wait, never throws.
   try {
-    await withTimeout(gistDbWrite(db), 12000, 'gist mirror timed out');
+    await withTimeout(gistDbWriteMerged(), 15000, 'gist mirror timed out');
     gistDbPush.at = new Date().toISOString();
     gistDbPush.ok = true;
     gistDbPush.error = null;

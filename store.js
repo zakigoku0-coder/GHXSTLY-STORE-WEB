@@ -554,11 +554,14 @@ function generateOrderCode() {
 /* ---------- Digital goods (Tweaks / Macro) ---------- */
 
 const DIGITAL_CATALOG = [
-  { id: 'tweaks-normal', type: 'Tweaks', name: 'Tweaks — Normal', price: 0, limited: false },
   { id: 'tweaks-premium', type: 'Tweaks', name: 'Tweaks — Premium', price: 10, limited: false },
   { id: 'macro-normal', type: 'Macro', name: 'Macro — Normal', price: 5, limited: false },
   { id: 'macro-premium', type: 'Macro', name: 'Macro — Premium', price: 10, limited: false },
-  { id: 'macro-unlimited', type: 'Macro', name: 'Macro — Unlimited', price: 30, limited: false }
+  { id: 'macro-unlimited', type: 'Macro', name: 'Macro — Unlimited', price: 30, limited: false },
+  { id: 'vbucks-800', type: 'V-Bucks', name: '800 V-Bucks', price: 9.99, limited: false },
+  { id: 'vbucks-2400', type: 'V-Bucks', name: '2,400 V-Bucks', price: 23.99, limited: false },
+  { id: 'vbucks-4500', type: 'V-Bucks', name: '4,500 V-Bucks', price: 41.99, limited: false },
+  { id: 'vbucks-12500', type: 'V-Bucks', name: '12,500 V-Bucks', price: 94.99, limited: false }
 ];
 
 function listDigitals() {

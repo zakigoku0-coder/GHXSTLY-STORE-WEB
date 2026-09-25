@@ -21,6 +21,12 @@
 <div class="glow glow-a" aria-hidden="true"></div>
 <div class="glow glow-b" aria-hidden="true"></div>
 
+<div class="scroll-progress" id="scroll-progress"></div>
+<div class="particles" aria-hidden="true">
+  <div class="particle"></div><div class="particle"></div><div class="particle"></div><div class="particle"></div>
+  <div class="particle"></div><div class="particle"></div><div class="particle"></div><div class="particle"></div>
+</div>
+
 <nav>
   <div class="nav-inner">
     <div class="brand">
@@ -113,13 +119,14 @@
   <div class="wrap">
     <div class="section-head reveal">
       <h2>Browse the shop</h2>
-      <p>Pick a category — accounts, tweaks or macros. All prices capped at $40.</p>
+      <p>Pick a category — accounts, V-Bucks, tweaks or macros.</p>
     </div>
 
     <nav class="shop-tabs" id="shop-tabs">
       <button type="button" class="shop-tab active" data-tab="accounts" onclick="switchTab('accounts')">Accounts</button>
       <button type="button" class="shop-tab" data-tab="Tweaks" onclick="switchTab('Tweaks')">Tweaks</button>
       <button type="button" class="shop-tab" data-tab="Macro" onclick="switchTab('Macro')">Macros</button>
+      <button type="button" class="shop-tab" data-tab="V-Bucks" onclick="switchTab('V-Bucks')">V-Bucks</button>
       <button type="button" class="shop-tab" data-tab="Tournaments" onclick="switchTab('Tournaments')">Tournaments</button>
     </nav>
 
@@ -665,7 +672,7 @@
       <label for="checkout-discord">Your Discord username / tag</label>
       <input type="text" id="checkout-discord" required autocomplete="off" placeholder="e.g. Username#0000 or @handle">
     </div>
-    <div class="form-group">
+    <div class="form-group" id="promo-group">
       <label for="promo-code">Promo code (optional)</label>
       <div class="inline-field">
         <input type="text" id="promo-code" autocomplete="off" placeholder="Enter promo code">

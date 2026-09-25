@@ -11,9 +11,45 @@
   --common: #a5adb8;
   --danger: #ff6b81;
   --magenta: #ff2e4d;
+  --gold: #ffc832;
   --ink: #ffffff;
   --faint: #f0f3f8;
 }
+
+/* ---------- V-BUCKS PACK CARDS ---------- */
+.vbuck-card { overflow: hidden; }
+.vbuck-art {
+  height: 190px; position: relative; overflow: hidden;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
+  border-bottom: 1px solid rgba(255,255,255,0.12);
+}
+.vbuck-art::after {
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(120deg, transparent 30%, rgba(255,255,255,0.22) 50%, transparent 70%);
+  transform: translateX(-120%); animation: sheen 5.5s ease-in-out infinite;
+}
+.vbuck-brand { font-size: 30px; font-weight: 900; letter-spacing: .02em; color: #fff; text-shadow: 0 2px 10px rgba(0,0,0,0.35); line-height: 1; }
+.vbuck-coin {
+  width: 64px; height: 64px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 34px; font-weight: 900; color: #0a2a3a;
+  background: radial-gradient(circle at 35% 30%, #ffffff, #bfe9ff 55%, #6fc3ef);
+  border: 3px solid rgba(255,255,255,0.85);
+  box-shadow: 0 0 0 3px rgba(0,0,0,0.15), 0 6px 18px rgba(0,0,0,0.35), 0 0 22px rgba(160,225,255,0.55);
+  animation: float 4s ease-in-out infinite;
+}
+.vbuck-amount { font-size: 15px; font-weight: 900; letter-spacing: .06em; color: #fff; text-shadow: 0 2px 8px rgba(0,0,0,0.4); }
+.vbuck-guarantee {
+  display: block; margin-top: 10px; padding-top: 10px;
+  border-top: 1px solid rgba(127,224,151,0.25);
+  font-size: 11px; font-weight: 800; letter-spacing: .1em;
+  color: #7fe097; text-align: center;
+}
+.vb-green { background: linear-gradient(135deg, #27c24a, #128a33 60%, #0b5c22); }
+.vb-blue { background: linear-gradient(135deg, #25a9f0, #0f6fb8 60%, #0a4a80); }
+.vb-purple { background: linear-gradient(135deg, #a34df0, #6f22c4 60%, #4a1288); }
+.vb-orange { background: linear-gradient(135deg, #ff9d2e, #e06a00 60%, #a34a00); }
+@media (max-width: 560px) { .vbuck-art { height: 160px; } .vbuck-brand { font-size: 24px; } }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -1234,6 +1270,258 @@ footer { padding: 56px 0 36px; }
 .cart-total-row { display: flex; justify-content: space-between; font-size: 16px; font-weight: 700; margin-bottom: 10px; }
 .cart-total { color: var(--gold); }
 .cart-empty { text-align: center; color: var(--faint); padding: 30px 0; font-size: 14px; }
+
+/* ============================================= */
+/* ULTRA ANIMATIONS & DESIGN OVERHAUL            */
+/* ============================================= */
+
+/* ---------- ENTRANCE STAGGER ---------- */
+.acc-card:nth-child(1) { animation-delay: 0.05s; }
+.acc-card:nth-child(2) { animation-delay: 0.1s; }
+.acc-card:nth-child(3) { animation-delay: 0.15s; }
+.acc-card:nth-child(4) { animation-delay: 0.2s; }
+.acc-card:nth-child(5) { animation-delay: 0.25s; }
+.acc-card:nth-child(6) { animation-delay: 0.3s; }
+.acc-card:nth-child(7) { animation-delay: 0.35s; }
+.acc-card:nth-child(8) { animation-delay: 0.4s; }
+.acc-card:nth-child(9) { animation-delay: 0.45s; }
+.acc-card:nth-child(10) { animation-delay: 0.5s; }
+
+/* ---------- CARD GLOW BORDER ON HOVER ---------- */
+.acc-card::after {
+  content: ''; position: absolute; inset: -1px; border-radius: 13px; z-index: -1; opacity: 0;
+  background: conic-gradient(from var(--card-angle, 0deg), transparent 40%, var(--tier-color, var(--mist)) 50%, transparent 60%);
+  transition: opacity .4s ease;
+  animation: rotate-glow 4s linear infinite;
+}
+.acc-card:hover::after { opacity: .6; }
+@keyframes rotate-glow { to { --card-angle: 360deg; } }
+@property --card-angle { syntax: '<angle>'; inherits: false; initial-value: 0deg; }
+
+/* ---------- TILT 3D HOVER ---------- */
+.acc-card { perspective: 600px; transform-style: preserve-3d; }
+
+/* ---------- FLOATING PARTICLES ---------- */
+.particles { position: fixed; inset: 0; z-index: -1; pointer-events: none; overflow: hidden; }
+.particle {
+  position: absolute; width: 2px; height: 2px; background: var(--mist); border-radius: 50%;
+  opacity: 0; animation: particle-float linear infinite;
+}
+@keyframes particle-float {
+  0% { opacity: 0; transform: translateY(100vh) scale(0); }
+  10% { opacity: .6; }
+  90% { opacity: .6; }
+  100% { opacity: 0; transform: translateY(-10vh) scale(1); }
+}
+.particle:nth-child(1) { left: 10%; animation-duration: 12s; animation-delay: 0s; }
+.particle:nth-child(2) { left: 20%; animation-duration: 15s; animation-delay: 2s; }
+.particle:nth-child(3) { left: 35%; animation-duration: 11s; animation-delay: 4s; }
+.particle:nth-child(4) { left: 50%; animation-duration: 14s; animation-delay: 1s; }
+.particle:nth-child(5) { left: 65%; animation-duration: 13s; animation-delay: 3s; }
+.particle:nth-child(6) { left: 75%; animation-duration: 16s; animation-delay: 5s; }
+.particle:nth-child(7) { left: 85%; animation-duration: 10s; animation-delay: 2s; }
+.particle:nth-child(8) { left: 92%; animation-duration: 12s; animation-delay: 6s; }
+
+/* ---------- HERO GLITCH EFFECT ---------- */
+.hero-glitch {
+  position: relative; display: inline-block;
+}
+.hero-glitch::before, .hero-glitch::after {
+  content: attr(data-text); position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+  background: var(--void);
+}
+.hero-glitch::before {
+  left: 2px; text-shadow: -2px 0 #ff2e4d; clip-path: inset(0 0 65% 0);
+  animation: glitch-top 3s infinite linear alternate-reverse;
+}
+.hero-glitch::after {
+  left: -2px; text-shadow: 2px 0 #0ff; clip-path: inset(65% 0 0 0);
+  animation: glitch-bottom 2.5s infinite linear alternate-reverse;
+}
+@keyframes glitch-top {
+  0%, 90%, 100% { clip-path: inset(0 0 95% 0); }
+  92% { clip-path: inset(0 0 30% 0); }
+  94% { clip-path: inset(0 0 70% 0); }
+  96% { clip-path: inset(0 0 10% 0); }
+}
+@keyframes glitch-bottom {
+  0%, 88%, 100% { clip-path: inset(95% 0 0 0); }
+  90% { clip-path: inset(40% 0 0 0); }
+  93% { clip-path: inset(80% 0 0 0); }
+  95% { clip-path: inset(20% 0 0 0); }
+}
+
+/* ---------- ANIMATED UNDERLINE LINKS ---------- */
+.nav-links a {
+  position: relative; padding-bottom: 2px;
+}
+.nav-links a::after {
+  content: ''; position: absolute; bottom: 0; left: 50%; width: 0; height: 2px;
+  background: var(--mist); transition: width .3s ease, left .3s ease;
+}
+.nav-links a:hover::after { width: 100%; left: 0; }
+
+/* ---------- SHIMMER LOADING ---------- */
+.shimmer {
+  background: linear-gradient(90deg, rgba(255,255,255,0.03) 25%, rgba(255,255,255,0.08) 50%, rgba(255,255,255,0.03) 75%);
+  background-size: 200% 100%; animation: shimmer 1.5s infinite;
+}
+@keyframes shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+
+/* ---------- SMOOTH SECTION REVEAL ---------- */
+.section-head {
+  opacity: 0; transform: translateY(30px); transition: all .8s cubic-bezier(.22,1,.36,1);
+}
+.section-head.in { opacity: 1; transform: translateY(0); }
+
+/* ---------- TAB ACTIVE GLOW ---------- */
+.tab-btn.active {
+  position: relative; overflow: hidden;
+}
+.tab-btn.active::after {
+  content: ''; position: absolute; bottom: 0; left: 20%; right: 20%; height: 2px;
+  background: var(--mist); box-shadow: 0 0 8px var(--mist), 0 0 16px var(--mist);
+  animation: tab-pulse 2s ease-in-out infinite;
+}
+@keyframes tab-pulse { 0%,100% { opacity: .7; } 50% { opacity: 1; } }
+
+/* ---------- BUTTON RIPPLE ---------- */
+.btn-primary, .btn-ghost, .card-buy, .tournament-btn {
+  position: relative; overflow: hidden;
+}
+.ripple {
+  position: absolute; border-radius: 50%; background: rgba(255,255,255,0.3);
+  transform: scale(0); animation: ripple-out .6s ease-out forwards; pointer-events: none;
+}
+@keyframes ripple-out { to { transform: scale(4); opacity: 0; } }
+
+/* ---------- BADGE PULSE ---------- */
+.badge, .nav-badge {
+  animation: badge-pulse 3s ease-in-out infinite;
+}
+@keyframes badge-pulse { 0%,100% { transform: scale(1); } 50% { transform: scale(1.08); } }
+
+/* ---------- TOAST SLIDE IN ---------- */
+.toast {
+  animation: toast-in .4s cubic-bezier(.22,1,.36,1), toast-out .4s ease 3s forwards;
+}
+@keyframes toast-in { from { transform: translateY(30px) scale(.95); opacity: 0; } to { transform: translateY(0) scale(1); opacity: 1; } }
+@keyframes toast-out { to { transform: translateY(-20px); opacity: 0; } }
+
+/* ---------- MODAL SCALE IN ---------- */
+.modal {
+  animation: modal-pop .35s cubic-bezier(.22,1,.36,1);
+}
+@keyframes modal-pop { from { transform: scale(.92) translateY(20px); opacity: 0; } to { transform: scale(1) translateY(0); opacity: 1; } }
+
+/* ---------- OVERLAY FADE ---------- */
+.overlay {
+  animation: overlay-in .3s ease;
+}
+@keyframes overlay-in { from { opacity: 0; } to { opacity: 1; } }
+
+/* ---------- SCROLL PROGRESS ---------- */
+.scroll-progress {
+  position: fixed; top: 0; left: 0; height: 3px; z-index: 9999;
+  background: linear-gradient(90deg, var(--mist), #ff6b81, var(--mist));
+  background-size: 200% 100%; animation: progress-gradient 3s linear infinite;
+  transform-origin: left; transform: scaleX(0); transition: transform .1s linear;
+  box-shadow: 0 0 12px var(--mist);
+}
+@keyframes progress-gradient { from { background-position: 200% 0; } to { background-position: 0 0; } }
+
+/* ---------- TOURNAMENT CARD HOVER ---------- */
+.tournament-card:not(.coming-soon) {
+  transition: transform .3s ease, box-shadow .3s ease, border-color .3s ease;
+}
+.tournament-card:not(.coming-soon):hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 40px -12px rgba(255,46,77,0.5);
+  border-color: var(--mist);
+}
+
+/* ---------- COMING SOON SHIMMER ---------- */
+.tournament-card.coming-soon::after {
+  content: ''; position: absolute; inset: 0;
+  background: linear-gradient(120deg, transparent 30%, rgba(255,255,255,0.03) 50%, transparent 70%);
+  transform: translateX(-120%); animation: cs-shimmer 5s ease-in-out infinite;
+  border-radius: 12px; pointer-events: none;
+}
+@keyframes cs-shimmer { 0%,70% { transform: translateX(-120%); } 100% { transform: translateX(120%); } }
+
+/* ---------- SUPPORT CHAT BOUNCE ---------- */
+.support-toggle {
+  animation: support-bounce 3s ease-in-out infinite;
+}
+@keyframes support-bounce {
+  0%, 85%, 100% { transform: translateY(0); }
+  90% { transform: translateY(-6px); }
+  95% { transform: translateY(3px); }
+}
+
+/* ---------- PRICE FLASH ---------- */
+.price {
+  transition: text-shadow .3s ease;
+}
+.acc-card:hover .price {
+  text-shadow: 0 0 12px rgba(255,46,77,0.6);
+}
+
+/* ---------- FOCUS GLOW INPUTS ---------- */
+input:focus, select:focus {
+  box-shadow: 0 0 0 3px rgba(255,46,77,0.2), 0 0 20px -6px rgba(255,46,77,0.4);
+}
+
+/* ---------- FOOTER WAVE ---------- */
+footer::before {
+  content: ''; position: absolute; top: -1px; left: 0; right: 0; height: 60px;
+  background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 60'%3E%3Cpath d='M0,30 Q300,0 600,30 T1200,30 L1200,60 L0,60 Z' fill='rgba(255,46,77,0.06)'/%3E%3C/svg%3E") repeat-x;
+  animation: wave-move 8s linear infinite;
+}
+@keyframes wave-move { from { background-position-x: 0; } to { background-position-x: 1200px; } }
+
+/* ---------- GRADIENT TEXT SHINE ---------- */
+.gradient-text {
+  background-size: 200% auto;
+  animation: gradient-shine 4s linear infinite;
+}
+@keyframes gradient-shine { from { background-position: 0% center; } to { background-position: 200% center; } }
+
+/* ---------- 3D CARD TILT (JS-DRIVEN) ---------- */
+.tilt-card {
+  transition: transform .15s ease-out;
+  transform-style: preserve-3d;
+}
+
+/* ---------- SMOOTH SCROLLBAR ---------- */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--void); }
+::-webkit-scrollbar-thumb { background: rgba(255,46,77,0.3); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(255,46,77,0.5); }
+
+/* ---------- TEXT GLOW HOVER ---------- */
+.acc-name:hover, .tournament-title:hover {
+  text-shadow: 0 0 16px rgba(255,46,77,0.5);
+  transition: text-shadow .3s ease;
+}
+
+/* ---------- FILTER PILL HOVER ---------- */
+.filter-group label {
+  transition: color .2s, transform .15s;
+  border-radius: 6px; padding: 4px 8px; margin-left: -8px;
+}
+.filter-group label:hover {
+  transform: translateX(4px);
+}
+
+/* ---------- TOURNAMENT BADGE GLOW ---------- */
+.tournament-badge:not(.soon) {
+  animation: badge-glow 2s ease-in-out infinite;
+}
+@keyframes badge-glow {
+  0%, 100% { box-shadow: 0 0 6px rgba(255,46,77,0.4); }
+  50% { box-shadow: 0 0 16px rgba(255,46,77,0.8), 0 0 30px rgba(255,46,77,0.3); }
+}
 
 /* ---------- MOBILE RESPONSIVE ---------- */
 @media (max-width: 768px) {

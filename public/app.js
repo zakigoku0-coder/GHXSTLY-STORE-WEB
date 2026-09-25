@@ -9,6 +9,7 @@
     currency: '$',
     accounts: [],
     selectedAccount: null,
+    selectedVbuck: null,
     promo: { code: null, discount: 0 },
     lastOrderCode: '',
     online: true,
@@ -484,24 +485,53 @@
     if (!a) return;
     if (!(a.stock > 0) || a.status === 'sold') { toast('This account is out of stock.', 'err'); return; }
     state.selectedAccount = a;
+    state.selectedVbuck = null;
     state.promo = { code: null, discount: 0 };
     $('#promo-code').value = '';
     $('#checkout-discord').value = '';
     setPromoStatus('');
+    const pg = $('#promo-group');
+    if (pg) pg.hidden = false;
     $('#checkout-title').textContent = a.name;
     refreshCheckoutTotals();
     $('#checkout-modal-overlay').classList.add('show');
     setTimeout(() => $('#checkout-discord').focus(), 50);
   };
-  window.closeCheckoutModal = function () { $('#checkout-modal-overlay').classList.remove('show'); };
+  window.buyVbuckItem = function (id) {
+    const item = digitals.find(i => i.id === id && i.type === 'V-Bucks');
+    if (!item) return;
+    if (item.limited && item.stock <= 0) { toast('This pack is sold out.', 'err'); return; }
+    state.selectedAccount = null;
+    state.selectedVbuck = item;
+    state.promo = { code: null, discount: 0 };
+    $('#promo-code').value = '';
+    $('#checkout-discord').value = '';
+    setPromoStatus('');
+    const pg = $('#promo-group');
+    if (pg) pg.hidden = true;
+    $('#checkout-title').textContent = item.name;
+    refreshCheckoutTotals();
+    $('#checkout-modal-overlay').classList.add('show');
+    setTimeout(() => $('#checkout-discord').focus(), 50);
+  };
+  window.closeCheckoutModal = function () {
+    $('#checkout-modal-overlay').classList.remove('show');
+    state.selectedVbuck = null;
+    const pg = $('#promo-group');
+    if (pg) pg.hidden = false;
+  };
 
   function discountedPrice() {
     return Math.max(0, Math.round(state.selectedAccount.price * (1 - state.promo.discount / 100) * 100) / 100);
   }
+  function checkoutPrice() {
+    if (state.selectedVbuck) return state.selectedVbuck.price;
+    return discountedPrice();
+  }
   async function refreshCheckoutTotals() {
     try {
       const w = await api('/api/wallet');
-      const price = discountedPrice();
+      const price = checkoutPrice();
       $('#checkout-balance').textContent = fmt(w.balance);
       $('#checkout-after').textContent = fmt(Math.max(0, w.balance - price));
       $('#checkout-buy').textContent = `Confirm purchase — ${fmt(price)}`;
@@ -515,6 +545,7 @@
   }
 
   window.checkPromo = async function () {
+    if (state.selectedVbuck) return;
     if (!state.online) {
       toast('Preview build — promo codes need the live server.', 'err');
       return;
@@ -537,7 +568,7 @@
   };
 
   window.confirmPurchase = async function () {
-    if (!state.selectedAccount) return;
+    if (!state.selectedAccount && !state.selectedVbuck) return;
     if (!state.online) {
       toast('Preview build — checkout works on the live Render deployment.', 'err');
       return;
@@ -547,19 +578,22 @@
     const btn = $('#checkout-buy');
     btn.disabled = true;
     try {
-      const data = await api('/api/checkout', {
+      const isVbuck = !!state.selectedVbuck;
+      const data = await api(isVbuck ? '/api/digital/buy' : '/api/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          accountId: state.selectedAccount.id,
-          promoCode: state.promo.code,
-          discordName
-        })
+        body: JSON.stringify(isVbuck
+          ? { itemId: state.selectedVbuck.id, discordName }
+          : {
+            accountId: state.selectedAccount.id,
+            promoCode: state.promo.code,
+            discordName
+          })
       });
       state.lastOrderCode = data.orderCode;
       closeCheckoutModal();
       const credsBox = $('#delivery-creds');
-      if (data.credentials) {
+      if (!isVbuck && data.credentials) {
         $('#creds-email').value = data.credentials.email;
         $('#creds-password').value = data.credentials.password;
         credsBox.hidden = false;
@@ -567,18 +601,20 @@
         credsBox.hidden = true;
       }
       const customNote = $('#delivery-note-custom');
-      if (data.deliveryNote) {
+      if (!isVbuck && data.deliveryNote) {
         customNote.textContent = data.deliveryNote;
         customNote.hidden = false;
       } else {
         customNote.hidden = true;
       }
       $('#delivery-order-code').textContent = data.orderCode;
-      $('#delivery-note').textContent = 'The order was sent to the store. Open a Discord ticket and give them this order code to receive your order.';
+      $('#delivery-note').textContent = isVbuck
+        ? 'Your V-Bucks order was recorded. Open a Discord ticket with this order code — delivery happens there.'
+        : 'The order was sent to the store. Open a Discord ticket and give them this order code to receive your order.';
       $('#delivery-modal-overlay').classList.add('show');
-      toast(`Purchase recorded — ${data.accountName}`);
+      toast(`Purchase recorded — ${isVbuck ? data.itemName : data.accountName}`);
       await refreshWallet();
-      await loadAccounts();
+      if (isVbuck) loadDigitals(); else await loadAccounts();
     } catch (err) {
       if (err.status === 400 && err.data && err.data.error === 'Insufficient wallet balance.') {
         closeCheckoutModal();
@@ -956,11 +992,14 @@
   }
 
   const DEMO_DIGITALS = [
-    { id: 'tweaks-normal', type: 'Tweaks', name: 'Tweaks — Normal', price: 0, limited: false, stock: null },
     { id: 'tweaks-premium', type: 'Tweaks', name: 'Tweaks — Premium', price: 10, limited: false, stock: null },
     { id: 'macro-normal', type: 'Macro', name: 'Macro — Normal', price: 5, limited: false, stock: null },
     { id: 'macro-premium', type: 'Macro', name: 'Macro — Premium', price: 10, limited: false, stock: null },
-    { id: 'macro-unlimited', type: 'Macro', name: 'Macro — Unlimited', price: 30, limited: false, stock: null }
+    { id: 'macro-unlimited', type: 'Macro', name: 'Macro — Unlimited', price: 30, limited: false, stock: null },
+    { id: 'vbucks-800', type: 'V-Bucks', name: '800 V-Bucks', price: 9.99, limited: false, stock: null },
+    { id: 'vbucks-2400', type: 'V-Bucks', name: '2,400 V-Bucks', price: 23.99, limited: false, stock: null },
+    { id: 'vbucks-4500', type: 'V-Bucks', name: '4,500 V-Bucks', price: 41.99, limited: false, stock: null },
+    { id: 'vbucks-12500', type: 'V-Bucks', name: '12,500 V-Bucks', price: 94.99, limited: false, stock: null }
   ];
 
   let digitals = DEMO_DIGITALS;
@@ -976,13 +1015,21 @@
   function dgIcon(type) {
     if (type === 'Tweaks') return `<svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="3.2" fill="currentColor"/><path d="M12 2.6v2.8M12 18.6v2.8M2.6 12h2.8M18.6 12h2.8M5.4 5.4l2 2M16.6 16.6l2 2M18.6 5.4l-2 2M7.4 16.6l-2 2" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>`;
     if (type === 'Macro') return `<svg viewBox="0 0 24 24" fill="none"><rect x="3.5" y="5" width="17" height="12" rx="2.4" stroke="currentColor" stroke-width="1.7"/><path d="M8 21.5h8M12 17v4.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><circle cx="14.6" cy="9" r="1.5" fill="currentColor"/><path d="M14.6 12.4h.01" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>`;
+    if (type === 'V-Bucks') return `<svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="1.8"/><path d="M8.5 8.5 12 15l3.5-6.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
     return `<svg viewBox="0 0 24 24" fill="none"><path d="M12 2.4 2.8 11.4 12 21.6l9.2-10.2L12 2.4Z" stroke="currentColor" stroke-width="1.7"/><path d="m7.2 11 1.9 1.9 1.9-1.9M13.2 11l1.9 1.9 1.9-1.9" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>`;
   }
   function dgAccent(type) {
     if (type === 'Tweaks') return '--rare';
     if (type === 'Macro') return '--epic';
+    if (type === 'V-Bucks') return '--gold';
     return '--legendary';
   }
+  const VBUCK_ART = {
+    'vbucks-800': { cls: 'vb-green', amount: '800 V-BUCKS' },
+    'vbucks-2400': { cls: 'vb-blue', amount: '2,400 V-BUCKS' },
+    'vbucks-4500': { cls: 'vb-purple', amount: '4,500 V-BUCKS' },
+    'vbucks-12500': { cls: 'vb-orange', amount: '12,500 V-BUCKS' }
+  };
   function renderDigitals(type) {
     const grid = $('#market-grid');
     const items = digitals.filter(i => i.type === type);
@@ -990,12 +1037,21 @@
       grid.innerHTML = '<p class="empty-state">Nothing here yet — check back soon.</p>';
       return;
     }
-    grid.innerHTML = items.map((i, idx) => `
-      <div class="acc-card" style="--tier-color: var(${dgAccent(type)}); animation-delay:${Math.min(idx * 40, 400)}ms">
-        <div class="acc-thumb">
+    grid.innerHTML = items.map((i, idx) => {
+      const art = (type === 'V-Bucks') ? VBUCK_ART[i.id] : null;
+      const thumb = art
+        ? `<div class="vbuck-art ${art.cls}">
+            <span class="vbuck-brand">FORTNITE</span>
+            <span class="vbuck-coin">V</span>
+            <span class="vbuck-amount">${art.amount}</span>
+          </div>`
+        : `<div class="acc-thumb">
           ${dgIcon(type)}
           <span class="warranty-badge">${i.limited ? 'LIMITED EDITION' : 'DIGITAL'}</span>
-        </div>
+        </div>`;
+      return `
+      <div class="acc-card${art ? ' vbuck-card' : ''}" style="--tier-color: var(${dgAccent(type)}); animation-delay:${Math.min(idx * 40, 400)}ms">
+        ${thumb}
         <div class="acc-body">
           <span class="acc-tag">${type}</span>
           <span class="acc-name">${i.name}</span>
@@ -1004,11 +1060,12 @@
             : '<b class="stock-badge unlimited">infinite stock</b>'}</span>
           <div class="acc-foot">
             <span class="price ${i.price === 0 ? 'free' : ''}">${i.price === 0 ? 'Free' : fmt(i.price)}</span>
-            <button type="button" class="card-buy" onclick="buyDigitalItem('${i.id}')" ${i.limited && i.stock <= 0 ? 'disabled' : ''}>Buy</button>
+            <button type="button" class="card-buy" onclick="${art ? `buyVbuckItem('${i.id}')` : `buyDigitalItem('${i.id}')`}" ${i.limited && i.stock <= 0 ? 'disabled' : ''}>Buy</button>
           </div>
+          ${art ? '<span class="vbuck-guarantee">✓ 100% GUARANTEED</span>' : ''}
         </div>
-      </div>
-    `).join('');
+      </div>`;
+    }).join('');
   }
   function renderMarket() {
     const tp = $('#tournament-panel');
@@ -1337,6 +1394,7 @@
     { keys: ['ticket', 'deliver', 'receive', 'get my account', 'where.*account', 'hand over', 'handover', 'after.*buy', 'what.*after', 'next.*step'], reply: '**Here\'s what happens after you buy:**\n\n1. You\'ll get an **order code** instantly\n2. Open a ticket in our Discord server\n3. Paste your order code in the ticket\n4. The seller will hand over the account credentials to you\n\nIt\'s fast and secure. Most handovers happen within minutes.' },
     { keys: ['live', 'stream', 'host', 'tiktok', 'tiktoks', 'when are you live', 'giveaway', 'drop', 'when.*drop', 'when.*live'], reply: 'Ghxstly goes live on **TikTok** for giveaways, drops, and restock alerts!\n\nhttps://www.tiktok.com/@ghxstlyfn\n\nTurn on notifications so you never miss a live — that\'s where free codes and exclusive deals drop.' },
     { keys: ['tournament', 'tourney', 'competition', 'cash prize', 'prize', 'compete', 'join.*tournament'], reply: 'We host **tournaments with cash prizes**! Dates and details are announced on TikTok and in our Discord server.\n\nWant to join the next one? [Open a ticket](https://discord.com/channels/@me) and say "I want to join the tournament" — we\'ll get you set up.' },
+    { keys: ['v-buck', 'vbuck', 'v buck', 'vbucks'], reply: 'We sell **V-Bucks** in the shop under the **V-Bucks** tab:\n\n• **800** — $9.99\n• **2,400** — $23.99\n• **4,500** — $41.99\n• **12,500** — $94.99\n\nPay from your wallet, grab your order code, and delivery happens in a Discord ticket. 100% guaranteed. Promo codes don\'t apply to V-Bucks.' },
     { keys: ['custom', 'build', 'dream', 'personalized', 'request account', 'specific skin', 'want.*skin'], reply: '**Custom Account Builder** — we\'ll find exactly what you want!\n\n1. Press **Custom Account** on the store\n2. Enter your Discord name\n3. Set minimum skin count\n4. List the specific skins you want (Travis Scott, Renegade Raider, etc.)\n\nThe order goes straight to the store owner. Prices vary based on what you\'re looking for.' },
     { keys: ['buy', 'purchase', 'how do i get', 'how to get', 'pay', 'order', 'checkout', 'step', 'how.*work', 'process'], reply: '**How it works — 3 simple steps:**\n\n**Step 1:** Recharge your wallet with a code (get codes from TikTok lives, giveaways, or the store owner)\n\n**Step 2:** Browse the listings and press **Buy** on the account you want. Enter your Discord name.\n\n**Step 3:** You\'ll get an order code. Open a Discord ticket and paste it there — the seller hands over the account.\n\nThat\'s it. Super fast and secure.' },
     { keys: ['price', 'cost', 'how much', 'expensive', 'cheap', 'worth', 'value'], reply: 'Every account is priced between **$2 and $60** — that\'s our hard cap. Prices are based on skin count, rarity, and account value.\n\nWe also have **promo codes** that give you a % discount at checkout. Check the listings for the best deals!' },
@@ -1477,4 +1535,53 @@
   loadAccounts();
   updateWishlistBadge();
   updateCartBadge();
+
+  /* ---------- Scroll Progress ---------- */
+  const scrollBar = document.getElementById('scroll-progress');
+  if (scrollBar) {
+    window.addEventListener('scroll', () => {
+      const h = document.documentElement.scrollHeight - window.innerHeight;
+      const p = h > 0 ? window.scrollY / h : 0;
+      scrollBar.style.transform = 'scaleX(' + p + ')';
+    }, { passive: true });
+  }
+
+  /* ---------- Ripple on buttons ---------- */
+  document.addEventListener('click', e => {
+    const btn = e.target.closest('.btn-primary, .btn-ghost, .card-buy, .tournament-btn, .nav-cta');
+    if (!btn) return;
+    const r = document.createElement('span');
+    r.className = 'ripple';
+    const rect = btn.getBoundingClientRect();
+    const size = Math.max(rect.width, rect.height);
+    r.style.width = r.style.height = size + 'px';
+    r.style.left = (e.clientX - rect.left - size / 2) + 'px';
+    r.style.top = (e.clientY - rect.top - size / 2) + 'px';
+    btn.appendChild(r);
+    r.addEventListener('animationend', () => r.remove());
+  });
+
+  /* ---------- 3D Tilt on cards ---------- */
+  document.addEventListener('mousemove', e => {
+    const card = e.target.closest('.acc-card');
+    if (!card) return;
+    const rect = card.getBoundingClientRect();
+    const x = (e.clientX - rect.left) / rect.width - 0.5;
+    const y = (e.clientY - rect.top) / rect.height - 0.5;
+    card.style.setProperty('--mx', ((e.clientX - rect.left) / rect.width * 100) + '%');
+    card.style.setProperty('--my', ((e.clientY - rect.top) / rect.height * 100) + '%');
+    card.style.transform = 'translateY(-5px) rotateX(' + (-y * 6) + 'deg) rotateY(' + (x * 6) + 'deg)';
+  });
+  document.addEventListener('mouseleave', e => {
+    const card = e.target.closest('.acc-card');
+    if (card) card.style.transform = '';
+  }, true);
+
+  /* ---------- Section reveal on scroll ---------- */
+  const sectionHeads = document.querySelectorAll('.section-head');
+  const revealObs = new IntersectionObserver(entries => {
+    entries.forEach(en => { if (en.isIntersecting) { en.target.classList.add('in'); revealObs.unobserve(en.target); } });
+  }, { threshold: 0.15 });
+  sectionHeads.forEach(h => revealObs.observe(h));
+
 })();

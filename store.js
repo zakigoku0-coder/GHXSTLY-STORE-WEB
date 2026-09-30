@@ -423,17 +423,23 @@ async function pushDurable() {
       console.error('Durable snapshot failed:', err.message);
     }
   }
-  // Gist mirror (works even while blob is suspended). Bounded wait, never throws.
-  try {
-    await withTimeout(gistDbWriteMerged(), 15000, 'gist mirror timed out');
-    gistDbPush.at = new Date().toISOString();
-    gistDbPush.ok = true;
-    gistDbPush.error = null;
-  } catch (err) {
-    gistDbPush.at = new Date().toISOString();
-    gistDbPush.ok = false;
-    gistDbPush.error = String(err && err.message || err).slice(0, 200);
+  // Gist mirror (works even while blob is suspended). Retries transient
+  // failures so a confirmed purchase/redeem is never lost silently.
+  // Bounded wait, never throws.
+  let gistOk = false;
+  let gistErr = '';
+  for (let attempt = 0; attempt < 3 && !gistOk; attempt++) {
+    try {
+      await withTimeout(gistDbWriteMerged(), 15000, 'gist mirror timed out');
+      gistOk = true;
+    } catch (err) {
+      gistErr = String(err && err.message || err).slice(0, 200);
+      if (!gistOk && attempt < 2) await new Promise(r => setTimeout(r, 600 * (attempt + 1)));
+    }
   }
+  gistDbPush.at = new Date().toISOString();
+  gistDbPush.ok = gistOk;
+  gistDbPush.error = gistOk ? null : gistErr;
   if (!kv || !kvAvailable) return;
   try { await kv.set(KV_KEY, db); } catch (_) {}
 }

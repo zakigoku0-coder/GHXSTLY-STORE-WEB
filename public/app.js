@@ -358,11 +358,18 @@
     try {
       const data = await api('/api/wallet');
       if (data.user) {
-        // Session is bound to a user server-side: server is source of truth.
-        acceptBalance(data.balance);
-        paintBalance(data.balance);
-        renderWalletUser(data.user);
-        saveAuthCache();
+        // Right after OUR purchase the server copy may not have converged
+        // yet: never let a higher server number resurrect spent money.
+        const justSpent = state.lastSpendAt && (Date.now() - state.lastSpendAt < 60000);
+        if (justSpent && typeof state.balance === 'number' && data.balance > state.balance) {
+          paintBalance(state.balance);
+          renderWalletUser(data.user);
+        } else {
+          acceptBalance(data.balance);
+          paintBalance(data.balance);
+          renderWalletUser(data.user);
+          saveAuthCache();
+        }
       } else if (authUser || cacheIsFresh()) {
         // Server lost the session (restart) but we hold a fresh known balance:
         // NEVER clobber it with a fresh $0 session.
@@ -655,6 +662,7 @@
       $('#delivery-modal-overlay').classList.add('show');
       toast(`Purchase recorded — ${isVbuck ? data.itemName : data.accountName}`);
       if (typeof state.balance === 'number' && Number.isFinite(data.amount)) acceptBalance(Math.max(0, Math.round((state.balance - data.amount) * 100) / 100));
+      state.lastSpendAt = Date.now();
       await refreshWallet();
       if (isVbuck) loadDigitals(); else await loadAccounts();
     } catch (err) {
@@ -1601,6 +1609,7 @@
       $('#delivery-modal-overlay').classList.add('show');
       toast(`Purchase recorded — ${data.itemName}`);
       if (typeof state.balance === 'number' && Number.isFinite(data.amount)) acceptBalance(Math.max(0, Math.round((state.balance - data.amount) * 100) / 100));
+      state.lastSpendAt = Date.now();
       await refreshWallet();
       loadDigitals();
     } catch (err) {

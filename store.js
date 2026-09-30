@@ -429,6 +429,14 @@ async function pushDurable() {
   try { await kv.set(KV_KEY, db); } catch (_) {}
 }
 
+// Uncached variant for money-mutating routes: must see other instances'
+// writes before spending, or a stale copy can resurrect spent balances.
+async function refreshFromDurableFresh() {
+  const fresh = await gistDbFetchFresh().catch(() => null);
+  if (fresh) return applyGistSnap(fresh);
+  return refreshFromDurable();
+}
+
 function durableStatus() {
   return {
     hasToken: !!blobToken(),
@@ -1229,6 +1237,7 @@ module.exports = {
   mergeSnapshot,
   ready,
   refreshFromDurable,
+  refreshFromDurableFresh,
   getTournamentPlayers,
   addTournamentPlayer,
   clearTournamentPlayers

@@ -194,6 +194,7 @@ function applyGistSnap(snap) {
   db.accounts = merged.accounts;
   db.transactions = merged.transactions;
   db.digitalStock = merged.digitalStock;
+  db.digitalStockAt = merged.digitalStockAt;
   db.tournamentPlayers = merged.tournamentPlayers;
   db.tweaksKeys = merged.tweaksKeys;
   return true;
@@ -319,10 +320,17 @@ function mergeSnapshot(local, remote) {
   out.transactions = [...tx.values()];
 
   const stock = { ...(remote.digitalStock || {}) };
+  const stockAt = { ...(remote.digitalStockAt || {}) };
   for (const [k, v] of Object.entries(local.digitalStock || {})) {
-    stock[k] = (stock[k] === undefined) ? v : Math.min(stock[k], v);
+    const lt = (local.digitalStockAt || {})[k] || 0;
+    const rt = stockAt[k] || 0;
+    if (stock[k] === undefined || lt > rt || (lt === rt && v < stock[k])) {
+      stock[k] = v;
+      stockAt[k] = lt;
+    }
   }
   out.digitalStock = stock;
+  out.digitalStockAt = stockAt;
 
   const tPlayers = new Map();
   for (const p of (remote.tournamentPlayers || [])) {
@@ -389,6 +397,7 @@ async function pushDurable() {
       db.accounts = merged.accounts;
       db.transactions = merged.transactions;
       db.digitalStock = merged.digitalStock;
+      db.digitalStockAt = merged.digitalStockAt;
       db.tweaksKeys = merged.tweaksKeys;
       const key = `${SNAP_PREFIX}${Date.now()}-${randomToken(4)}.json`;
       const putRes = await blobClient.put(key, JSON.stringify(db), {
@@ -471,6 +480,7 @@ async function refreshFromDurable() {
       db.accounts = merged.accounts;
       db.transactions = merged.transactions;
       db.digitalStock = merged.digitalStock;
+      db.digitalStockAt = merged.digitalStockAt;
       db.tweaksKeys = merged.tweaksKeys;
       return true;
     }
@@ -497,7 +507,8 @@ const DEFAULT_DB = {
   sessions: [],
   users: [],
   tournamentPlayers: [],
-  tweaksKeys: []
+  tweaksKeys: [],
+  digitalStockAt: {}
 };
 
 let db = load();
@@ -598,6 +609,7 @@ async function bootDurable() {
       db.accounts = merged.accounts;
       db.transactions = merged.transactions;
       db.digitalStock = merged.digitalStock;
+      db.digitalStockAt = merged.digitalStockAt;
       db.tournamentPlayers = merged.tournamentPlayers;
       db.tweaksKeys = merged.tweaksKeys;
         bootLoad.ok = true;
@@ -754,16 +766,24 @@ function listDigitals() {
 
 function digitalStock(itemId) {
   if (!db.digitalStock) db.digitalStock = {};
+  if (!db.digitalStockAt) db.digitalStockAt = {};
   if (db.digitalStock[itemId] == null) {
     const item = DIGITAL_CATALOG.find(i => i.id === itemId);
     db.digitalStock[itemId] = (item && Number.isFinite(item.initialStock)) ? item.initialStock : 10;
+    if (db.digitalStockAt[itemId] == null) db.digitalStockAt[itemId] = 0;
   }
   return db.digitalStock[itemId];
 }
 
-function setDigitalStock(itemId, n) {
+function bumpDigitalStock(itemId, n) {
   if (!db.digitalStock) db.digitalStock = {};
-  db.digitalStock[itemId] = Math.max(0, Math.min(9999, Math.floor(Number(n) || 0)));
+  if (!db.digitalStockAt) db.digitalStockAt = {};
+  db.digitalStock[itemId] = n;
+  db.digitalStockAt[itemId] = Date.now();
+}
+
+function setDigitalStock(itemId, n) {
+  bumpDigitalStock(itemId, Math.max(0, Math.min(9999, Math.floor(Number(n) || 0))));
   save();
   return db.digitalStock[itemId];
 }
@@ -787,7 +807,7 @@ function buyDigital(itemId, sessionToken, discordName) {
   session.balance = Math.max(0, Math.round((session.balance - item.price) * 100) / 100);
   touchSession(session);
   syncUserBalance(sessionToken);
-  if (item.limited) db.digitalStock[itemId] = Math.max(0, digitalStock(itemId) - 1);
+  if (item.limited) bumpDigitalStock(itemId, Math.max(0, digitalStock(itemId) - 1));
   const tx = createTransaction({
     sessionToken,
     accountId: itemId,

@@ -685,7 +685,7 @@ function generateOrderCode() {
 /* ---------- Digital goods (Tweaks / Macro) ---------- */
 
 const DIGITAL_CATALOG = [
-  { id: 'tweaks-premium', type: 'Tweaks', name: 'Tweaks — Premium', price: 10, limited: false },
+  { id: 'tweaks-premium', type: 'Tweaks', name: 'Tweaks — Premium', price: 10, limited: true, initialStock: 20, desc: 'Combo of Risxn premium tweaks and some CobraX tweaks with WiFi optimizer — everything in only one click. Limited edition, never coming back.' },
   { id: 'macro-normal', type: 'Macro', name: 'Macro — Normal', price: 5, limited: false },
   { id: 'macro-premium', type: 'Macro', name: 'Macro — Premium', price: 10, limited: false },
   { id: 'macro-unlimited', type: 'Macro', name: 'Macro — Unlimited', price: 30, limited: false },
@@ -720,7 +720,17 @@ function listDigitals() {
 
 function digitalStock(itemId) {
   if (!db.digitalStock) db.digitalStock = {};
-  if (db.digitalStock[itemId] == null) db.digitalStock[itemId] = 10;
+  if (db.digitalStock[itemId] == null) {
+    const item = DIGITAL_CATALOG.find(i => i.id === itemId);
+    db.digitalStock[itemId] = (item && Number.isFinite(item.initialStock)) ? item.initialStock : 10;
+  }
+  return db.digitalStock[itemId];
+}
+
+function setDigitalStock(itemId, n) {
+  if (!db.digitalStock) db.digitalStock = {};
+  db.digitalStock[itemId] = Math.max(0, Math.min(9999, Math.floor(Number(n) || 0)));
+  save();
   return db.digitalStock[itemId];
 }
 
@@ -1165,6 +1175,7 @@ module.exports = {
   markNotified,
   listDigitals,
   buyDigital,
+  setDigitalStock,
   randomToken,
   generateCode,
   durableStatus,

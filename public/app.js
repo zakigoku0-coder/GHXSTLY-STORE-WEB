@@ -1173,7 +1173,7 @@
   }
 
   const DEMO_DIGITALS = [
-    { id: 'tweaks-premium', type: 'Tweaks', name: 'Tweaks — Premium', price: 10, limited: false, stock: null },
+    { id: 'tweaks-premium', type: 'Tweaks', name: 'Tweaks — Premium', price: 10, limited: true, stock: 20, desc: 'Combo of Risxn premium tweaks and some CobraX tweaks with WiFi optimizer — everything in only one click. Limited edition, never coming back.' },
     { id: 'macro-normal', type: 'Macro', name: 'Macro — Normal', price: 5, limited: false, stock: null },
     { id: 'macro-premium', type: 'Macro', name: 'Macro — Premium', price: 10, limited: false, stock: null },
     { id: 'macro-unlimited', type: 'Macro', name: 'Macro — Unlimited', price: 30, limited: false, stock: null },
@@ -1256,7 +1256,7 @@
         </div>`;
       const direct = art || isSteam;
       const gamesHtml = (isSteam && i.games) ? `<div class="steam-games">${i.games.map(g => `<span>${g}</span>`).join('')}</div>` : '';
-      const descHtml = (isSteam && i.desc) ? `<span class="acc-desc">${i.desc}</span>` : '';
+      const descHtml = i.desc ? `<span class="acc-desc">${i.desc}</span>` : '';
       return `
       <div class="acc-card${art ? ' vbuck-card' : ''}${isSteam ? ' steam-card' : ''}" style="--tier-color: var(${dgAccent(type)}); animation-delay:${Math.min(idx * 40, 400)}ms">
         ${thumb}

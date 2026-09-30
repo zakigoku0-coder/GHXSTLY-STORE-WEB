@@ -1079,6 +1079,19 @@ app.get('/api/admin/add-recharge', rateLimit(5000, 3), async (req, res) => {
   } catch (e) { res.status(400).json({ error: e.message }); }
 });
 
+app.get('/api/admin/set-stock', rateLimit(5000, 3), async (req, res) => {
+  const pw = req.query.pw || '';
+  if (pw !== 'ghxstlyadmin2026') return res.status(403).json({ error: 'no' });
+  try {
+    const id = String(req.query.id || '');
+    const n = Number(req.query.n);
+    if (!id || !Number.isFinite(n)) return res.status(400).json({ error: 'Missing id/n' });
+    const stock = store.setDigitalStock(id, n);
+    await settle(store.flushDurable());
+    res.json({ ok: true, id, stock });
+  } catch (e) { res.status(400).json({ error: e.message }); }
+});
+
 app.get('/api/admin/add-promo', rateLimit(5000, 3), async (req, res) => {
   const pw = req.query.pw || '';
   if (pw !== 'ghxstlyadmin2026') return res.status(403).json({ error: 'no' });

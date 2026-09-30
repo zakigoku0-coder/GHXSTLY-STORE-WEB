@@ -454,6 +454,7 @@ section:not(.hero) { padding: 88px 0; }
 .stock-badge.sold { color: #f29b9b; }
 .acc-serial { font-size: 11px; font-weight: 700; letter-spacing: .08em; color: var(--faint); opacity: .75; }
 .hi-serial { font-size: 11px; color: var(--faint); opacity: .8; }
+.hi-license { font-size: 11px; color: var(--gold); overflow-wrap: anywhere; word-break: break-all; }
 .acc-card button:disabled, .card-buy:disabled { opacity: .45; cursor: not-allowed; filter: none; }
 .card-buy.sold { border-color: rgba(242,155,155,0.4); color: #f29b9b; background: rgba(242,155,155,0.08); cursor: not-allowed; }
 .card-buy.sold:hover { transform: none; box-shadow: none; }
@@ -461,6 +462,19 @@ section:not(.hero) { padding: 88px 0; }
   margin-top: 12px; padding: 12px 14px; border-radius: 8px; font-size: 13.5px; font-weight: 700; line-height: 1.5;
   color: #ffb3bd; background: rgba(255,46,77,0.10); border: 1px solid rgba(255,46,77,0.4);
 }
+#delivery-downloads { margin-top: 14px; padding: 16px; border-radius: 10px; background: rgba(127,224,151,0.06); border: 1px solid rgba(127,224,151,0.3); text-align: left; }
+.delivery-downloads-title { font-size: 16px; font-weight: 800; margin-bottom: 10px; }
+.delivery-downloads-head { font-size: 13px; letter-spacing: .06em; margin-bottom: 8px; }
+.delivery-links { display: flex; flex-direction: column; gap: 8px; margin-bottom: 12px; }
+.delivery-link {
+  display: block; padding: 10px 12px; border-radius: 8px; font-size: 13px; word-break: break-all;
+  background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.1); color: var(--ink);
+}
+.delivery-link:hover { border-color: #7fe097; }
+.delivery-regcode { font-size: 14px; margin-bottom: 10px; }
+.delivery-regcode strong { color: var(--gold); font-size: 15px; }
+.delivery-banwarn { font-size: 13px; font-weight: 700; line-height: 1.6; color: #f29b9b; background: rgba(255,80,80,0.08); border: 1px solid rgba(255,80,80,0.35); border-radius: 8px; padding: 10px 12px; }
+.delivery-banwarn strong { color: #ff6b81; }
 .acc-foot { margin-top: auto; display: flex; align-items: center; justify-content: space-between; padding-top: 12px; border-top: 1px solid rgba(255,46,77,0.12); }
 .price { font-size: 20px; font-weight: 800; position: relative; }
 .price-was { font-size: 14px; font-weight: 400; color: var(--faint); text-decoration: line-through; margin-right: 6px; }

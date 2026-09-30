@@ -195,6 +195,7 @@ function applyGistSnap(snap) {
   db.transactions = merged.transactions;
   db.digitalStock = merged.digitalStock;
   db.tournamentPlayers = merged.tournamentPlayers;
+  db.tweaksKeys = merged.tweaksKeys;
   return true;
 }
 
@@ -333,6 +334,18 @@ function mergeSnapshot(local, remote) {
   }
   out.tournamentPlayers = [...tPlayers.values()];
 
+  const tKeys = new Map();
+  for (const k of (remote.tweaksKeys || [])) {
+    if (k && k.key) tKeys.set(k.key, { ...k });
+  }
+  for (const k of (local.tweaksKeys || [])) {
+    if (!k || !k.key) continue;
+    const r = tKeys.get(k.key);
+    if (!r) { tKeys.set(k.key, { ...k }); continue; }
+    tKeys.set(k.key, { ...r, ...k, used: !!(r.used || k.used), usedAt: (r.used ? r.usedAt : null) || (k.used ? k.usedAt : null) || null });
+  }
+  out.tweaksKeys = [...tKeys.values()];
+
   return out;
 }
 
@@ -376,6 +389,7 @@ async function pushDurable() {
       db.accounts = merged.accounts;
       db.transactions = merged.transactions;
       db.digitalStock = merged.digitalStock;
+      db.tweaksKeys = merged.tweaksKeys;
       const key = `${SNAP_PREFIX}${Date.now()}-${randomToken(4)}.json`;
       const putRes = await blobClient.put(key, JSON.stringify(db), {
         access: 'private',
@@ -449,6 +463,7 @@ async function refreshFromDurable() {
       db.accounts = merged.accounts;
       db.transactions = merged.transactions;
       db.digitalStock = merged.digitalStock;
+      db.tweaksKeys = merged.tweaksKeys;
       return true;
     }
     if (kv && kvAvailable) {
@@ -473,7 +488,8 @@ const DEFAULT_DB = {
   transactions: [],
   sessions: [],
   users: [],
-  tournamentPlayers: []
+  tournamentPlayers: [],
+  tweaksKeys: []
 };
 
 let db = load();
@@ -507,6 +523,14 @@ function seedFromEnv() {
     if (!code || code.length > 40 || !Number.isFinite(discount) || discount <= 0 || discount > 100 || !Number.isInteger(maxUses) || maxUses < 0) continue;
     if (!db.promoCodes.some(p => p.code === code)) {
       db.promoCodes.push({ code, discount, maxUses, uses: 0 });
+      changed = true;
+    }
+  }
+  for (const part of String(process.env.TWEAKS_KEYS || '').split(',')) {
+    const key = part.trim();
+    if (!key || key.length > 40) continue;
+    if (!db.tweaksKeys.some(k => k.key === key)) {
+      db.tweaksKeys.push({ key, used: false, usedAt: null });
       changed = true;
     }
   }
@@ -567,6 +591,7 @@ async function bootDurable() {
       db.transactions = merged.transactions;
       db.digitalStock = merged.digitalStock;
       db.tournamentPlayers = merged.tournamentPlayers;
+      db.tweaksKeys = merged.tweaksKeys;
         bootLoad.ok = true;
         bootLoad.sessions = (merged.sessions || []).length;
         save();
@@ -685,7 +710,7 @@ function generateOrderCode() {
 /* ---------- Digital goods (Tweaks / Macro) ---------- */
 
 const DIGITAL_CATALOG = [
-  { id: 'tweaks-premium', type: 'Tweaks', name: 'Tweaks — Premium', price: 10, limited: true, initialStock: 20, desc: 'Combo of Risxn premium tweaks and some CobraX tweaks with WiFi optimizer — everything in only one click. Limited edition, never coming back.' },
+  { id: 'tweaks-premium', type: 'Tweaks', name: 'Tweaks — Premium', price: 10, limited: true, initialStock: 20, license: true, desc: 'Combo of Risxn premium tweaks and some CobraX tweaks with WiFi optimizer — everything in only one click. Limited edition, never coming back.', downloadLinks: [{ label: 'GoFile', url: 'https://gofile.io/d/FRor7ZUk' }, { label: 'Buzzheavier', url: 'https://buzzheavier.com/bn3ytnr7mthi' }] },
   { id: 'macro-normal', type: 'Macro', name: 'Macro — Normal', price: 5, limited: false },
   { id: 'macro-premium', type: 'Macro', name: 'Macro — Premium', price: 10, limited: false },
   { id: 'macro-unlimited', type: 'Macro', name: 'Macro — Unlimited', price: 30, limited: false },
@@ -713,7 +738,8 @@ function listDigitals() {
       stock,
       saleable: !i.limited || stock > 0,
       desc: i.desc || null,
-      games: i.games || null
+      games: i.games || null,
+      downloadLinks: i.downloadLinks || null
     };
   });
 }
@@ -745,6 +771,11 @@ function buyDigital(itemId, sessionToken, discordName) {
   if (session.balance < item.price) {
     return { ok: false, error: 'Insufficient wallet balance.', need: item.price, balance: session.balance };
   }
+  let licenseKey = null;
+  if (item.license) {
+    licenseKey = assignTweaksKey();
+    if (!licenseKey) return { ok: false, error: 'License keys exhausted — open a ticket for help.' };
+  }
   session.balance = Math.max(0, Math.round((session.balance - item.price) * 100) / 100);
   touchSession(session);
   syncUserBalance(sessionToken);
@@ -756,7 +787,8 @@ function buyDigital(itemId, sessionToken, discordName) {
     amount: item.price,
     promoCode: null,
     discount: 0,
-    discordName: discordName || null
+    discordName: discordName || null,
+    licenseKey
   });
   save();
   return { ok: true, tx };
@@ -1077,7 +1109,17 @@ function consumePromoCode(code) {
 
 /* ---------- Transactions ---------- */
 
-function createTransaction({ sessionToken, accountId, accountName, amount, promoCode, discount, discordName }) {
+function assignTweaksKey() {
+  if (!db.tweaksKeys) db.tweaksKeys = [];
+  const entry = db.tweaksKeys.find(k => k && k.key && !k.used);
+  if (!entry) return null;
+  entry.used = true;
+  entry.usedAt = new Date().toISOString();
+  save();
+  return entry.key;
+}
+
+function createTransaction({ sessionToken, accountId, accountName, amount, promoCode, discount, discordName, licenseKey }) {
   const session = getSession(sessionToken);
   const tx = {
     id: db.transactions.reduce((max, t) => Math.max(max, t.id), 0) + 1,
@@ -1090,6 +1132,7 @@ function createTransaction({ sessionToken, accountId, accountName, amount, promo
     promoCode: promoCode || null,
     discount: discount || 0,
     discordName: discordName || null,
+    licenseKey: licenseKey || null,
     createdAt: new Date().toISOString(),
     notified: false
   };
@@ -1176,6 +1219,7 @@ module.exports = {
   listDigitals,
   buyDigital,
   setDigitalStock,
+  assignTweaksKey,
   randomToken,
   generateCode,
   durableStatus,

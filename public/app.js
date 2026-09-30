@@ -645,6 +645,8 @@
       $('#delivery-order-code').textContent = data.orderCode;
       const dSerial = $('#delivery-serial');
       if (dSerial) dSerial.textContent = 'Serial: ' + (data.serial || 'GHX-UNKNOWN');
+      const dlBox2 = $('#delivery-downloads');
+      if (dlBox2) dlBox2.hidden = true;
       $('#delivery-note').textContent = isVbuck
         ? (directType === 'Steam'
           ? 'Your Steam order was recorded. Delivery takes at least 1 day — it is NOT instant. Open a Discord ticket with this order code — we will show you the full game list and hand over the account there.'
@@ -1077,6 +1079,7 @@
           <span class="hi-code-row">
             <code class="hi-code">${escapeHtml(o.orderCode)}</code>
             <code class="hi-serial">${escapeHtml(o.serial || '')}</code>
+            ${o.licenseKey ? `<code class="hi-license">registry key: ${escapeHtml(o.licenseKey)}</code>` : ''}
             <button type="button" class="hi-copy" data-code="${escapeHtml(o.orderCode)}" aria-label="Copy order code">
               <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>
             </button>
@@ -1173,7 +1176,7 @@
   }
 
   const DEMO_DIGITALS = [
-    { id: 'tweaks-premium', type: 'Tweaks', name: 'Tweaks — Premium', price: 10, limited: true, stock: 20, desc: 'Combo of Risxn premium tweaks and some CobraX tweaks with WiFi optimizer — everything in only one click. Limited edition, never coming back.' },
+    { id: 'tweaks-premium', type: 'Tweaks', name: 'Tweaks — Premium', price: 10, limited: true, stock: 20, desc: 'Combo of Risxn premium tweaks and some CobraX tweaks with WiFi optimizer — everything in only one click. Limited edition, never coming back.', downloadLinks: [{ label: 'GoFile', url: 'https://gofile.io/d/FRor7ZUk' }, { label: 'Buzzheavier', url: 'https://buzzheavier.com/bn3ytnr7mthi' }] },
     { id: 'macro-normal', type: 'Macro', name: 'Macro — Normal', price: 5, limited: false, stock: null },
     { id: 'macro-premium', type: 'Macro', name: 'Macro — Premium', price: 10, limited: false, stock: null },
     { id: 'macro-unlimited', type: 'Macro', name: 'Macro — Unlimited', price: 30, limited: false, stock: null },
@@ -1585,6 +1588,16 @@
       $('#delivery-order-code').textContent = data.orderCode;
       const dSerial3 = $('#delivery-serial');
       if (dSerial3) dSerial3.textContent = 'Serial: ' + (data.serial || 'GHX-UNKNOWN');
+      const dlBox = $('#delivery-downloads');
+      if (dlBox) {
+        if (data.downloadLinks && data.downloadLinks.length) {
+          dlBox.hidden = false;
+          $('#delivery-links').innerHTML = data.downloadLinks.map(l => `<a href="${l.url}" target="_blank" rel="noopener" class="delivery-link">link: ${l.url}</a>`).join('');
+          $('#delivery-regcode-value').textContent = data.licenseKey || data.orderCode;
+        } else {
+          dlBox.hidden = true;
+        }
+      }
       $('#delivery-modal-overlay').classList.add('show');
       toast(`Purchase recorded — ${data.itemName}`);
       if (typeof state.balance === 'number' && Number.isFinite(data.amount)) acceptBalance(Math.max(0, Math.round((state.balance - data.amount) * 100) / 100));

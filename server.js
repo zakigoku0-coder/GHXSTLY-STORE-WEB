@@ -206,6 +206,7 @@ async function sendPurchaseNotification(tx) {
         { name: 'Account Serial', value: listingSerial(tx.accountId), inline: true },
         { name: 'Price', value: `${CURRENCY}${tx.amount.toFixed(2)}`, inline: true },
         { name: 'Order code (unique per purchase)', value: tx.orderCode, inline: false },
+        ...(tx.licenseKey ? [{ name: 'Registration key (one-time, never resend)', value: tx.licenseKey, inline: false }] : []),
         { name: 'Promo used', value: tx.promoCode ? `${tx.promoCode} (-${tx.discount}%)` : 'None', inline: true },
         { name: 'Status', value: 'Payment confirmed â€” hand over account via ticket.', inline: false }
       ],
@@ -1002,6 +1003,7 @@ app.get('/api/orders', (req, res) => {
   const orders = list.map(t => ({
     orderCode: t.orderCode,
     serial: listingSerial(t.accountId),
+    licenseKey: t.licenseKey || null,
     accountName: t.accountName,
     amount: t.amount,
     currency: CURRENCY,
@@ -1169,7 +1171,8 @@ app.post('/api/digital/buy', rateLimit(1500, 4), async (req, res) => {
   );
   await settle(store.flushDurable());
 
-  res.json({ ok: true, orderCode: tx.orderCode, serial: listingSerial(itemId), itemName: tx.accountName, amount: tx.amount, currency: CURRENCY });
+  const boughtItem = store.listDigitals().find(i => i.id === itemId) || null;
+  res.json({ ok: true, orderCode: tx.orderCode, serial: listingSerial(itemId), itemName: tx.accountName, amount: tx.amount, currency: CURRENCY, downloadLinks: boughtItem ? boughtItem.downloadLinks : null, licenseKey: tx.licenseKey || null });
 });
 
 app.post('/api/custom-order', rateLimit(5000, 3), async (req, res) => {

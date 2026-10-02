@@ -1780,6 +1780,7 @@
   // so a refresh never flashes a logged-out screen.
   applyAuthUi();
   if (typeof state.balance === 'number') paintBalance(state.balance);
+  console.log('[app.js] About to call loadMeta');
   try {
     loadMeta();
     refreshWallet();

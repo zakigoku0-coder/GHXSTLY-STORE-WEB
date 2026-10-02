@@ -332,7 +332,7 @@ nav {
 .promo-badge { margin: 0 0 0 -32px; opacity: 0; animation: fade-in 0.9s ease forwards 0.9s; width: calc(100% + 32px); display: flex; flex-direction: column; }
 .gradient-text { margin-bottom: 0; }
 .promo-main { display: block; width: 100%; font-size: clamp(56px, 12vw, 110px); font-weight: 900; letter-spacing: .02em; text-transform: uppercase; color: #fff; line-height: 1; text-align: left; white-space: nowrap; }
-.promo-sub { display: block; width: 100%; margin-top: 6px; font-size: clamp(56px, 12vw, 110px); font-weight: 900; letter-spacing: .02em; text-transform: uppercase; color: #fff; line-height: 1; text-align: left; white-space: nowrap; }
+.promo-sub { display: block; width: 100%; max-width: 100%; margin-top: 10px; font-size: clamp(16px, 3.2vw, 30px); font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: #fff; opacity: .9; line-height: 1.25; text-align: left; overflow-wrap: break-word; }
 .btn-primary, .btn-ghost {
   padding: 10px 18px; border-radius: 6px; font-weight: 800; font-size: 13px;
   display: inline-flex; align-items: center; justify-content: center; gap: 8px;

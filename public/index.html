@@ -650,6 +650,27 @@
     <div class="chip-row" id="modal-chips"></div>
     <div class="account-gallery" id="account-gallery" hidden></div>
     <p class="modal-note">Read the spec sheet above, then press <strong>Buy</strong> if it fits your locker.</p>
+    <div class="risk-warning" id="modal-risk-warning">
+      <label class="risk-checkbox">
+        <input type="checkbox" id="modal-risk-ack" required>
+        <span class="risk-checkbox-mark"></span>
+        <span class="risk-text">Account may be stolen/phished — <strong>40% recovered by owner</strong>. <strong>No refunds, no responsibility.</strong></span>
+      </label>
+      <details class="risk-details">
+        <summary>See more...</summary>
+        <div class="risk-content">
+          <p><strong>⚠️ ACCOUNT SECURITY RISK</strong></p>
+          <p>Fortnite accounts sold on secondary markets carry inherent risks:</p>
+          <ul>
+            <li><strong>Phished/Stolen Origins:</strong> Many accounts are obtained through phishing, credential stuffing, or social engineering.</li>
+            <li><strong>Original Owner Recovery:</strong> Epic Games allows original owners to recover accounts via support tickets — approximately <strong>40% of purchased accounts get reclaimed</strong> within 6 months.</li>
+            <li><strong>No Recourse:</strong> Once recovered, the buyer loses access permanently. We <strong>do not provide refunds, replacements, or compensation</strong> under any circumstances.</li>
+            <li><strong>Ban Risk:</strong> Using a recovered account may result in your device/IP being flagged by Epic's anti-fraud systems.</li>
+          </ul>
+          <p>By checking the box above, you acknowledge these risks and accept full responsibility for any loss.</p>
+        </div>
+      </details>
+    </div>
     <button type="button" class="btn-primary full btn-glow" id="modal-buy" onclick="buyFromModal()">Buy this account</button>
   </div>
 </div>
@@ -686,6 +707,27 @@
     </div>
     <button type="button" class="btn-primary full btn-glow" id="checkout-buy" onclick="confirmPurchase()">Confirm purchase</button>
     <div class="steam-wait-warning" id="checkout-steam-note" hidden><strong>Please note:</strong> you will NOT receive this account instantly — delivery takes at least <strong>1 day</strong>.<br>Want the full game list first? Open a ticket on Discord — we will show you every game inside.</div>
+    <div class="risk-warning" id="checkout-risk-warning">
+      <label class="risk-checkbox">
+        <input type="checkbox" id="risk-ack" required>
+        <span class="risk-checkbox-mark"></span>
+        <span class="risk-text">I understand this account may be stolen or phished — <strong>40% can be recovered by the original owner</strong>. We take <strong>no responsibility</strong> and <strong>will not refund</strong>.</span>
+      </label>
+      <details class="risk-details">
+        <summary>See more...</summary>
+        <div class="risk-content">
+          <p><strong>⚠️ ACCOUNT SECURITY RISK</strong></p>
+          <p>Fortnite accounts sold on secondary markets carry inherent risks:</p>
+          <ul>
+            <li><strong>Phished/Stolen Origins:</strong> Many accounts are obtained through phishing, credential stuffing, or social engineering.</li>
+            <li><strong>Original Owner Recovery:</strong> Epic Games allows original owners to recover accounts via support tickets — approximately <strong>40% of purchased accounts get reclaimed</strong> within 6 months.</li>
+            <li><strong>No Recourse:</strong> Once recovered, the buyer loses access permanently. We <strong>do not provide refunds, replacements, or compensation</strong> under any circumstances.</li>
+            <li><strong>Ban Risk:</strong> Using a recovered account may result in your device/IP being flagged by Epic's anti-fraud systems.</li>
+          </ul>
+          <p>By checking the box above, you acknowledge these risks and accept full responsibility for any loss.</p>
+        </div>
+      </details>
+    </div>
   </div>
 </div>
 

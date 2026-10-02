@@ -23,6 +23,18 @@
   };
 
   function saveWishlist() { localStorage.setItem('ghxstly-wishlist', JSON.stringify(state.wishlist)); updateWishlistBadge(); }
+
+  // Cross-tab purchase mutex: one checkout at a time per browser, so double
+  // clicks / double modals / two tabs can never double-charge or burn 2 keys.
+  function buyLock() {
+    try {
+      const raw = localStorage.getItem('ghxstly-buy-lock');
+      if (raw && Date.now() - Number(JSON.parse(raw).at || 0) < 20000) return false;
+      localStorage.setItem('ghxstly-buy-lock', JSON.stringify({ at: Date.now() }));
+      return true;
+    } catch (_) { return true; }
+  }
+  function buyUnlock() { try { localStorage.removeItem('ghxstly-buy-lock'); } catch (_) {} }
   function saveCart() { localStorage.setItem('ghxstly-cart', JSON.stringify(state.cart)); updateCartBadge(); }
 
   function updateWishlistBadge() {
@@ -621,6 +633,9 @@
     const discordName = $('#checkout-discord').value.trim();
     if (discordName.length < 3) { toast('Enter your Discord username so the store can contact you.', 'err'); $('#checkout-discord').focus(); return; }
     const btn = $('#checkout-buy');
+    if (state.buying) return;
+    state.buying = true;
+    if (!buyLock()) { state.buying = false; toast('A purchase is already processing — check your history.', 'err'); return; }
     btn.disabled = true;
     try {
       const isVbuck = !!state.selectedVbuck;
@@ -681,6 +696,8 @@
       }
     } finally {
       btn.disabled = false;
+      state.buying = false;
+      buyUnlock();
     }
   };
 
@@ -1597,6 +1614,9 @@
     const discordName = $('#dg-discord').value.trim();
     if (discordName.length < 3) { toast('Enter your Discord username so the store can contact you.', 'err'); $('#dg-discord').focus(); return; }
     const btn = $('#dg-confirm-buy');
+    if (state.buying) return;
+    state.buying = true;
+    if (!buyLock()) { state.buying = false; toast('A purchase is already processing — check your history.', 'err'); return; }
     btn.disabled = true;
     try {
       const data = await api('/api/digital/buy', {
@@ -1637,6 +1657,8 @@
       }
     } finally {
       btn.disabled = false;
+      state.buying = false;
+      buyUnlock();
     }
   };
 

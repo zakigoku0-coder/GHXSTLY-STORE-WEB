@@ -393,6 +393,17 @@ async function settle(promise, ms = 4000) {
   } catch (_) {}
 }
 
+// Same-(session,item) repeat within 15s = double-submit: reject it so one
+// click can never charge twice or burn two license keys.
+const recentBuys = new Map();
+function dupeBuy(key) {
+  const now = Date.now();
+  for (const [k, t] of recentBuys) if (now - t > 15000) recentBuys.delete(k);
+  if (recentBuys.has(key)) return true;
+  recentBuys.set(key, now);
+  return false;
+}
+
 app.get('/api/meta', (req, res) => {
   res.json({
     currency: CURRENCY,
@@ -944,6 +955,9 @@ app.post('/api/checkout', rateLimit(1500, 4), async (req, res) => {
     return res.status(400).json({ error: 'Please enter your Discord username (3-80 characters).' });
   }
   if (!Number.isInteger(accountId)) return res.status(400).json({ error: 'Invalid account' });
+  if (dupeBuy(`acc:${req.sessionToken}:${accountId}:${promoCode || ''}`)) {
+    return res.status(409).json({ error: 'This purchase is already processing — check your history.' });
+  }
   const account = store.getAccount(accountId);
   if (!account) return res.status(404).json({ error: 'Account not found' });
   if (account.status === 'sold') return res.status(410).json({ error: 'This account was just sold to someone else.' });
@@ -1174,6 +1188,9 @@ app.post('/api/digital/buy', rateLimit(1500, 4), async (req, res) => {
     return res.status(400).json({ error: 'Please enter your Discord username (3-80 characters).' });
   }
   if (!itemId) return res.status(400).json({ error: 'Invalid item' });
+  if (dupeBuy(`dg:${req.sessionToken}:${itemId}`)) {
+    return res.status(409).json({ error: 'This purchase is already processing — check your history.' });
+  }
 
   const result = store.buyDigital(itemId, req.sessionToken, discordName);
   if (!result.ok) return res.status(400).json({ error: result.error });

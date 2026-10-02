@@ -736,9 +736,21 @@ app.get('/api/auth/me', (req, res) => {
   res.json({ user: publicUser(user) });
 });
 
-app.get('/api/wallet', (req, res) => {
-  const session = store.getOrCreateSession(req.sessionToken);
-  const user = applyOwnerRole(store.getUserForSession(req.sessionToken));
+app.get('/api/wallet', async (req, res) => {
+  // Never mint a fresh empty session on a mere read: on a stale instance
+  // that zero-balance row would out-newer the real one and wipe it globally.
+  let session = store.getSession(req.sessionToken);
+  if (!session) {
+    await settle(store.refreshFromDurableFresh(), 4000);
+    session = store.getSession(req.sessionToken) || store.getOrCreateSession(req.sessionToken);
+  }
+  const rawUser = store.getUserForSession(req.sessionToken);
+  // Self-heal: the server-side user balance is truth — a session must never
+  // sit below it (recovers funds zeroed by a stale copy).
+  if (rawUser && (rawUser.balance || 0) > session.balance) {
+    session.balance = store.setBalance(req.sessionToken, rawUser.balance);
+  }
+  const user = applyOwnerRole(rawUser);
   res.json({ balance: session.balance, currency: CURRENCY, user: user ? { name: user.name, email: user.email, picture: user.picture, role: user.role || null } : null });
 });
 

@@ -1,7 +1,6 @@
 (function () {
   'use strict';
   console.log('[app.js] IIFE started');
-  $('#stock-line').textContent = 'JS loaded';
 
   const $ = (s) => document.querySelector(s);
   const $$ = (s) => Array.from(document.querySelectorAll(s));
@@ -332,7 +331,6 @@
   /* ---------- Meta & wallet ---------- */
   async function loadMeta() {
     console.log('[loadMeta] Starting fetch to /api/meta');
-    $('#stock-line').textContent = 'Testing...';
     try {
       const meta = await api('/api/meta');
       console.log('[loadMeta] Got meta:', meta);
@@ -1792,19 +1790,13 @@
   // so a refresh never flashes a logged-out screen.
   applyAuthUi();
   if (typeof state.balance === 'number') paintBalance(state.balance);
-  console.log('[app.js] About to call loadMeta');
-  try {
-    loadMeta();
-    refreshWallet();
-    loadAuth();
-    loadDigitals();
-    loadAccounts();
-    updateWishlistBadge();
-    updateCartBadge();
-  } catch (e) {
-    console.error('[app.js] Init error:', e);
-    $('#stock-line').textContent = 'Error loading store: ' + e.message;
-  }
+  loadMeta();
+  refreshWallet();
+  loadAuth();
+  loadDigitals();
+  loadAccounts();
+  updateWishlistBadge();
+  updateCartBadge();
 
   /* ---------- Scroll Progress ---------- */
   const scrollBar = document.getElementById('scroll-progress');

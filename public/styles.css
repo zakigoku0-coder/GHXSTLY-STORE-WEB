@@ -315,6 +315,10 @@ nav {
 .hero p.lede { margin-top: 22px; font-size: 16.5px; color: #ffffff; max-width: 520px; opacity: 0; animation: fade-in 0.9s ease forwards 0.65s; }
 @keyframes fade-in { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
 .hero-actions { margin-top: 36px; display: flex; gap: 14px; flex-wrap: wrap; opacity: 0; animation: fade-in 0.9s ease forwards 0.9s; }
+.promo-badge { display: flex; flex-direction: column; align-items: center; gap: 4px; margin-top: 18px; opacity: 0; animation: fade-in 0.9s ease forwards 1.1s; }
+.promo-line { white-space: nowrap; }
+.promo-main { font-size: clamp(42px, 8vw, 60px); font-weight: 900; letter-spacing: .04em; text-transform: uppercase; background: linear-gradient(90deg, #ff2e4d, #ff6b3a, #ffd200); -webkit-background-clip: text; background-clip: text; color: transparent; text-shadow: 0 0 80px rgba(255, 46, 77, .5); }
+.promo-sub { font-size: clamp(18px, 3.5vw, 28px); font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--gold); opacity: .95; }
 .btn-primary, .btn-ghost {
   padding: 10px 18px; border-radius: 6px; font-weight: 800; font-size: 13px;
   display: inline-flex; align-items: center; justify-content: center; gap: 8px;

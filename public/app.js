@@ -824,17 +824,27 @@
 
   function applyAuthUi() {
     const logged = !!authUser;
-    $('#user-chip').hidden = !logged;
-    $('#signin-btn').hidden = logged;
-    $('#signup-btn').hidden = logged;
+    const userChip = $('#user-chip');
+    if (userChip) userChip.hidden = !logged;
+    const signinBtn = $('#signin-btn');
+    if (signinBtn) signinBtn.hidden = logged;
+    const signupBtn = $('#signup-btn');
+    if (signupBtn) signupBtn.hidden = logged;
     if (logged) {
-      $('#user-name').textContent = authUser.name || 'Buyer';
-      $('#user-role-badge').hidden = authUser.role !== 'owner';
+      const userName = $('#user-name');
+      if (userName) userName.textContent = authUser.name || 'Buyer';
+      const roleBadge = $('#user-role-badge');
+      if (roleBadge) roleBadge.hidden = authUser.role !== 'owner';
       const pic = $('#user-picture');
-      if (authUser.picture) { pic.src = authUser.picture; pic.hidden = false; }
-      else pic.hidden = true;
-      $('#user-avatar').textContent = (authUser.name || 'G').trim().charAt(0).toUpperCase();
-      $('#user-avatar').style.background = avatarColor(authUser.uid || authUser.email);
+      if (pic) {
+        if (authUser.picture) { pic.src = authUser.picture; pic.hidden = false; }
+        else pic.hidden = true;
+      }
+      const avatar = $('#user-avatar');
+      if (avatar) {
+        avatar.textContent = (authUser.name || 'G').trim().charAt(0).toUpperCase();
+        avatar.style.background = avatarColor(authUser.uid || authUser.email);
+      }
     }
     renderWalletUser(authUser);
     refreshHistoryBadge();

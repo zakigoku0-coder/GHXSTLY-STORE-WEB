@@ -1,6 +1,6 @@
 {
   "name": "ghxstly-store",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Secure Fortnite account marketplace — server-side wallet, promo codes, and Discord notifications.",
   "main": "server.js",
   "scripts": {
@@ -14,6 +14,12 @@
     "@vercel/blob": "^2.8.0",
     "@vercel/kv": "^3.0.0",
     "cookie-parser": "^1.4.6",
-    "express": "^4.19.2"
-  }
+    "express": "^4.19.2",
+    "socket.io": "^4.8.3"
+  },
+  "devDependencies": {},
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs"
 }

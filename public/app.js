@@ -1,6 +1,5 @@
 (function () {
   'use strict';
-  console.log('[app.js] IIFE started');
 
   const $ = (s) => document.querySelector(s);
   const $$ = (s) => Array.from(document.querySelectorAll(s));
@@ -330,10 +329,8 @@
 
   /* ---------- Meta & wallet ---------- */
   async function loadMeta() {
-    console.log('[loadMeta] Starting fetch to /api/meta');
     try {
       const meta = await api('/api/meta');
-      console.log('[loadMeta] Got meta:', meta);
       state.currency = meta.currency || '$';
       state.googleClientId = meta.googleClientId || '';
       state.discordEnabled = !!meta.discordEnabled;

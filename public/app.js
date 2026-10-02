@@ -1203,7 +1203,6 @@
     { id: 'tweaks-premium', type: 'Tweaks', name: 'Tweaks — Premium', price: 20, limited: true, stock: 90, desc: 'Combo of Risxn premium tweaks and some CobraX tweaks with WiFi optimizer — everything in only one click. Limited edition, never coming back.', downloadLinks: [{ label: 'GoFile', url: 'https://gofile.io/d/FRor7ZUk' }, { label: 'Buzzheavier', url: 'https://buzzheavier.com/bn3ytnr7mthi' }] },
     { id: 'macro-normal', type: 'Macro', name: 'Macro — Normal', price: 5, limited: false, stock: null },
     { id: 'macro-premium', type: 'Macro', name: 'Macro — Premium', price: 10, limited: false, stock: null },
-    { id: 'macro-unlimited', type: 'Macro', name: 'Macro — Unlimited', price: 30, limited: false, stock: null },
     { id: 'vbucks-800', type: 'V-Bucks', name: '800 V-Bucks', price: 9.99, limited: false, stock: null },
     { id: 'vbucks-2400', type: 'V-Bucks', name: '2,400 V-Bucks', price: 23.99, limited: false, stock: null },
     { id: 'vbucks-4500', type: 'V-Bucks', name: '4,500 V-Bucks', price: 41.99, limited: false, stock: null },

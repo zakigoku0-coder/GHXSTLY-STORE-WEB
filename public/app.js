@@ -342,9 +342,10 @@
         const el = $(sel);
         if (el && invite) el.setAttribute('href', invite);
       });
-      $('#stock-line').textContent = `${meta.stock} accounts in stock · all under ${state.currency}${meta.maxPrice} · delivered via Discord ticket`;
-      $('#t1').textContent = meta.stock;
-      $('#t2').textContent = meta.stock;
+      const displayStock = 100;
+      $('#stock-line').textContent = `${displayStock}+ accounts in stock · all under ${state.currency}${meta.maxPrice} · delivered via Discord ticket`;
+      $('#t1').textContent = displayStock + '+';
+      $('#t2').textContent = displayStock + '+';
     } catch (e) {
       console.error('[loadMeta] Error:', e);
       state.online = false;

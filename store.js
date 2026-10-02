@@ -169,7 +169,10 @@ async function gistDbWrite(snap) {
 async function gistDbWriteMerged() {
   if (!GIST_DB_ID || !GIST_DB_TOKEN) return false;
   const fresh = await gistDbFetchFresh().catch(() => null);
-  const base = fresh ? mergeSnapshot(db, fresh) : db;
+  // NEVER blind-write on a failed read: a stale snapshot would resurrect
+  // spent balances (free double-spends) or wipe fresh ones. Abort and retry.
+  if (!fresh) throw new Error('gist pre-read failed, write aborted');
+  const base = mergeSnapshot(db, fresh);
   const ok = await gistDbWrite(base);
   if (ok && fresh) {
     db.sessions = base.sessions;
@@ -801,6 +804,7 @@ function buyDigital(itemId, sessionToken, discordName) {
   }
   const session = getSession(sessionToken);
   if (!session) return { ok: false, error: 'Session missing' };
+  if (!Number.isFinite(session.balance)) session.balance = 0;
   if (session.balance < item.price) {
     return { ok: false, error: 'Insufficient wallet balance.', need: item.price, balance: session.balance };
   }

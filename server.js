@@ -957,7 +957,8 @@ app.post('/api/checkout', rateLimit(1500, 4), async (req, res) => {
 
   const price = Math.max(0, Math.round(account.price * (1 - discount / 100) * 100) / 100);
   const session = store.getOrCreateSession(req.sessionToken);
-  if (session.balance < price) {
+  if (!Number.isFinite(session.balance)) session.balance = 0;
+  if (!Number.isFinite(price) || session.balance < price) {
     return res.status(400).json({
       error: 'Insufficient wallet balance.',
       need: price,

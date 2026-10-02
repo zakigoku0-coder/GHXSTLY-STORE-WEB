@@ -1,5 +1,6 @@
 (function () {
   'use strict';
+  console.log('[app.js] IIFE started');
 
   const $ = (s) => document.querySelector(s);
   const $$ = (s) => Array.from(document.querySelectorAll(s));
@@ -1776,13 +1777,18 @@
   // so a refresh never flashes a logged-out screen.
   applyAuthUi();
   if (typeof state.balance === 'number') paintBalance(state.balance);
-  loadMeta();
-  refreshWallet();
-  loadAuth();
-  loadDigitals();
-  loadAccounts();
-  updateWishlistBadge();
-  updateCartBadge();
+  try {
+    loadMeta();
+    refreshWallet();
+    loadAuth();
+    loadDigitals();
+    loadAccounts();
+    updateWishlistBadge();
+    updateCartBadge();
+  } catch (e) {
+    console.error('[app.js] Init error:', e);
+    $('#stock-line').textContent = 'Error loading store: ' + e.message;
+  }
 
   /* ---------- Scroll Progress ---------- */
   const scrollBar = document.getElementById('scroll-progress');

@@ -360,13 +360,15 @@
     try {
       const data = await api('/api/wallet');
       if (data.user) {
-        // Right after OUR purchase the server copy may not have converged
-        // yet: never let a higher server number resurrect spent money.
-        const justSpent = state.lastSpendAt && (Date.now() - state.lastSpendAt < 60000);
-        if (justSpent && typeof state.balance === 'number' && data.balance > state.balance) {
-          paintBalance(state.balance);
+        // Sticky local balance: while our cached number is fresh, NEVER let
+        // a lower server number wipe it (stale copy). Server truth wins only
+        // when it matches, exceeds a stale cache, or a purchase proves us wrong.
+        const cached = (typeof state.balance === 'number') ? state.balance : null;
+        if (!state.forceSync && cached !== null && (cacheIsFresh() || data.known === false) && data.balance < cached) {
+          paintBalance(cached);
           renderWalletUser(data.user);
         } else {
+          state.forceSync = false;
           acceptBalance(data.balance);
           paintBalance(data.balance);
           renderWalletUser(data.user);
@@ -672,6 +674,8 @@
         closeCheckoutModal();
         openWalletModal();
         toast('Insufficient balance. Recharge your wallet first.', 'err');
+        state.forceSync = true;
+        await refreshWallet();
       } else {
         toast(err.message, 'err');
       }

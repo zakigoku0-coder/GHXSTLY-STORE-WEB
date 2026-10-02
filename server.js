@@ -740,9 +740,12 @@ app.get('/api/wallet', async (req, res) => {
   // Never mint a fresh empty session on a mere read: on a stale instance
   // that zero-balance row would out-newer the real one and wipe it globally.
   let session = store.getSession(req.sessionToken);
+  let known = !!session;
   if (!session) {
     await settle(store.refreshFromDurableFresh(), 4000);
-    session = store.getSession(req.sessionToken) || store.getOrCreateSession(req.sessionToken);
+    session = store.getSession(req.sessionToken);
+    known = !!session;
+    if (!session) session = store.getOrCreateSession(req.sessionToken);
   }
   const rawUser = store.getUserForSession(req.sessionToken);
   // Self-heal: the server-side user balance is truth — a session must never
@@ -751,7 +754,7 @@ app.get('/api/wallet', async (req, res) => {
     session.balance = store.setBalance(req.sessionToken, rawUser.balance);
   }
   const user = applyOwnerRole(rawUser);
-  res.json({ balance: session.balance, currency: CURRENCY, user: user ? { name: user.name, email: user.email, picture: user.picture, role: user.role || null } : null });
+  res.json({ balance: session.balance, known, currency: CURRENCY, user: user ? { name: user.name, email: user.email, picture: user.picture, role: user.role || null } : null });
 });
 
 app.get('/api/accounts', (req, res) => {

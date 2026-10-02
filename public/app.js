@@ -331,6 +331,7 @@
   /* ---------- Meta & wallet ---------- */
   async function loadMeta() {
     console.log('[loadMeta] Starting fetch to /api/meta');
+    $('#stock-line').textContent = 'Testing...';
     try {
       const meta = await api('/api/meta');
       console.log('[loadMeta] Got meta:', meta);

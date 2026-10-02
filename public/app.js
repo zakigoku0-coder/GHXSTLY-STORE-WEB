@@ -330,8 +330,10 @@
 
   /* ---------- Meta & wallet ---------- */
   async function loadMeta() {
+    console.log('[loadMeta] Starting fetch to /api/meta');
     try {
       const meta = await api('/api/meta');
+      console.log('[loadMeta] Got meta:', meta);
       state.currency = meta.currency || '$';
       state.googleClientId = meta.googleClientId || '';
       state.discordEnabled = !!meta.discordEnabled;
@@ -343,9 +345,10 @@
       $('#stock-line').textContent = `${meta.stock} accounts in stock · all under ${state.currency}${meta.maxPrice} · delivered via Discord ticket`;
       $('#t1').textContent = meta.stock;
       $('#t2').textContent = meta.stock;
-    } catch (_) {
+    } catch (e) {
+      console.error('[loadMeta] Error:', e);
       state.online = false;
-      $('#stock-line').textContent = 'Preview build — checkout is disabled. Deploy on Render for the live store.';
+      $('#stock-line').textContent = 'Error: ' + e.message;
     }
     initGoogle();
   }

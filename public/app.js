@@ -1,6 +1,7 @@
 (function () {
   'use strict';
   console.log('[app.js] IIFE started');
+  $('#stock-line').textContent = 'JS loaded';
 
   const $ = (s) => document.querySelector(s);
   const $$ = (s) => Array.from(document.querySelectorAll(s));

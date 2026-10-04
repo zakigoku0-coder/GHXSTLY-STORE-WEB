@@ -631,8 +631,8 @@
       </div>
       <div class="trust-item">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="4" y="10" width="14" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
-        <h4>48-hour warranty</h4>
-        <p>Locked out after purchase? Get a replacement or refund from your seller.</p>
+        <h4>24-hour refunds</h4>
+        <p>Changed your mind or locked out? Full refund within 24 hours of purchase — no questions asked.</p>
       </div>
       <div class="trust-item">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M8 12h8M12 8v8"/><circle cx="12" cy="12" r="9"/></svg>
@@ -719,6 +719,8 @@
       </div>
       <p id="promo-status" class="form-hint"></p>
     </div>
+    <p class="funds-note" id="checkout-funds-note" hidden></p>
+    <p class="refund-note">✔ Covered by 24-hour refunds — full refund within 24 hours, no questions asked.</p>
     <button type="button" class="btn-primary full btn-glow" id="checkout-buy" onclick="confirmPurchase()">Confirm purchase</button>
     <div class="steam-wait-warning" id="checkout-steam-note" hidden><strong>Please note:</strong> you will NOT receive this account instantly — delivery takes at least <strong>1 day</strong>.<br>Want the full game list first? Open a ticket on Discord — we will show you every game inside.</div>
   </div>
@@ -771,6 +773,8 @@
       <label for="dg-discord">Your Discord username / tag</label>
       <input type="text" id="dg-discord" autocomplete="off" placeholder="e.g. Username#0000 or @handle">
     </div>
+    <p class="funds-note" id="dg-funds-note" hidden></p>
+    <p class="refund-note">✔ Covered by 24-hour refunds — full refund within 24 hours, no questions asked.</p>
     <button type="button" class="btn-primary full btn-glow" id="dg-confirm-buy" onclick="confirmDigitalPurchase()">Confirm purchase</button>
   </div>
 </div>

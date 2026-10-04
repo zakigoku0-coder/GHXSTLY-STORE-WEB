@@ -1675,6 +1675,17 @@ details.filter-group > *:not(summary) { margin-top: 10px; }
 .f-sub { display: block; font-size: 12px; font-weight: 700; color: var(--faint); margin: 10px 0 6px; }
 .btn-apply { background: linear-gradient(180deg, #ffd94d, #f5b800); color: #231600; border: none; border-radius: 10px; padding: 13px; font-size: 14px; font-weight: 800; cursor: pointer; width: 100%; margin-top: 6px; transition: transform .15s ease, filter .15s ease; }
 .btn-apply:hover { transform: translateY(-1px); filter: brightness(1.06); }
+.pager { display: flex; align-items: center; justify-content: center; gap: 12px; flex-wrap: wrap; margin-top: 26px; }
+.page-nav { padding: 9px 18px; border-radius: 10px; border: 1px solid rgba(255,255,255,.16); background: rgba(255,255,255,.04); color: inherit; font-size: 13px; font-weight: 700; cursor: pointer; }
+.page-nav:disabled { opacity: .35; cursor: default; }
+.page-nav:not(:disabled):hover { border-color: var(--mist); color: var(--mist); }
+.page-info { font-size: 13px; color: var(--faint); }
+.page-info b, .page-info strong { color: var(--ink); }
+.page-nums { display: flex; align-items: center; gap: 6px; flex-basis: 100%; justify-content: center; }
+.page-num { min-width: 32px; height: 32px; padding: 0 8px; border-radius: 50%; border: 1px solid rgba(255,255,255,.14); background: transparent; color: inherit; font-size: 13px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; }
+.page-num:hover { border-color: var(--mist); color: var(--mist); }
+.page-num.active { background: var(--mist); border-color: var(--mist); color: #fff; cursor: default; }
+.page-gap { color: var(--faint); padding: 0 2px; }
 .locker-tabs { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
 .locker-tab { padding: 7px 14px; border-radius: 8px; border: 1px solid rgba(255,255,255,.14); background: rgba(255,255,255,.04); color: inherit; font-size: 12px; font-weight: 700; cursor: pointer; }
 .locker-tab.active { border-color: var(--mist); color: var(--mist); background: rgba(255,46,77,.08); }

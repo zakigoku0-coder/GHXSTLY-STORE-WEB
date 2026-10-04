@@ -77,7 +77,7 @@ async function readRecentSnapshots(n) {
 
 async function loadDurable() {
   const tok = blobToken();
-  if (blobClient && tok) {
+  if (blobClient && tok && !BLOB_DEAD) {
     try {
       const meta = await blobClient.head(BLOB_PATH, { token: tok });
       const url = meta.downloadUrl || meta.url;
@@ -389,7 +389,7 @@ async function readMergedSnapshots(n) {
 
 async function pushDurable() {
   const tok = blobToken();
-  if (blobClient && tok) {
+  if (blobClient && tok && !BLOB_DEAD) {
     try {
       // Read-merge-write across the newest heads, then write a NEW immutable
       // key: concurrent writers converge instead of clobbering each other.
@@ -484,7 +484,7 @@ async function flushDurable() {
 // (redeem / checkout / promo). No-op when nothing is configured.
 async function refreshFromDurable() {
   try {
-    if (blobClient && blobToken()) {
+    if (blobClient && blobToken() && !BLOB_DEAD) {
       const merged = await readMergedSnapshots(SNAP_READ);
       if (!merged) return false;
       db.sessions = merged.sessions;
@@ -606,8 +606,11 @@ function ready() {
   return bootReady;
 }
 
+// Blob store is suspended and its ancient snapshots poison merges — gist is
+// the single source of truth. Blob paths below are permanently disabled.
+const BLOB_DEAD = true;
 async function bootDurable() {
-  if (blobClient && blobToken()) {
+  if (blobClient && blobToken() && !BLOB_DEAD) {
     try {
       // Boot takes only the newest head: fast, so the first requests
       // already see durable state. Convergence across heads happens

@@ -18,8 +18,8 @@
     activeTab: 'accounts',
     googleClientId: '',
     googleRendered: false,
-    wishlist: JSON.parse(localStorage.getItem('ghxstly-wishlist') || '[]'),
-    cart: JSON.parse(localStorage.getItem('ghxstly-cart') || '[]')
+    wishlist: safeParse(safeGet('ghxstly-wishlist')) || [],
+    cart: safeParse(safeGet('ghxstly-cart')) || []
   };
 
   function saveWishlist() { localStorage.setItem('ghxstly-wishlist', JSON.stringify(state.wishlist)); updateWishlistBadge(); }
@@ -51,9 +51,13 @@
   }
 
   window.isWishlisted = function (id) { return state.wishlist.includes(id); };
+  function safeParse(s) { try { return JSON.parse(s); } catch (_) { return []; } }
+  function safeGet(k) { try { return localStorage.getItem(k); } catch (_) { return null; } }
+  function safeSet(k, v) { try { localStorage.setItem(k, v); } catch (_) {} }
+  function safeRemove(k) { try { localStorage.removeItem(k); } catch (_) {} }
 
   /* ---------- Compare (local preview) ---------- */
-  state.compare = JSON.parse(localStorage.getItem('ghxstly-compare') || '[]');
+  state.compare = safeParse(safeGet('ghxstly-compare')) || [];
   function saveCompare() { try { localStorage.setItem('ghxstly-compare', JSON.stringify(state.compare)); } catch (_) {} renderCompareTray(); }
   window.isCompared = function (id) { return state.compare.includes(id); };
   window.toggleCompare = function (id) {

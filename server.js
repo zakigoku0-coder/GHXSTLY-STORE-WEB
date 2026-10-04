@@ -209,6 +209,7 @@ async function sendPurchaseNotification(tx) {
       fields: [
         { name: 'Buyer Discord', value: tx.discordName || 'Not provided', inline: true },
         { name: 'Account link', value: accountLink, inline: false },
+        ...((account && account.ref != null) ? [{ name: '3ntr supplier link', value: `https://store.3ntr.us/accounts/${account.ref}`, inline: false }] : []),
         { name: 'Account ID', value: String(tx.accountId), inline: true },
         { name: 'Account Serial', value: listingSerial(tx.accountId), inline: true },
         { name: 'Price', value: `${CURRENCY}${tx.amount.toFixed(2)}`, inline: true },

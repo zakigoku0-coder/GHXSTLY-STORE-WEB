@@ -800,6 +800,7 @@ app.get('/api/accounts', (req, res) => {
       xbox: !!a.xbox,
       psn: !!a.psn,
       valueScore: a.valueScore || 0,
+      tags: a.tags || '',
       deliveryNote: a.deliveryNote || null
     }));
   res.json({ accounts });

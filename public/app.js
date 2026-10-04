@@ -476,9 +476,10 @@
 
   /* ---------- Account grid ---------- */
   function lockerText(a) {
-    if (!a.locker) return '';
+    const base = (a.tags || '') + ' ';
+    if (!a.locker) return base.toLowerCase();
     const t = x => (x.t || x.id || '');
-    return [...(a.locker.skins || []), ...(a.locker.pickaxes || []), ...(a.locker.dances || []), ...(a.locker.gliders || [])].map(t).join(' ').toLowerCase();
+    return (base + [...(a.locker.skins || []), ...(a.locker.pickaxes || []), ...(a.locker.dances || []), ...(a.locker.gliders || [])].map(t).join(' ')).toLowerCase();
   }
   window.resetFilters = function () {
     ['f-search', 'f-pmin', 'f-pmax', 'f-smin', 'f-smax', 'f-vb', 'f-pickaxe', 'f-emote'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });

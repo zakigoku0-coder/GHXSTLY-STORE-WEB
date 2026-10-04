@@ -871,6 +871,7 @@
       if (typeof state.balance === 'number' && Number.isFinite(data.amount)) acceptBalance(Math.max(0, Math.round((state.balance - data.amount) * 100) / 100));
       state.lastSpendAt = Date.now();
       saveAuthCache();
+      saveSpendMarker();
       await refreshWallet();
       if (isVbuck) loadDigitals(); else await loadAccounts();
     } catch (err) {
@@ -1028,13 +1029,24 @@
       if (authUser) localStorage.setItem(AUTH_CACHE_KEY, JSON.stringify({ user: authUser, balance: state.balance ?? null, at: Date.now(), spentAt: state.lastSpendAt || null }));
     } catch (_) {}
   }
+  const SPEND_KEY = 'ghxstly-last-spend';
+  function saveSpendMarker() {
+    try { if (state.lastSpendAt) localStorage.setItem(SPEND_KEY, String(state.lastSpendAt)); } catch (_) {}
+  }
   function loadSpendMarker() {
     try {
       const raw = localStorage.getItem(AUTH_CACHE_KEY);
-      if (!raw) return;
-      const parsed = JSON.parse(raw);
-      if (parsed && parsed.spentAt) state.lastSpendAt = parsed.spentAt;
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (parsed && parsed.spentAt) state.lastSpendAt = parsed.spentAt;
+      }
     } catch (_) {}
+    if (!state.lastSpendAt) {
+      try {
+        const s = Number(localStorage.getItem(SPEND_KEY));
+        if (Number.isFinite(s) && s > 0) state.lastSpendAt = s;
+      } catch (_) {}
+    }
   }
   function acceptBalance(n) {
     state.balance = n;
@@ -1874,6 +1886,7 @@
       if (typeof state.balance === 'number' && Number.isFinite(data.amount)) acceptBalance(Math.max(0, Math.round((state.balance - data.amount) * 100) / 100));
       state.lastSpendAt = Date.now();
       saveAuthCache();
+      saveSpendMarker();
       await refreshWallet();
       loadDigitals();
     } catch (err) {

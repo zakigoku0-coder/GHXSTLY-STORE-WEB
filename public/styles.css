@@ -1632,10 +1632,10 @@ body { font-family: 'IBM Plex Sans Arabic', system-ui, sans-serif; }
 .acc-thumb .acc-cover { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
 .account-skins { margin-top: 14px; }
 .skins-count { font-size: 14px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; margin-bottom: 10px; }
-.skins-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(72px, 1fr)); gap: 8px; max-height: 320px; overflow-y: auto; padding-right: 4px; }
-.skin-cell { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 6px 4px; border: 1px solid rgba(255,255,255,.1); border-radius: 8px; background: rgba(255,255,255,.03); }
+.skins-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(108px, 1fr)); gap: 10px; max-height: 420px; overflow-y: auto; padding-right: 4px; }
+.skin-cell { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 8px 6px; border: 1px solid rgba(255,255,255,.1); border-radius: 10px; background: rgba(255,255,255,.03); }
 .skin-cell img { width: 100%; aspect-ratio: 1; object-fit: contain; }
-.skin-cell em { font-style: normal; font-size: 10px; line-height: 1.2; text-align: center; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.skin-cell em { font-style: normal; font-size: 12px; line-height: 1.25; text-align: center; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
 .skin-cell.noimg { min-height: 60px; justify-content: center; }
 .paypal-box { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: 8px; border: 1px dashed rgba(255,255,255,.25); background: rgba(255,255,255,.04); margin-bottom: 10px; }
 .paypal-email { flex: 1; font-weight: 700; font-size: 13.5px; overflow-wrap: anywhere; }

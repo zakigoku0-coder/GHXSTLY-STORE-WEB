@@ -570,7 +570,7 @@
         </div>
       </div>
     `;
-    }).join('') + (filtered.length > shown.length ? `<button type="button" class="btn-ghost full" onclick="state.visibleCount+=36;renderAccounts();">Show more (${filtered.length - shown.length} left)</button>` : '');
+    }).join('') + (filtered.length > shown.length ? `<button type="button" class="btn-ghost full" onclick="showMoreAccounts()">Show more (${filtered.length - shown.length} left)</button>` : '');
     renderCompareTray();
   }
 
@@ -1560,6 +1560,7 @@
     }
   }
 
+  window.showMoreAccounts = function () { state.visibleCount = (state.visibleCount || 36) + 36; renderAccounts(); };
   window.switchTab = function (tab) {
     state.activeTab = tab;
     state.visibleCount = 36;

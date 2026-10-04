@@ -1,4 +1,4 @@
-const CACHE = 'ghxstly-v5';
+const CACHE = 'ghxstly-v6';
 const ASSETS = [
   '/',
   '/index.html',

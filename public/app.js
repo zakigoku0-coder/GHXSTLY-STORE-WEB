@@ -542,7 +542,29 @@
       return;
     }
 
-    grid.innerHTML = filtered.map((a, i) => {
+    const PAGE_SIZE = 30;
+    const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+    state.accPage = Math.min(Math.max(1, state.accPage || 1), totalPages);
+    const start = (state.accPage - 1) * PAGE_SIZE;
+    const shown = filtered.slice(start, start + PAGE_SIZE);
+    const pageBtn = p => p === state.accPage
+      ? `<span class="page-num active">${p}</span>`
+      : `<button type="button" class="page-num" onclick="goAccPage(${p})">${p}</button>`;
+    let pageNums = '';
+    if (totalPages <= 7) {
+      for (let p = 1; p <= totalPages; p++) pageNums += pageBtn(p);
+    } else {
+      const set = [1, 2, state.accPage - 1, state.accPage, state.accPage + 1, totalPages - 1, totalPages]
+        .filter((p, i, arr) => p >= 1 && p <= totalPages && arr.indexOf(p) === i).sort((x, y) => x - y);
+      let prev = 0;
+      for (const p of set) {
+        if (p - prev > 1) pageNums += '<span class="page-gap">…</span>';
+        pageNums += pageBtn(p);
+        prev = p;
+      }
+    }
+    const pager = totalPages > 1 ? `<div class="pager"><button type="button" class="page-nav" ${state.accPage <= 1 ? 'disabled' : ''} onclick="goAccPage(${state.accPage - 1})">‹ Previous</button><span class="page-info">Page ${state.accPage} of ${totalPages}</span><button type="button" class="page-nav" ${state.accPage >= totalPages ? 'disabled' : ''} onclick="goAccPage(${state.accPage + 1})">Next ›</button><div class="page-nums">${pageNums}</div></div>` : '';
+    grid.innerHTML = shown.map((a, i) => {
       const out = !(a.stock > 0) || a.status === 'sold';
       return `
       <div class="acc-card" style="--tier-color: var(${a.tierVar}); animation-delay:${Math.min(i * 40, 400)}ms">
@@ -572,9 +594,15 @@
         </div>
       </div>
     `;
-    }).join('');
+    }).join('') + pager;
     renderCompareTray();
   }
+  window.goAccPage = function (p) {
+    const total = Math.max(1, Math.ceil(state.accounts.filter(a => a.status !== 'sold' || (authUser && authUser.role === 'owner')).length / 30));
+    state.accPage = Math.min(Math.max(1, p), total);
+    renderAccounts();
+    document.getElementById('market-grid').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
 
   async function loadAccounts() {
     try {

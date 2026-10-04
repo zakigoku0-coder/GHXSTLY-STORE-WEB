@@ -16,6 +16,9 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -135,42 +138,37 @@
 
     <div class="market-layout">
       <aside class="filters reveal">
-        <div class="filters-head"><span class="filters-icon">⧩</span><h4>Filters</h4></div>
+        <div class="filters-box">
         <div class="filter-group">
           <h5>Search</h5>
           <input type="text" class="f-text" id="f-search" placeholder="Skin or account name…" autocomplete="off">
         </div>
-        <details class="filter-group" open>
-          <summary><h5>Price range</h5><span class="chev">›</span></summary>
-          <div class="f-row"><input type="number" class="f-num" id="f-pmin" min="0" placeholder="$5"><span>–</span><input type="number" class="f-num" id="f-pmax" min="0" placeholder="$300"></div>
-          <p class="filter-note">Displayed price includes store fees</p>
-        </details>
-        <details class="filter-group" open>
-          <summary><h5>Skin count</h5><span class="chev">›</span></summary>
-          <div class="f-row"><input type="number" class="f-num" id="f-smin" min="0" placeholder="50"><span>–</span><input type="number" class="f-num" id="f-smax" min="0" placeholder="∞"></div>
-          <p class="filter-note">The minimum varies by guarantee type</p>
-        </details>
-        <details class="filter-group" open>
-          <summary><h5>Find a skin or pickaxe</h5><span class="chev">›</span></summary>
+        <div class="filter-group">
+          <h5>Price range</h5>
+          <div class="f-row"><input type="number" class="f-num" id="f-pmin" min="0" placeholder="$ min"><span>–</span><input type="number" class="f-num" id="f-pmax" min="0" placeholder="$ max"></div>
+        </div>
+        <div class="filter-group">
+          <h5>Skin count</h5>
+          <div class="f-row"><input type="number" class="f-num" id="f-smin" min="0" placeholder="Min"><span>–</span><input type="number" class="f-num" id="f-smax" min="0" placeholder="Max"></div>
+        </div>
+        <div class="filter-group">
+          <h5>Find a skin or pickaxe</h5>
           <label class="f-sub">Skins</label>
-          <input type="text" class="f-text" id="f-skin2" placeholder="Choose skins…" autocomplete="off">
+          <input type="text" class="f-text" id="f-skin2" placeholder="Skin name…" autocomplete="off">
           <label class="f-sub">Pickaxes</label>
-          <input type="text" class="f-text" id="f-pickaxe" placeholder="Choose pickaxes…" autocomplete="off">
+          <input type="text" class="f-text" id="f-pickaxe" placeholder="Pickaxe name…" autocomplete="off">
           <label class="f-sub">Emotes</label>
-          <input type="text" class="f-text" id="f-emote" placeholder="Choose emotes…" autocomplete="off">
-        </details>
-        <details class="filter-group">
-          <summary><h5>Xbox linking</h5><span class="chev">›</span></summary>
-          <label><input type="checkbox" class="f-xbox"> Xbox-linkable accounts only</label>
-        </details>
-        <details class="filter-group">
-          <summary><h5>PSN linking</h5><span class="chev">›</span></summary>
-          <label><input type="checkbox" class="f-psn"> PSN-linkable accounts only</label>
-        </details>
-        <details class="filter-group">
-          <summary><h5>Minimum V-Bucks</h5><span class="chev">›</span></summary>
+          <input type="text" class="f-text" id="f-emote" placeholder="Emote name…" autocomplete="off">
+        </div>
+        <div class="filter-group">
+          <h5>Minimum V-Bucks</h5>
           <input type="number" class="f-num" id="f-vb" min="0" placeholder="0">
-        </details>
+        </div>
+        <div class="filter-group">
+          <h5>Platform</h5>
+          <label><input type="checkbox" class="f-xbox"> Xbox linkable</label>
+          <label><input type="checkbox" class="f-psn"> PSN linkable</label>
+        </div>
         <div class="filter-group">
           <h5>Guarantee</h5>
           <select class="f-text" id="f-guarantee">
@@ -190,6 +188,7 @@
         </div>
         <button type="button" class="btn-apply full" id="f-apply" onclick="applyFilters()">Apply filters</button>
         <button type="button" class="btn-ghost full" id="f-reset" onclick="resetFilters()">Reset filters</button>
+        </div>
       </aside>
 
       <div class="market-grid" id="market-grid"></div>

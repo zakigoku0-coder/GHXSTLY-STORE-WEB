@@ -79,19 +79,29 @@
     $('#compare-count').textContent = `${state.compare.length} of 3 to compare`;
     $('#compare-open').disabled = state.compare.length < 2;
   }
-  window.openCompare = function () {
+  window.openCompare = async function () {
     const items = state.compare.map(id => state.accounts.find(a => a.id === id)).filter(Boolean);
     if (items.length < 2) return;
+    // pull full lockers so every row shows real numbers, not dashes
+    await Promise.all(items.map(async a => {
+      if (a.locker) return;
+      try {
+        const d = await api(`/api/account/${a.id}/locker`);
+        if (d && d.locker) a.locker = d.locker;
+      } catch (_) {}
+    }));
+    const cnt = (a, k) => (a.locker && a.locker[k] ? a.locker[k].length : '—');
     const rows = [
       ['Cover', a => `<img src="${(a.gallery && a.gallery[0] && a.gallery[0].url) || ''}" alt="" loading="lazy" style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:8px;" onerror="this.remove()">`],
       ['Price', a => `<strong>${fmt(a.price)}</strong>`],
-      ['Skins', a => a.skins],
-      ['Pickaxes', a => (a.locker && a.locker.pickaxes ? a.locker.pickaxes.length : '—')],
-      ['Emotes', a => (a.locker && a.locker.dances ? a.locker.dances.length : '—')],
-      ['Gliders', a => (a.locker && a.locker.gliders ? a.locker.gliders.length : '—')],
+      ['Skins', a => `${a.skins} (${cnt(a, 'skins')} shown)`],
+      ['Pickaxes', a => cnt(a, 'pickaxes')],
+      ['Emotes', a => cnt(a, 'dances')],
+      ['Gliders', a => cnt(a, 'gliders')],
       ['Level', a => a.level || 1],
       ['V-Bucks', a => a.vbucks || 0],
       ['Guarantee', a => a.warranty || '—'],
+      ['Stock', a => (a.stock > 0 ? `${a.stock} left` : 'OUT OF STOCK')],
       ['', a => `<button type="button" class="card-buy" onclick="closeCompare();openCheckout(${a.id})">Buy</button>`],
     ];
     $('#compare-table').innerHTML = `<table><tr><th></th>${items.map(a => `<th>${a.name}</th>`).join('')}</tr>` +

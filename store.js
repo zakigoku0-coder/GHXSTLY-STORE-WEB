@@ -173,6 +173,11 @@ async function gistDbWriteMerged() {
   // spent balances (free double-spends) or wipe fresh ones. Abort and retry.
   if (!fresh) throw new Error('gist pre-read failed, write aborted');
   const base = mergeSnapshot(db, fresh);
+  // Catalog guard: the account list must never shrink through a write.
+  // If it does, something is stale/corrupt — abort instead of wiping the shop.
+  const before = (db.accounts || []).length;
+  const after = (base.accounts || []).length;
+  if (before >= 100 && after < before) throw new Error(`catalog shrink blocked (${before}→${after})`);
   const ok = await gistDbWrite(base);
   if (ok && fresh) {
     db.sessions = base.sessions;

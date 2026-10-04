@@ -542,9 +542,7 @@
       return;
     }
 
-    state.visibleCount = state.visibleCount || 36;
-    const shown = filtered.slice(0, state.visibleCount);
-    grid.innerHTML = shown.map((a, i) => {
+    grid.innerHTML = filtered.map((a, i) => {
       const out = !(a.stock > 0) || a.status === 'sold';
       return `
       <div class="acc-card" style="--tier-color: var(${a.tierVar}); animation-delay:${Math.min(i * 40, 400)}ms">
@@ -574,7 +572,7 @@
         </div>
       </div>
     `;
-    }).join('') + (filtered.length > shown.length ? `<button type="button" class="btn-ghost full" onclick="showMoreAccounts()">Show more (${filtered.length - shown.length} left)</button>` : '');
+    }).join('');
     renderCompareTray();
   }
 

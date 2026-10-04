@@ -1110,6 +1110,7 @@ aside.filters[hidden] { display: none; }
 .form-hint.ok { color: var(--mist); text-shadow: 0 0 8px rgba(255,46,77,0.45); }
 .form-hint.err { color: var(--danger); }
 .form-error { margin-top: 8px; font-size: 13px; font-weight: 700; color: #f29b9b; }
+.funds-note { margin: 10px 0 0; padding: 10px 12px; border-radius: 8px; font-size: 13px; font-weight: 700; color: #ffd9de; background: rgba(255,46,77,.12); border: 1px solid rgba(255,46,77,.45); }
 #wallet-success { text-align: center; padding: 10px 0 4px; }
 .wallet-success-icon {
   width: 54px; height: 54px; margin: 0 auto 10px; border-radius: 50%;

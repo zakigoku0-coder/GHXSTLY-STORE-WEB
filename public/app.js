@@ -591,6 +591,17 @@
     if (state.selectedVbuck) return state.selectedVbuck.price;
     return discountedPrice();
   }
+  function paintFundsNote(elId, balance, price) {
+    const el = document.getElementById(elId);
+    if (!el) return;
+    if (balance < price) {
+      el.hidden = false;
+      el.textContent = `Insufficient balance — you have ${fmt(balance)}, need ${fmt(price - balance)} more. Recharge first.`;
+    } else {
+      el.hidden = true;
+      el.textContent = '';
+    }
+  }
   async function refreshCheckoutTotals() {
     try {
       const w = await api('/api/wallet');
@@ -598,6 +609,14 @@
       $('#checkout-balance').textContent = fmt(w.balance);
       $('#checkout-after').textContent = fmt(Math.max(0, w.balance - price));
       $('#checkout-buy').textContent = `Confirm purchase — ${fmt(price)}`;
+      paintFundsNote('checkout-funds-note', w.balance, price);
+    } catch (_) { }
+  }
+  async function refreshDigitalTotals() {
+    if (!pendingDigital) return;
+    try {
+      const w = await api('/api/wallet');
+      paintFundsNote('dg-funds-note', w.balance, pendingDigital.price);
     } catch (_) { }
   }
 
@@ -1611,6 +1630,7 @@
     $('#dg-confirm-price').textContent = item.price === 0 ? 'Free' : fmt(item.price);
     $('#dg-discord').value = '';
     $('#dg-confirm-overlay').classList.add('show');
+    refreshDigitalTotals();
     setTimeout(() => $('#dg-discord').focus(), 50);
   };
   window.closeDgConfirm = function () { $('#dg-confirm-overlay').classList.remove('show'); };

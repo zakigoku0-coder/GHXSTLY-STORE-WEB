@@ -767,6 +767,30 @@
     setTimeout(() => { const ci = $('#wallet-code'); if (ci) ci.focus(); }, 50);
   };
   window.closeWalletModal = function () { $('#wallet-modal-overlay').classList.remove('show'); };
+  const PAYPAL_BUSINESS = 'ff3503212@gmail.com';
+  window.payWithPayPal = function () {
+    const amount = Math.round(Number(($('#paypal-amount') || {}).value) || 0);
+    if (!Number.isFinite(amount) || amount < 1 || amount > 1000) { toast('Enter an amount between $1 and $1000.', 'err'); return; }
+    const url = 'https://www.paypal.com/cgi-bin/webscr?cmd=_xclick&business=' + encodeURIComponent(PAYPAL_BUSINESS)
+      + '&amount=' + amount + '&currency_code=USD&item_name=' + encodeURIComponent('Ghxstly Store wallet top-up $' + amount);
+    window.open(url, '_blank', 'noopener');
+    toast('PayPal opened — send $' + amount + ', then press "I already paid".');
+  };
+  window.claimPayPalTopup = async function () {
+    const amount = Math.round(Number(($('#paypal-amount') || {}).value) || 0);
+    const discordEl = $('#paypal-discord');
+    const discordName = discordEl ? discordEl.value.trim() : '';
+    const st = $('#paypal-status');
+    if (!Number.isFinite(amount) || amount < 1 || amount > 1000) { if (st) st.textContent = 'Enter an amount between $1 and $1000.'; return; }
+    if (discordName.length < 3) { if (st) st.textContent = 'Enter your Discord username so we can credit you.'; return; }
+    try {
+      await api('/api/paypal/claim', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ amount, discordName }) });
+      if (st) { st.textContent = 'Claim sent! Check your wallet after we confirm the payment (usually minutes).'; st.className = 'form-hint ok'; }
+      toast('Claim sent — we will credit you once the PayPal payment lands.');
+    } catch (e) {
+      if (st) { st.textContent = e.message || 'Could not send claim.'; st.className = 'form-hint err'; }
+    }
+  };
 
   let redeemInFlight = false;
   async function redeemWallet(e) {

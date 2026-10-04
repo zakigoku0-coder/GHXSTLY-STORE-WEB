@@ -944,6 +944,32 @@ app.post('/api/wallet/redeem', rateLimit(1000, 5), async (req, res) => {
   res.json({ ok: true, added: result.amount, balance: result.balance, currency: CURRENCY });
 });
 
+app.post('/api/paypal/claim', rateLimit(10000, 3), async (req, res) => {
+  const amount = Math.round(Number(req.body.amount) || 0);
+  const discordName = String(req.body.discordName || '').trim().slice(0, 80);
+  if (!Number.isFinite(amount) || amount < 1 || amount > 1000) return res.status(400).json({ error: 'Enter an amount between $1 and $1000.' });
+  if (discordName.length < 3) return res.status(400).json({ error: 'Enter your Discord username so we can credit you.' });
+  const user = store.getUserForSession(req.sessionToken);
+  if (config.webhookUrl) {
+    await settle(fetch(config.webhookUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ embeds: [{
+        title: `💰 PayPal top-up claim — $${amount}`,
+        color: 0x4ade80,
+        fields: [
+          { name: 'Amount claimed', value: `$${amount}`, inline: true },
+          { name: 'Discord', value: discordName, inline: true },
+          { name: 'Store user', value: user ? `${user.name} (${user.email})` : 'Guest', inline: false },
+          { name: 'Status', value: 'Verify the payment in PayPal, then mint a recharge code for this buyer.', inline: false }
+        ],
+        timestamp: new Date().toISOString()
+      }] })
+    }), 6000);
+  }
+  res.json({ ok: true });
+});
+
 app.get('/api/promo/check', rateLimit(10000, 20), (req, res) => {
   const code = String(req.query.code || '').trim().toUpperCase();
   const promo = store.getPromoCode(code);

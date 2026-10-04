@@ -52,6 +52,50 @@
 
   window.isWishlisted = function (id) { return state.wishlist.includes(id); };
 
+  /* ---------- Compare (local preview) ---------- */
+  state.compare = JSON.parse(localStorage.getItem('ghxstly-compare') || '[]');
+  function saveCompare() { try { localStorage.setItem('ghxstly-compare', JSON.stringify(state.compare)); } catch (_) {} renderCompareTray(); }
+  window.isCompared = function (id) { return state.compare.includes(id); };
+  window.toggleCompare = function (id) {
+    const i = state.compare.indexOf(id);
+    if (i > -1) state.compare.splice(i, 1);
+    else {
+      if (state.compare.length >= 3) { toast('Compare up to 3 accounts — remove one first.', 'err'); return; }
+      state.compare.push(id);
+    }
+    saveCompare();
+    renderAccounts();
+  };
+  window.clearCompare = function () { state.compare = []; saveCompare(); renderAccounts(); };
+  function renderCompareTray() {
+    let tray = $('#compare-tray');
+    if (!tray) return;
+    if (!state.compare.length) { tray.hidden = true; return; }
+    tray.hidden = false;
+    $('#compare-count').textContent = `${state.compare.length} of 3 to compare`;
+    $('#compare-open').disabled = state.compare.length < 2;
+  }
+  window.openCompare = function () {
+    const items = state.compare.map(id => state.accounts.find(a => a.id === id)).filter(Boolean);
+    if (items.length < 2) return;
+    const rows = [
+      ['Cover', a => `<img src="${(a.gallery && a.gallery[0] && a.gallery[0].url) || ''}" alt="" loading="lazy" style="width:100%;aspect-ratio:1;object-fit:cover;border-radius:8px;" onerror="this.remove()">`],
+      ['Price', a => `<strong>${fmt(a.price)}</strong>`],
+      ['Skins', a => a.skins],
+      ['Pickaxes', a => (a.locker && a.locker.pickaxes ? a.locker.pickaxes.length : '—')],
+      ['Emotes', a => (a.locker && a.locker.dances ? a.locker.dances.length : '—')],
+      ['Gliders', a => (a.locker && a.locker.gliders ? a.locker.gliders.length : '—')],
+      ['Level', a => a.level || 1],
+      ['V-Bucks', a => a.vbucks || 0],
+      ['Guarantee', a => a.warranty || '—'],
+      ['', a => `<button type="button" class="card-buy" onclick="closeCompare();openCheckout(${a.id})">Buy</button>`],
+    ];
+    $('#compare-table').innerHTML = `<table><tr><th></th>${items.map(a => `<th>${a.name}</th>`).join('')}</tr>` +
+      rows.map(r => `<tr><td class="cmp-label">${r[0]}</td>${items.map(a => `<td>${r[1](a)}</td>`).join('')}</tr>`).join('') + `</table>`;
+    $('#compare-overlay').classList.add('show');
+  };
+  window.closeCompare = function () { $('#compare-overlay').classList.remove('show'); };
+
   window.toggleWishlist = function (id) {
     const idx = state.wishlist.indexOf(id);
     if (idx > -1) { state.wishlist.splice(idx, 1); toast('Removed from wishlist'); }
@@ -417,34 +461,79 @@
   }
 
   /* ---------- Account grid ---------- */
+  function lockerText(a) {
+    if (!a.locker) return '';
+    const t = x => (x.t || x.id || '');
+    return [...(a.locker.skins || []), ...(a.locker.pickaxes || []), ...(a.locker.dances || []), ...(a.locker.gliders || [])].map(t).join(' ').toLowerCase();
+  }
+  window.resetFilters = function () {
+    ['f-search', 'f-pmin', 'f-pmax', 'f-smin', 'f-smax', 'f-vb', 'f-pickaxe', 'f-emote'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+    $$('.f-xbox, .f-psn').forEach(el => { el.checked = false; });
+    const g = $('#f-guarantee'); if (g) g.value = '';
+    const s = $('#f-sort'); if (s) s.value = 'value';
+    state.visibleCount = 36;
+    renderMarket();
+  };
   function renderAccounts() {
     const grid = $('#market-grid');
-    const priceChecks = $$('.f-price:checked').map(c => c.value);
-    const skinChecks = $$('.f-skins:checked').map(c => c.value);
-    const inRange = (val, ranges) => ranges.some(r => {
-      const [lo, hi] = r.split('-').map(Number);
-      return val >= lo && val <= hi;
-    });
+    const val = id => { const el = document.getElementById(id); return el ? el.value.trim() : ''; };
+    const num = id => { const v = Number(val(id)); return Number.isFinite(v) && val(id) !== '' ? v : null; };
+    const q = val('f-search').toLowerCase();
+    const pmin = num('f-pmin'), pmax = num('f-pmax');
+    const smin = num('f-smin'), smax = num('f-smax');
+    const vb = num('f-vb');
+    const pq = val('f-pickaxe').toLowerCase();
+    const eq = val('f-emote').toLowerCase();
+    const fx = document.querySelector('.f-xbox');
+    const fp = document.querySelector('.f-psn');
+    const needXbox = fx && fx.checked, needPsn = fp && fp.checked;
+    const gq = val('f-guarantee').toLowerCase();
+    const sort = val('f-sort') || 'value';
 
     const isOwner = !!(authUser && authUser.role === 'owner');
-    const filtered = state.accounts.filter(
-      a => (isOwner || a.status !== 'sold') && inRange(a.price, priceChecks) && inRange(a.skins, skinChecks)
-    );
+    let filtered = state.accounts.filter(a => {
+      if (!isOwner && a.status === 'sold') return false;
+      if (pmin !== null && a.price < pmin) return false;
+      if (pmax !== null && a.price > pmax) return false;
+      if (smin !== null && a.skins < smin) return false;
+      if (smax !== null && a.skins > smax) return false;
+      if (vb !== null && (a.vbucks || 0) < vb) return false;
+      if (needXbox && !a.xbox) return false;
+      if (needPsn && !a.psn) return false;
+      if (gq && String(a.warranty || '').toLowerCase().indexOf(gq === 'working' ? 'working' : 'withdrawal') < 0) return false;
+      if (q && ((a.name || '').toLowerCase().indexOf(q) < 0 && lockerText(a).indexOf(q) < 0)) return false;
+      if (pq) {
+        const names = ((a.locker && a.locker.pickaxes) || []).map(x => (x.t || '').toLowerCase()).join(' ');
+        if (names.indexOf(pq) < 0) return false;
+      }
+      if (eq) {
+        const names = ((a.locker && a.locker.dances) || []).map(x => (x.t || '').toLowerCase()).join(' ');
+        if (names.indexOf(eq) < 0) return false;
+      }
+      return true;
+    });
+    if (sort === 'plo') filtered = filtered.slice().sort((x, y) => x.price - y.price);
+    else if (sort === 'phi') filtered = filtered.slice().sort((x, y) => y.price - x.price);
+    else if (sort === 'skins') filtered = filtered.slice().sort((x, y) => y.skins - x.skins);
+    else filtered = filtered.slice().sort((x, y) => (y.valueScore || 0) - (x.valueScore || 0));
 
     if (filtered.length === 0) {
       grid.innerHTML = '<p class="empty-state">No accounts match those filters right now.</p>';
       return;
     }
 
-    grid.innerHTML = filtered.map((a, i) => {
+    state.visibleCount = state.visibleCount || 36;
+    const shown = filtered.slice(0, state.visibleCount);
+    grid.innerHTML = shown.map((a, i) => {
       const out = !(a.stock > 0) || a.status === 'sold';
       return `
       <div class="acc-card" style="--tier-color: var(${a.tierVar}); animation-delay:${Math.min(i * 40, 400)}ms">
+        <button type="button" class="cmp-btn ${isCompared(a.id) ? 'active' : ''}" onclick="event.stopPropagation(); toggleCompare(${a.id})" aria-label="Compare" title="Compare">⇄</button>
         <button type="button" class="wish-btn ${isWishlisted(a.id) ? 'active' : ''}" onclick="event.stopPropagation(); toggleWishlist(${a.id})" aria-label="Toggle wishlist">
           <svg viewBox="0 0 24 24" width="18" height="18" fill="${isWishlisted(a.id) ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>
         </button>
         <div class="acc-thumb" onclick="openModal(${a.id})">
-          ${accountIcon(a.tierVar)}
+          ${a.gallery && a.gallery[0] ? `<img class="acc-cover" src="${a.gallery[0].url}" alt="" loading="lazy" onerror="this.remove()">` : accountIcon(a.tierVar)}
           <span class="warranty-badge">${a.warranty}</span>
         </div>
         <div class="acc-body">
@@ -465,7 +554,8 @@
         </div>
       </div>
     `;
-    }).join('');
+    }).join('') + (filtered.length > shown.length ? `<button type="button" class="btn-ghost full" onclick="state.visibleCount+=36;renderAccounts();">Show more (${filtered.length - shown.length} left)</button>` : '');
+    renderCompareTray();
   }
 
   async function loadAccounts() {
@@ -508,9 +598,61 @@
       gallery.innerHTML = '';
       gallery.hidden = true;
     }
+    const skinBox = $('#account-skins');
+    if (skinBox) {
+      const pretty = id => String(id).replace(/^(character_|cid_\d+_athena_commando_)/, '').replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+      const cell = (t, u) => `<span class="skin-cell" title="${t}">${u ? `<img src="${u}" alt="${t}" loading="lazy" onerror="this.parentElement.classList.add('noimg');this.remove()">` : ''}<em>${t}</em></span>`;
+      const grid = (list, isIds) => `<div class="skins-grid">` + (list || []).map(
+        c => isIds ? cell(pretty(c), `https://fortnite-api.com/images/cosmetics/br/${c}/icon.png`) : cell(c.t || c.id, c.u)
+      ).join('') + `</div>`;
+      const renderLocker = L => {
+        if (!(L && (L.skins || L.pickaxes || L.dances || L.gliders))) return false;
+        const tabs = [['skins', 'Skins', (L.skins || []).length], ['pickaxes', 'Pickaxes', (L.pickaxes || []).length], ['dances', 'Emotes', (L.dances || []).length], ['gliders', 'Gliders', (L.gliders || []).length]];
+        skinBox.innerHTML = `<div class="locker-tabs">` + tabs.map((t, i) => `<button type="button" class="locker-tab${i === 0 ? ' active' : ''}" data-ltab="${t[0]}" onclick="switchLockerTab('${t[0]}')">${t[1]} (${t[2]})</button>`).join('') + `</div>`
+          + tabs.map((t, i) => `<div class="locker-pane" data-lpane="${t[0]}"${i === 0 ? '' : ' hidden'}>${grid(L[t[0]], false)}</div>`).join('');
+        skinBox.hidden = false;
+        return true;
+      };
+      if (!renderLocker(a.locker)) {
+        if (a.ref != null) {
+          skinBox.innerHTML = '<p class="skins-count">Loading full locker…</p>';
+          skinBox.hidden = false;
+          api(`/api/account/${a.id}/locker`).then(d => {
+            if (state.selectedAccount && state.selectedAccount.id === a.id && d && d.locker) {
+              a.locker = d.locker;
+              renderLocker(d.locker);
+            }
+          }).catch(() => {
+            if (state.selectedAccount && state.selectedAccount.id === a.id) {
+              if (a.skinIds && a.skinIds.length) {
+                skinBox.innerHTML = `<p class="skins-count">${a.skinIds.length} skins included</p>` + grid(a.skinIds, true);
+              } else {
+                skinBox.innerHTML = '';
+                skinBox.hidden = true;
+              }
+            }
+          });
+        } else if (a.skinIds && a.skinIds.length) {
+          skinBox.innerHTML = `<p class="skins-count">${a.skinIds.length} skins included</p>` + grid(a.skinIds, true);
+          skinBox.hidden = false;
+        } else {
+          skinBox.innerHTML = '';
+          skinBox.hidden = true;
+        }
+      }
+    }
     $('#modal-overlay').classList.add('show');
   };
   window.closeModal = function () { $('#modal-overlay').classList.remove('show'); };
+  (function () {
+    const ov = document.getElementById('modal-overlay');
+    const m = ov ? ov.querySelector('.modal') : null;
+    if (m) m.addEventListener('scroll', () => { m.classList.toggle('scrolled', m.scrollTop > 60); }, { passive: true });
+  })();
+  window.switchLockerTab = function (name) {
+    $$('#account-skins .locker-tab').forEach(b => b.classList.toggle('active', b.dataset.ltab === name));
+    $$('#account-skins .locker-pane').forEach(p => { p.hidden = p.dataset.lpane !== name; });
+  };
   window.openImageViewer = function (src, alt) {
     $('#image-viewer-image').src = src;
     $('#image-viewer-image').alt = alt || '';
@@ -591,17 +733,6 @@
     if (state.selectedVbuck) return state.selectedVbuck.price;
     return discountedPrice();
   }
-  function paintFundsNote(elId, balance, price) {
-    const el = document.getElementById(elId);
-    if (!el) return;
-    if (balance < price) {
-      el.hidden = false;
-      el.textContent = `Insufficient balance — you have ${fmt(balance)}, need ${fmt(price - balance)} more. Recharge first.`;
-    } else {
-      el.hidden = true;
-      el.textContent = '';
-    }
-  }
   async function refreshCheckoutTotals() {
     try {
       const w = await api('/api/wallet');
@@ -609,14 +740,6 @@
       $('#checkout-balance').textContent = fmt(w.balance);
       $('#checkout-after').textContent = fmt(Math.max(0, w.balance - price));
       $('#checkout-buy').textContent = `Confirm purchase — ${fmt(price)}`;
-      paintFundsNote('checkout-funds-note', w.balance, price);
-    } catch (_) { }
-  }
-  async function refreshDigitalTotals() {
-    if (!pendingDigital) return;
-    try {
-      const w = await api('/api/wallet');
-      paintFundsNote('dg-funds-note', w.balance, pendingDigital.price);
     } catch (_) { }
   }
 
@@ -1403,6 +1526,7 @@
 
   window.switchTab = function (tab) {
     state.activeTab = tab;
+    state.visibleCount = 36;
     $$('.shop-tab').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
     renderMarket();
   };
@@ -1835,7 +1959,11 @@
     }
   });
 
-  $$('.f-price, .f-skins').forEach(el => el.addEventListener('change', renderMarket));
+  let fT = null;
+  const refilter = () => { state.visibleCount = 36; renderMarket(); };
+  $$('#f-guarantee, #f-sort, .f-xbox, .f-psn').forEach(el => el && el.addEventListener('change', refilter));
+  $$('#f-pmin, #f-pmax, #f-smin, #f-smax, #f-vb').forEach(el => el && el.addEventListener('input', () => { clearTimeout(fT); fT = setTimeout(refilter, 350); }));
+  $$('#f-search, #f-pickaxe, #f-emote').forEach(el => el && el.addEventListener('input', () => { clearTimeout(fT); fT = setTimeout(refilter, 350); }));
   $('#wallet-button').addEventListener('click', openWalletModal);
   $('#wallet-form').addEventListener('submit', redeemWallet);
   $('#promo-check').addEventListener('click', checkPromo);

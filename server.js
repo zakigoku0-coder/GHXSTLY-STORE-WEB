@@ -19,6 +19,7 @@ config.discordPublicKey = config.discordPublicKey || process.env.DISCORD_PUBLIC_
 config.ownerDiscordId = config.ownerDiscordId || process.env.OWNER_DISCORD_ID || '';
 config.discordCommandsChannel = config.discordCommandsChannel || process.env.DISCORD_COMMANDS_CHANNEL || '';
 const DISCORD_PUBLIC_KEY = config.discordPublicKey;
+const ADMIN_PW = process.env.ADMIN_PW || '';
 const OWNER_DISCORD_ID = config.ownerDiscordId;
 const PORT = process.env.PORT || config.port || 3000;
 const CURRENCY = config.currency || '$';
@@ -116,7 +117,7 @@ app.use((req, res, next) => {
     'X-Frame-Options': 'DENY',
     'Referrer-Policy': 'same-origin',
     'Content-Security-Policy':
-      "default-src 'self'; script-src 'self' 'unsafe-inline' https://accounts.google.com https://apis.google.com; style-src 'self' 'unsafe-inline' https://accounts.google.com https://*.googleapis.com https://*.gstatic.com; img-src 'self' data: https://*.googleusercontent.com https://cdn.discordapp.com; connect-src 'self' https://accounts.google.com; frame-src https://accounts.google.com https://discord.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
+      "default-src 'self'; script-src 'self' 'unsafe-inline' https://accounts.google.com https://apis.google.com; style-src 'self' 'unsafe-inline' https://accounts.google.com https://*.googleapis.com https://*.gstatic.com; img-src 'self' data: https://*.googleusercontent.com https://cdn.discordapp.com https://fortnite-api.com; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://accounts.google.com; frame-src https://accounts.google.com https://discord.com; frame-ancestors 'none'; base-uri 'self'; form-action 'self'"
   });
   next();
 });
@@ -793,6 +794,12 @@ app.get('/api/accounts', (req, res) => {
       desc: a.desc,
       chips: a.chips,
       gallery: a.gallery || [],
+      level: a.level || 1,
+      vbucks: a.vbucks || 0,
+      ref: a.ref == null ? null : a.ref,
+      xbox: !!a.xbox,
+      psn: !!a.psn,
+      valueScore: a.valueScore || 0,
       deliveryNote: a.deliveryNote || null
     }));
   res.json({ accounts });
@@ -806,6 +813,37 @@ app.get('/api/account/:id', (req, res) => {
   }
   const { id: _id, status, credentials: _credentials, ...safe } = account;
   res.json({ account: safe });
+});
+
+// Full locker on demand (cached): skins / pickaxes / emotes / gliders with photos.
+const lockerCache = new Map();
+app.get('/api/account/:id/locker', async (req, res) => {
+  const id = Number(req.params.id);
+  const account = store.getAccount(id);
+  if (!account) return res.status(404).json({ error: 'Account not found' });
+  if (account.locker) return res.json({ locker: account.locker });
+  const ref = account.ref;
+  if (ref == null) return res.status(404).json({ error: 'No locker for this account' });
+  const hit = lockerCache.get(ref);
+  if (hit && Date.now() - hit.at < 600000) return res.json({ locker: hit.locker, cached: true });
+  try {
+    const input = encodeURIComponent(JSON.stringify({ 0: { json: { itemId: ref } } }));
+    const r = await fetch(`https://store.3ntr.us/api/trpc/accounts.getDetails?batch=1&input=${input}`, {
+      headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36' },
+      signal: AbortSignal.timeout(12000)
+    });
+    if (!r.ok) throw new Error(`locker upstream ${r.status}`);
+    const j = await r.json();
+    const d = j && j[0] && j[0].result && j[0].result.data && j[0].result.data.json;
+    if (!d) throw new Error('locker empty');
+    const slim = arr => (Array.isArray(arr) ? arr.map(c => ({ t: c.title || c.id, u: c.imageUrl || null })) : []);
+    const locker = { skins: slim(d.skins), pickaxes: slim(d.pickaxes), dances: slim(d.dances), gliders: slim(d.gliders) };
+    lockerCache.set(ref, { at: Date.now(), locker });
+    if (lockerCache.size > 300) { const k = lockerCache.keys().next().value; lockerCache.delete(k); }
+    res.json({ locker });
+  } catch (e) {
+    res.status(502).json({ error: 'Locker temporarily unavailable' });
+  }
 });
 
 app.post('/api/auth/logout', async (req, res) => {
@@ -1103,7 +1141,7 @@ app.post('/api/admin/stock', rateLimit(1500, 10), async (req, res) => {
 
 app.get('/api/admin/add-account', rateLimit(5000, 3), async (req, res) => {
   const pw = req.query.pw || '';
-  if (pw !== 'ghxstlyadmin2026') return res.status(403).json({ error: 'no' });
+  if (!ADMIN_PW || pw !== ADMIN_PW) return res.status(403).json({ error: 'no' });
   try {
     const acc = JSON.parse(decodeURIComponent(req.query.data || '{}'));
     if (!acc.name || !acc.price) return res.status(400).json({ error: 'Missing name/price' });
@@ -1115,7 +1153,7 @@ app.get('/api/admin/add-account', rateLimit(5000, 3), async (req, res) => {
 
 app.get('/api/admin/patch-account', rateLimit(5000, 3), async (req, res) => {
   const pw = req.query.pw || '';
-  if (pw !== 'ghxstlyadmin2026') return res.status(403).json({ error: 'no' });
+  if (!ADMIN_PW || pw !== ADMIN_PW) return res.status(403).json({ error: 'no' });
   try {
     const id = parseInt(req.query.id);
     const patch = JSON.parse(decodeURIComponent(req.query.patch || '{}'));
@@ -1129,7 +1167,7 @@ app.get('/api/admin/patch-account', rateLimit(5000, 3), async (req, res) => {
 
 app.get('/api/admin/add-recharge', rateLimit(5000, 3), async (req, res) => {
   const pw = req.query.pw || '';
-  if (pw !== 'ghxstlyadmin2026') return res.status(403).json({ error: 'no' });
+  if (!ADMIN_PW || pw !== ADMIN_PW) return res.status(403).json({ error: 'no' });
   try {
     const amount = Number(req.query.amount);
     if (!Number.isFinite(amount) || amount <= 0 || amount > 1000000000) return res.status(400).json({ error: 'Bad amount (max 1,000,000,000).' });
@@ -1147,7 +1185,7 @@ app.get('/api/admin/add-recharge', rateLimit(5000, 3), async (req, res) => {
 
 app.get('/api/admin/set-stock', rateLimit(5000, 3), async (req, res) => {
   const pw = req.query.pw || '';
-  if (pw !== 'ghxstlyadmin2026') return res.status(403).json({ error: 'no' });
+  if (!ADMIN_PW || pw !== ADMIN_PW) return res.status(403).json({ error: 'no' });
   try {
     const id = String(req.query.id || '');
     const n = Number(req.query.n);
@@ -1160,7 +1198,7 @@ app.get('/api/admin/set-stock', rateLimit(5000, 3), async (req, res) => {
 
 app.get('/api/admin/add-promo', rateLimit(5000, 3), async (req, res) => {
   const pw = req.query.pw || '';
-  if (pw !== 'ghxstlyadmin2026') return res.status(403).json({ error: 'no' });
+  if (!ADMIN_PW || pw !== ADMIN_PW) return res.status(403).json({ error: 'no' });
   try {
     const code = req.query.code;
     const discount = parseInt(req.query.discount);

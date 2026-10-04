@@ -13,6 +13,9 @@
 <title>Ghxstly Store — Fortnite Accounts</title>
 <meta name="description" content="Stacked Fortnite accounts at up to $40. Pay with wallet balance, then get the account through a Discord ticket.">
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='4' fill='%230d0508'/%3E%3Cpath d='M12 3.2C8.2 3.2 5 4.2 5 10v8.7c0 .5.4.8 1 .5l1.4-1.3 1.7 1.4 2.2-1.4 1.5 1.4 2-1.4 1.5 1.4c.4.3 1-.02 1-.5V10c0-3.8-3.2-4.8-7-4.8Z' fill='%23ff2e4d'/%3E%3Ccircle cx='9.2' cy='10.2' r='1.15' fill='%230d0508'/%3E%3Ccircle cx='14.8' cy='10.2' r='1.15' fill='%230d0508'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -134,19 +137,52 @@
     <div class="market-layout">
       <aside class="filters reveal">
         <div class="filter-group">
-          <h5>Price</h5>
-          <label><input type="checkbox" class="f-price" value="0-10" checked> Under $10</label>
-          <label><input type="checkbox" class="f-price" value="10-20" checked> $10 – $20</label>
-          <label><input type="checkbox" class="f-price" value="20-30" checked> $20 – $30</label>
-          <label><input type="checkbox" class="f-price" value="30-40" checked> $30+</label>
+          <h5>Search</h5>
+          <input type="text" class="f-text" id="f-search" placeholder="Skin or account name…" autocomplete="off">
         </div>
         <div class="filter-group">
-          <h5>Skins</h5>
-          <label><input type="checkbox" class="f-skins" value="0-40" checked> Under 40</label>
-          <label><input type="checkbox" class="f-skins" value="40-150" checked> 40 – 150</label>
-          <label><input type="checkbox" class="f-skins" value="150-300" checked> 150 – 300</label>
-          <label><input type="checkbox" class="f-skins" value="300-999999" checked> 300+</label>
+          <h5>Price range</h5>
+          <div class="f-row"><input type="number" class="f-num" id="f-pmin" min="0" placeholder="$ min"><span>–</span><input type="number" class="f-num" id="f-pmax" min="0" placeholder="$ max"></div>
         </div>
+        <div class="filter-group">
+          <h5>Skin count</h5>
+          <div class="f-row"><input type="number" class="f-num" id="f-smin" min="0" placeholder="Min"><span>–</span><input type="number" class="f-num" id="f-smax" min="0" placeholder="Max"></div>
+        </div>
+        <div class="filter-group">
+          <h5>Minimum V-Bucks</h5>
+          <input type="number" class="f-num" id="f-vb" min="0" placeholder="0">
+        </div>
+        <div class="filter-group">
+          <h5>Has pickaxe</h5>
+          <input type="text" class="f-text" id="f-pickaxe" placeholder="Pickaxe name…" autocomplete="off">
+        </div>
+        <div class="filter-group">
+          <h5>Has emote</h5>
+          <input type="text" class="f-text" id="f-emote" placeholder="Emote name…" autocomplete="off">
+        </div>
+        <div class="filter-group">
+          <h5>Platform</h5>
+          <label><input type="checkbox" class="f-xbox"> Xbox linkable</label>
+          <label><input type="checkbox" class="f-psn"> PSN linkable</label>
+        </div>
+        <div class="filter-group">
+          <h5>Guarantee</h5>
+          <select class="f-text" id="f-guarantee">
+            <option value="">Any guarantee</option>
+            <option value="working">Working guarantee</option>
+            <option value="withdrawal">Withdrawal guarantee</option>
+          </select>
+        </div>
+        <div class="filter-group">
+          <h5>Sort by</h5>
+          <select class="f-text" id="f-sort">
+            <option value="value">Best value</option>
+            <option value="plo">Price: low to high</option>
+            <option value="phi">Price: high to low</option>
+            <option value="skins">Most skins</option>
+          </select>
+        </div>
+        <button type="button" class="btn-ghost full" id="f-reset" onclick="resetFilters()">Reset filters</button>
       </aside>
 
       <div class="market-grid" id="market-grid"></div>
@@ -595,8 +631,8 @@
       </div>
       <div class="trust-item">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><rect x="4" y="10" width="14" height="10" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg>
-        <h4>24-hour refunds</h4>
-        <p>Changed your mind or locked out? Full refund within 24 hours of purchase — no questions asked.</p>
+        <h4>48-hour warranty</h4>
+        <p>Locked out after purchase? Get a replacement or refund from your seller.</p>
       </div>
       <div class="trust-item">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4"><path d="M8 12h8M12 8v8"/><circle cx="12" cy="12" r="9"/></svg>
@@ -640,12 +676,14 @@
 <!-- Account details modal -->
 <div class="modal-overlay" id="modal-overlay" onclick="if(event.target===this)closeModal()">
   <div class="modal">
+    <div class="modal-wall" aria-hidden="true"><i class="wb1"></i><i class="wb2"></i><i class="wr1"></i><i class="wr2"></i></div>
     <button type="button" class="modal-close" onclick="closeModal()"><svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M4 4l12 12M18 4L4 18"/></svg></button>
     <div class="modal-eyebrow" id="modal-eyebrow"></div>
     <h3 id="modal-title"></h3>
     <p class="desc" id="modal-desc"></p>
     <div class="chip-row" id="modal-chips"></div>
     <div class="account-gallery" id="account-gallery" hidden></div>
+    <div class="account-skins" id="account-skins" hidden></div>
     <p class="modal-note">Read the spec sheet above, then press <strong>Buy</strong> if it fits your locker.</p>
     <button type="button" class="btn-primary full btn-glow" id="modal-buy" onclick="buyFromModal()">Buy this account</button>
   </div>
@@ -681,8 +719,6 @@
       </div>
       <p id="promo-status" class="form-hint"></p>
     </div>
-    <p class="funds-note" id="checkout-funds-note" hidden></p>
-    <p class="refund-note">✔ Covered by 24-hour refunds — full refund within 24 hours, no questions asked.</p>
     <button type="button" class="btn-primary full btn-glow" id="checkout-buy" onclick="confirmPurchase()">Confirm purchase</button>
     <div class="steam-wait-warning" id="checkout-steam-note" hidden><strong>Please note:</strong> you will NOT receive this account instantly — delivery takes at least <strong>1 day</strong>.<br>Want the full game list first? Open a ticket on Discord — we will show you every game inside.</div>
   </div>
@@ -735,8 +771,6 @@
       <label for="dg-discord">Your Discord username / tag</label>
       <input type="text" id="dg-discord" autocomplete="off" placeholder="e.g. Username#0000 or @handle">
     </div>
-    <p class="funds-note" id="dg-funds-note" hidden></p>
-    <p class="refund-note">✔ Covered by 24-hour refunds — full refund within 24 hours, no questions asked.</p>
     <button type="button" class="btn-primary full btn-glow" id="dg-confirm-buy" onclick="confirmDigitalPurchase()">Confirm purchase</button>
   </div>
 </div>
@@ -839,6 +873,21 @@
       <div class="hs-block"><span class="hs-label">Last order</span><strong id="hs-last">—</strong></div>
     </div>
     <div id="history-list" class="history-list"></div>
+  </div>
+</div>
+
+<!-- Compare tray + modal (local preview) -->
+<div class="compare-tray" id="compare-tray" hidden>
+  <span id="compare-count">0 of 3 to compare</span>
+  <button type="button" class="card-buy" id="compare-open" onclick="openCompare()">Compare now</button>
+  <button type="button" class="btn-ghost" onclick="clearCompare()">Clear</button>
+</div>
+<div class="modal-overlay" id="compare-overlay" onclick="if(event.target===this)closeCompare()">
+  <div class="modal compare-modal">
+    <button type="button" class="modal-close" onclick="closeCompare()">&times;</button>
+    <div class="modal-eyebrow">COMPARE</div>
+    <h3>Side by side</h3>
+    <div id="compare-table" class="compare-table"></div>
   </div>
 </div>
 

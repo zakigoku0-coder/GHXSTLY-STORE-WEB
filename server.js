@@ -827,17 +827,15 @@ app.get('/api/account/:id/locker', async (req, res) => {
   const hit = lockerCache.get(ref);
   if (hit && Date.now() - hit.at < 600000) return res.json({ locker: hit.locker, cached: true });
   try {
-    const input = encodeURIComponent(JSON.stringify({ 0: { json: { itemId: ref } } }));
-    const r = await fetch(`https://store.3ntr.us/api/trpc/accounts.getDetails?batch=1&input=${input}`, {
-      headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36' },
+    const r = await fetch(`https://gist.githubusercontent.com/zakigoku0-coder/e3b9c2fe1d3ebad502bd3f5ebabfca42/raw/${ref}.json`, {
       signal: AbortSignal.timeout(12000)
     });
-    if (!r.ok) throw new Error(`locker upstream ${r.status}`);
-    const j = await r.json();
-    const d = j && j[0] && j[0].result && j[0].result.data && j[0].result.data.json;
-    if (!d) throw new Error('locker empty');
-    const slim = arr => (Array.isArray(arr) ? arr.map(c => ({ t: c.title || c.id, u: c.imageUrl || null })) : []);
-    const locker = { skins: slim(d.skins), pickaxes: slim(d.pickaxes), dances: slim(d.dances), gliders: slim(d.gliders) };
+    if (!r.ok) throw new Error(`locker mirror ${r.status}`);
+    const d = await r.json();
+    const img = id => `https://fortnite-api.com/images/cosmetics/br/${id}/icon.png`;
+    const slim = arr => (Array.isArray(arr) ? arr.map(c => Array.isArray(c) ? ({ t: c[1] || c[0], u: img(c[0]) }) : ({ t: c.title || c.id, u: c.imageUrl || null })) : []);
+    const locker = { skins: slim(d.skins || d.s), pickaxes: slim(d.pickaxes || d.p), dances: slim(d.dances || d.d), gliders: slim(d.gliders || d.g) };
+    if (!locker.skins.length && !locker.pickaxes.length && !locker.dances.length && !locker.gliders.length) throw new Error('locker empty');
     lockerCache.set(ref, { at: Date.now(), locker });
     if (lockerCache.size > 300) { const k = lockerCache.keys().next().value; lockerCache.delete(k); }
     res.json({ locker });

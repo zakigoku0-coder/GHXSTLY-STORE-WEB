@@ -1046,8 +1046,6 @@
     if (logged) {
       const userName = $('#user-name');
       if (userName) userName.textContent = authUser.name || 'Buyer';
-      const roleBadge = $('#user-role-badge');
-      if (roleBadge) roleBadge.hidden = authUser.role !== 'owner';
       const pic = $('#user-picture');
       if (pic) {
         if (authUser.picture) { pic.src = authUser.picture; pic.hidden = false; }

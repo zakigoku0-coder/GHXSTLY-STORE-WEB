@@ -519,11 +519,11 @@
       if (q && ((a.name || '').toLowerCase().indexOf(q) < 0 && lockerText(a).indexOf(q) < 0)) return false;
       if (pq) {
         const names = ((a.locker && a.locker.pickaxes) || []).map(x => (x.t || '').toLowerCase()).join(' ');
-        if (names.indexOf(pq) < 0) return false;
+        if (names.indexOf(pq) < 0 && lockerText(a).indexOf(pq) < 0) return false;
       }
       if (eq) {
         const names = ((a.locker && a.locker.dances) || []).map(x => (x.t || '').toLowerCase()).join(' ');
-        if (names.indexOf(eq) < 0) return false;
+        if (names.indexOf(eq) < 0 && lockerText(a).indexOf(eq) < 0) return false;
       }
       return true;
     });

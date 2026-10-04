@@ -797,7 +797,6 @@ app.get('/api/accounts', (req, res) => {
       gallery: a.gallery || [],
       level: a.level || 1,
       vbucks: a.vbucks || 0,
-      ref: a.ref == null ? null : a.ref,
       xbox: !!a.xbox,
       psn: !!a.psn,
       valueScore: a.valueScore || 0,

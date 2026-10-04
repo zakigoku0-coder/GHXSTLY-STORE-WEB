@@ -618,13 +618,16 @@
         return true;
       };
       if (!renderLocker(a.locker)) {
-        if (a.ref != null) {
+        if (a.id != null) {
           skinBox.innerHTML = '<p class="skins-count">Loading full locker…</p>';
           skinBox.hidden = false;
           api(`/api/account/${a.id}/locker`).then(d => {
             if (state.selectedAccount && state.selectedAccount.id === a.id && d && d.locker) {
               a.locker = d.locker;
               renderLocker(d.locker);
+            } else if (state.selectedAccount && state.selectedAccount.id === a.id) {
+              skinBox.innerHTML = '';
+              skinBox.hidden = true;
             }
           }).catch(() => {
             if (state.selectedAccount && state.selectedAccount.id === a.id) {

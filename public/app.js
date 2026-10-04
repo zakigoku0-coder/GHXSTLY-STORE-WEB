@@ -768,6 +768,10 @@
   };
   window.closeWalletModal = function () { $('#wallet-modal-overlay').classList.remove('show'); };
   const PAYPAL_BUSINESS = 'ff3503212@gmail.com';
+  window.copyPayPalEmail = async function () {
+    try { await navigator.clipboard.writeText(PAYPAL_BUSINESS); toast('PayPal email copied.'); }
+    catch (_) { toast(PAYPAL_BUSINESS); }
+  };
   window.payWithPayPal = function () {
     const amount = Math.round(Number(($('#paypal-amount') || {}).value) || 0);
     if (!Number.isFinite(amount) || amount < 1 || amount > 1000) { toast('Enter an amount between $1 and $1000.', 'err'); return; }

@@ -434,11 +434,15 @@
         // a lower server number wipe it (stale copy). Server truth wins only
         // when it matches, exceeds a stale cache, or a purchase proves us wrong.
         const cached = (typeof state.balance === 'number') ? state.balance : null;
-        const spentRecently = state.lastSpendAt && (Date.now() - state.lastSpendAt < 15 * 60 * 1000);
-        if (!state.forceSync && cached !== null && ((cacheIsFresh() || data.known === false) && data.balance < cached || spentRecently && data.balance > cached)) {
+        // Spend marker: after OUR purchase, a higher server number is always a
+        // stale copy — never resurrect it. Clears once the server converges
+        // down to our number (reconciled), on new credit, or on forced sync.
+        const spentMarked = state.lastSpendAt && (Date.now() - state.lastSpendAt < 6 * 60 * 60 * 1000);
+        if (!state.forceSync && cached !== null && ((cacheIsFresh() || data.known === false) && data.balance < cached || spentMarked && data.balance > cached)) {
           paintBalance(cached);
           renderWalletUser(data.user);
         } else {
+          if (state.forceSync || (cached !== null && data.balance <= cached)) { state.lastSpendAt = null; }
           state.forceSync = false;
           acceptBalance(data.balance);
           paintBalance(data.balance);
@@ -986,6 +990,7 @@
         body: JSON.stringify({ code })
       });
       acceptBalance(data.balance);
+      state.lastSpendAt = null;
       saveAuthCache();
       const form2 = $('#wallet-form');
       if (form2) form2.hidden = true;

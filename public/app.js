@@ -434,7 +434,8 @@
         // a lower server number wipe it (stale copy). Server truth wins only
         // when it matches, exceeds a stale cache, or a purchase proves us wrong.
         const cached = (typeof state.balance === 'number') ? state.balance : null;
-        if (!state.forceSync && cached !== null && (cacheIsFresh() || data.known === false) && data.balance < cached) {
+        const spentRecently = state.lastSpendAt && (Date.now() - state.lastSpendAt < 15 * 60 * 1000);
+        if (!state.forceSync && cached !== null && ((cacheIsFresh() || data.known === false) && data.balance < cached || spentRecently && data.balance > cached)) {
           paintBalance(cached);
           renderWalletUser(data.user);
         } else {

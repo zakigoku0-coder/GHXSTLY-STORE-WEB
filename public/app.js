@@ -477,6 +477,12 @@
       state.accounts = DEMO_ACCOUNTS;
       renderAccounts();
     }
+    // Deep link: #account-<id> opens that account straight away.
+    const m = (location.hash || '').match(/^#account-(\d+)$/);
+    if (m) {
+      const a = state.accounts.find(x => x.id === Number(m[1]));
+      if (a) openModal(a.id);
+    }
   }
 
   /* ---------- Account modal ---------- */

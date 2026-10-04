@@ -196,12 +196,18 @@ async function sendPurchaseNotification(tx) {
   const tiers = { Common: 0x8a94a3, Rare: 0x5aa9f2, Epic: 0x9d7bea, Legendary: 0xf2a93b };
   const color = tiers[account && account.tier] || 0xbff2e6;
 
+  const storeBase = (process.env.STORE_URL || 'https://ghxstly-store-web.vercel.app').replace(/\/$/, '');
+  const accountLink = Number.isInteger(tx.accountId)
+    ? `${storeBase}/#account-${tx.accountId}`
+    : `${storeBase}/#listings`;
   const payload = {
     embeds: [{
       title: `New purchase â€” ${tx.accountName}`,
       color,
+      url: accountLink,
       fields: [
         { name: 'Buyer Discord', value: tx.discordName || 'Not provided', inline: true },
+        { name: 'Account link', value: accountLink, inline: false },
         { name: 'Account ID', value: String(tx.accountId), inline: true },
         { name: 'Account Serial', value: listingSerial(tx.accountId), inline: true },
         { name: 'Price', value: `${CURRENCY}${tx.amount.toFixed(2)}`, inline: true },

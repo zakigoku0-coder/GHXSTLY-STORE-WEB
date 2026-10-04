@@ -141,7 +141,7 @@ body::after {
   animation: drift 22s ease-in-out infinite alternate, hue-drift 16s ease-in-out infinite;
 }
 .glow-a { width: 480px; height: 480px; top: -140px; left: -120px; background: radial-gradient(circle, rgba(255,46,77,0.32), transparent 70%); }
-.glow-b { width: 520px; height: 520px; bottom: -180px; right: -160px; background: radial-gradient(circle, rgba(59,130,246,0.26), transparent 70%); animation-delay: 6s, 2s; }
+.glow-b { width: 640px; height: 640px; bottom: -180px; right: -160px; background: radial-gradient(circle, rgba(59,130,246,0.45), transparent 70%); animation-delay: 6s, 2s; }
 /* site-wide blue+red starfield */
 body {
   background-image:
@@ -1648,8 +1648,8 @@ footer::before {
   filter: blur(90px);
 }
 .marketplace::before {
-  width: 480px; height: 480px; top: -120px; left: -140px;
-  background: radial-gradient(circle, rgba(59,130,246,.20), transparent 65%);
+  width: 560px; height: 560px; top: -120px; left: -140px;
+  background: radial-gradient(circle, rgba(59,130,246,.38), transparent 65%);
   animation: orb-drift 13s ease-in-out infinite;
 }
 .marketplace::after {

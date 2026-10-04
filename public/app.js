@@ -563,7 +563,7 @@
         prev = p;
       }
     }
-    const pager = totalPages > 1 ? `<div class="pager"><button type="button" class="page-nav" ${state.accPage <= 1 ? 'disabled' : ''} onclick="goAccPage(${state.accPage - 1})">‹ Previous</button><span class="page-info">Page ${state.accPage} of ${totalPages}</span><button type="button" class="page-nav" ${state.accPage >= totalPages ? 'disabled' : ''} onclick="goAccPage(${state.accPage + 1})">Next ›</button><div class="page-nums">${pageNums}</div></div>` : '';
+    const pager = totalPages > 1 ? `<div class="pager"><div class="pager-row"><button type="button" class="page-nav" ${state.accPage <= 1 ? 'disabled' : ''} onclick="goAccPage(${state.accPage - 1})">‹ Previous</button><span class="page-info">Page ${state.accPage} of ${totalPages}</span><button type="button" class="page-nav" ${state.accPage >= totalPages ? 'disabled' : ''} onclick="goAccPage(${state.accPage + 1})">Next ›</button></div><div class="page-nums">${pageNums}</div></div>` : '';
     grid.innerHTML = shown.map((a, i) => {
       const out = !(a.stock > 0) || a.status === 'sold';
       return `

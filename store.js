@@ -178,6 +178,11 @@ async function gistDbWriteMerged() {
   const before = (db.accounts || []).length;
   const after = (base.accounts || []).length;
   if (before >= 100 && after < before) throw new Error(`catalog shrink blocked (${before}→${after})`);
+  // Catalog revision lock: if this instance's catalog is older than the
+  // shared one, it must not write (would downgrade everyone). Intentional
+  // data pushes bump catalogRev, so only current holders can write.
+  if ((db.catalogRev || 0) < ((fresh && fresh.catalogRev) || 0)) throw new Error('stale catalog, write aborted');
+  base.catalogRev = Math.max(base.catalogRev || 0, db.catalogRev || 0, (fresh && fresh.catalogRev) || 0);
   const ok = await gistDbWrite(base);
   if (ok && fresh) {
     db.sessions = base.sessions;
@@ -215,6 +220,7 @@ const lastPush = { at: null, ok: null, error: null };
 // sold states only ever move forward, lists are unioned.
 function mergeSnapshot(local, remote) {
   const out = { ...DEFAULT_DB };
+  out.catalogRev = Math.max(local.catalogRev || 0, remote.catalogRev || 0);
 
   const sess = new Map();
   for (const s of (remote.sessions || [])) {

@@ -776,7 +776,8 @@ app.get('/api/wallet', async (req, res) => {
   res.json({ balance: session.balance, known, currency: CURRENCY, user: user ? { name: user.name, email: user.email, picture: user.picture, role: user.role || null } : null });
 });
 
-app.get('/api/accounts', (req, res) => {
+app.get('/api/accounts', async (req, res) => {
+  await settle(store.refreshFromDurable(), 4000);
   const viewer = store.getUserForSession(req.sessionToken);
   const isOwner = !!viewer && applyOwnerRole(viewer).role === 'owner';
   const accounts = store

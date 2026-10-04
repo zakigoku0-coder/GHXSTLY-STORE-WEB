@@ -1660,6 +1660,21 @@ body { font-family: 'IBM Plex Sans Arabic', system-ui, sans-serif; }
 select.f-text option { background: #141019; }
 .f-row { display: flex; align-items: center; gap: 8px; }
 .f-row .f-num { min-width: 0; }
+.filters-head { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+.filters-head h4 { font-size: 17px; font-weight: 800; }
+.filters-icon { color: var(--mist); font-size: 16px; }
+aside.filters { position: sticky; top: 90px; align-self: start; max-height: calc(100vh - 110px); overflow-y: auto; padding-bottom: 16px; }
+details.filter-group { border-bottom: 1px solid rgba(255,255,255,.07); padding-bottom: 14px; }
+details.filter-group summary { display: flex; align-items: center; justify-content: space-between; cursor: pointer; list-style: none; user-select: none; }
+details.filter-group summary::-webkit-details-marker { display: none; }
+details.filter-group summary h5 { margin-bottom: 0; }
+details.filter-group summary .chev { color: var(--faint); font-size: 18px; line-height: 1; transform: rotate(-90deg); transition: transform .2s ease; }
+details.filter-group:not([open]) summary .chev { transform: rotate(90deg); }
+details.filter-group > *:not(summary) { margin-top: 10px; }
+.filter-note { font-size: 11px; color: var(--faint); opacity: .75; margin-top: 6px; }
+.f-sub { display: block; font-size: 12px; font-weight: 700; color: var(--faint); margin: 10px 0 6px; }
+.btn-apply { background: linear-gradient(180deg, #ffd94d, #f5b800); color: #231600; border: none; border-radius: 10px; padding: 13px; font-size: 14px; font-weight: 800; cursor: pointer; width: 100%; margin-top: 6px; transition: transform .15s ease, filter .15s ease; }
+.btn-apply:hover { transform: translateY(-1px); filter: brightness(1.06); }
 .locker-tabs { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
 .locker-tab { padding: 7px 14px; border-radius: 8px; border: 1px solid rgba(255,255,255,.14); background: rgba(255,255,255,.04); color: inherit; font-size: 12px; font-weight: 700; cursor: pointer; }
 .locker-tab.active { border-color: var(--mist); color: var(--mist); background: rgba(255,46,77,.08); }

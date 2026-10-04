@@ -487,18 +487,18 @@
     return (base + [...(a.locker.skins || []), ...(a.locker.pickaxes || []), ...(a.locker.dances || []), ...(a.locker.gliders || [])].map(t).join(' ')).toLowerCase();
   }
   window.resetFilters = function () {
-    ['f-search', 'f-pmin', 'f-pmax', 'f-smin', 'f-smax', 'f-vb', 'f-pickaxe', 'f-emote'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+    ['f-search', 'f-pmin', 'f-pmax', 'f-smin', 'f-smax', 'f-vb', 'f-pickaxe', 'f-emote', 'f-skin2'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
     $$('.f-xbox, .f-psn').forEach(el => { el.checked = false; });
     const g = $('#f-guarantee'); if (g) g.value = '';
     const s = $('#f-sort'); if (s) s.value = 'value';
-    state.visibleCount = 36;
+    state.accPage = 1;
     renderMarket();
   };
   function renderAccounts() {
     const grid = $('#market-grid');
     const val = id => { const el = document.getElementById(id); return el ? el.value.trim() : ''; };
     const num = id => { const v = Number(val(id)); return Number.isFinite(v) && val(id) !== '' ? v : null; };
-    const q = val('f-search').toLowerCase();
+    const q = (val('f-search') + ' ' + val('f-skin2')).trim().toLowerCase();
     const pmin = num('f-pmin'), pmax = num('f-pmax');
     const smin = num('f-smin'), smax = num('f-smax');
     const vb = num('f-vb');
@@ -2051,11 +2051,13 @@
     }
   });
 
-  let fT = null;
-  const refilter = () => { state.visibleCount = 36; renderMarket(); };
-  $$('#f-guarantee, #f-sort, .f-xbox, .f-psn').forEach(el => el && el.addEventListener('change', refilter));
-  $$('#f-pmin, #f-pmax, #f-smin, #f-smax, #f-vb').forEach(el => el && el.addEventListener('input', () => { clearTimeout(fT); fT = setTimeout(refilter, 350); }));
-  $$('#f-search, #f-pickaxe, #f-emote').forEach(el => el && el.addEventListener('input', () => { clearTimeout(fT); fT = setTimeout(refilter, 350); }));
+  window.applyFilters = function () {
+    state.accPage = 1;
+    renderMarket();
+    const g = document.getElementById('market-grid');
+    if (g) g.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+  $$('#f-search, #f-pmin, #f-pmax, #f-smin, #f-smax, #f-vb, #f-pickaxe, #f-emote, #f-skin2').forEach(el => el && el.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); applyFilters(); } }));
   $('#wallet-button').addEventListener('click', openWalletModal);
   $('#wallet-form').addEventListener('submit', redeemWallet);
   $('#promo-check').addEventListener('click', checkPromo);

@@ -753,7 +753,7 @@ function generateOrderCode() {
 /* ---------- Digital goods (Tweaks / Macro) ---------- */
 
 const DIGITAL_CATALOG = [
-  { id: 'tweaks-premium', type: 'Tweaks', name: 'Tweaks — Premium', price: 20, limited: true, initialStock: 90, license: true, desc: 'Combo of Risxn premium tweaks and some CobraX tweaks with WiFi optimizer — everything in only one click. Limited edition, never coming back.', downloadLinks: [{ label: 'GoFile', url: 'https://gofile.io/d/FRor7ZUk' }, { label: 'Buzzheavier', url: 'https://buzzheavier.com/bn3ytnr7mthi' }] },
+  { id: 'tweaks-premium', type: 'Tweaks', name: 'Tweaks — Premium', price: 20, limited: true, initialStock: 90, license: true, desc: 'Combo of Risxn premium tweaks and some CobraX tweaks with WiFi optimizer — everything in only one click. Limited edition, never coming back.', downloadLinks: [{ label: 'GoFile', url: 'https://gofile.io/d/t5Qtwxa2' }, { label: 'Buzzheavier', url: 'https://buzzheavier.com/cx870d3trv9p' }] },
   { id: 'macro-normal', type: 'Macro', name: 'Macro — Normal', price: 5, limited: false },
   { id: 'macro-premium', type: 'Macro', name: 'Macro — Premium', price: 10, limited: false },
   { id: 'vbucks-800', type: 'V-Bucks', name: '800 V-Bucks', price: 9.99, limited: false },

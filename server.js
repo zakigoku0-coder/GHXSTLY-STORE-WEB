@@ -1,4 +1,4 @@
-﻿const path = require('path');
+const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
 const express = require('express');
@@ -203,7 +203,7 @@ async function sendPurchaseNotification(tx) {
     : `${storeBase}/#listings`;
   const payload = {
     embeds: [{
-      title: `New purchase â€” ${tx.accountName}`,
+      title: `New purchase — ${tx.accountName}`,
       color,
       url: accountLink,
       fields: [
@@ -216,7 +216,7 @@ async function sendPurchaseNotification(tx) {
         { name: 'Order code (unique per purchase)', value: tx.orderCode, inline: false },
         ...(tx.licenseKey ? [{ name: 'Registration key (one-time, never resend)', value: tx.licenseKey, inline: false }] : []),
         { name: 'Promo used', value: tx.promoCode ? `${tx.promoCode} (-${tx.discount}%)` : 'None', inline: true },
-        { name: 'Status', value: 'Payment confirmed â€” hand over account via ticket.', inline: false }
+        { name: 'Status', value: 'Payment confirmed — hand over account via ticket.', inline: false }
       ],
       timestamp: tx.createdAt
     }]
@@ -251,7 +251,7 @@ async function sendRechargeNotification({ email, name, code, added, balance }) {
   try {
     const payload = {
       embeds: [{
-        title: `/balance â€” wallet recharged ${CURRENCY}${Number(added).toFixed(2)}`,
+        title: `/balance — wallet recharged ${CURRENCY}${Number(added).toFixed(2)}`,
         color: 0x4ade80,
         fields: [
           { name: 'User', value: name || 'Guest', inline: true },
@@ -347,7 +347,7 @@ function clientInfo(req) {
   else if (/iPhone|iPad|iPod/i.test(ua)) os = 'iOS';
   else if (/Mac OS X/i.test(ua)) os = 'macOS';
   else if (/X11|CrOS|Linux/i.test(ua)) os = 'Linux';
-  return `${browser} Â· ${os}`;
+  return `${browser} · ${os}`;
 }
 
 async function sendLoginNotification(req, { email, name, method }) {
@@ -361,7 +361,7 @@ async function sendLoginNotification(req, { email, name, method }) {
     const mapLink = geo.lat !== null && geo.lng !== null
       ? `[View map](https://www.google.com/maps?q=${geo.lat},${geo.lng})`
       : '';
-    const locationValue = geo.text === 'Unknown' && mapLink ? 'Unknown' : `${geo.text}${mapLink ? ' Â· ' + mapLink : ''}`;
+    const locationValue = geo.text === 'Unknown' && mapLink ? 'Unknown' : `${geo.text}${mapLink ? ' · ' + mapLink : ''}`;
 
     const payload = {
       embeds: [{
@@ -369,7 +369,7 @@ async function sendLoginNotification(req, { email, name, method }) {
         color: method === 'google' ? 0x4285f4 : method === 'discord' ? 0x5865f2 : method.endsWith('up') ? 0x5aa9f2 : 0x4ade80,
         fields: [
           { name: 'Email', value: email || 'Unknown', inline: true },
-          { name: 'Name', value: name || 'â€”', inline: true },
+          { name: 'Name', value: name || '—', inline: true },
           { name: 'When', value: `${when}\n(UTC)`, inline: false },
           { name: 'IP address', value: ip, inline: true },
           { name: 'Location', value: locationValue, inline: true },
@@ -499,54 +499,54 @@ function giverechargeCommandDef() {
 }
 
 // Public shop answers only. NEVER put codes, passwords, emails or links
-// to private things here â€” these replies are shown to any buyer.
+// to private things here — these replies are shown to any buyer.
 const SHOP_FAQS = [
   {
     keys: ['ticket', 'deliver', 'receive', 'get my account', 'where.*account', 'hand over', 'handover'],
-    reply: 'ðŸŽ« Delivery: copy your order code from the store, open a ticket in this Discord and send it there. The seller hands over the account in the ticket.'
+    reply: '🎫 Delivery: copy your order code from the store, open a ticket in this Discord and send it there. The seller hands over the account in the ticket.'
   },
   {
     keys: ['tournament', 'tourney', 'competition', 'cash prize', 'prize'],
-    reply: '🏆 Tournaments (dates, times, cash prizes) are announced right here and on TikTok: https://www.tiktok.com/@ghxstlyfn. Want to join the next one? Open a ticket and say you want in.'
+    reply: '?? Tournaments (dates, times, cash prizes) are announced right here and on TikTok: https://www.tiktok.com/@ghxstlyfn. Want to join the next one? Open a ticket and say you want in.'
   },
   {
     keys: ['live', 'stream', 'host', 'tiktok', 'tiktoks', 'when are you live', 'giveaway', 'drop'],
-    reply: 'ðŸ“º Ghxstly goes live on TikTok: https://www.tiktok.com/@ghxstlyfn â€” lives, giveaways and restock alerts are announced there and in this Discord. Follow so you never miss a stack.'
+    reply: '📺 Ghxstly goes live on TikTok: https://www.tiktok.com/@ghxstlyfn — lives, giveaways and restock alerts are announced there and in this Discord. Follow so you never miss a stack.'
   },
   {
     keys: ['custom', 'build', 'dream', 'personalized', 'request account'],
-    reply: 'ðŸ› ï¸ Custom account: press **Custom Account** on the store, enter your Discord name, minimum skins and the specific skins you want. The order goes straight to the owner on Discord.'
+    reply: '🛠️ Custom account: press **Custom Account** on the store, enter your Discord name, minimum skins and the specific skins you want. The order goes straight to the owner on Discord.'
   },
   {
     keys: ['buy', 'purchase', 'how do i get', 'how to get', 'pay', 'order', 'checkout'],
-    reply: 'ðŸ›’ How buying works: 1) Recharge your wallet with a code from the store. 2) Press **Buy** on a listing and enter your Discord name. 3) You get an order code â€” open a Discord ticket with it and the account is handed over there.'
+    reply: '🛒 How buying works: 1) Recharge your wallet with a code from the store. 2) Press **Buy** on a listing and enter your Discord name. 3) You get an order code — open a Discord ticket with it and the account is handed over there.'
   },
   {
     keys: ['price', 'cost', 'how much', 'expensive', 'cheap'],
-    reply: 'ðŸ’² Every account is capped at $60. Prices vary per locker â€” check the listings. Promo codes give % off at checkout when available.'
+    reply: '💲 Every account is capped at $150. Prices vary per locker — check the listings. Promo codes give % off at checkout when available.'
   },
   {
     keys: ['code', 'recharge', 'balance', 'top up', 'topup', 'wallet', 'where.*code', 'get.*code'],
-    reply: 'ðŸ’° Recharge codes come from the owner (TikTok lives, giveaways, Discord). Open the wallet on the store, enter the code once â€” each code works a single time, then it is dead.'
+    reply: '💰 Recharge codes come from the owner (TikTok lives, giveaways, Discord). Open the wallet on the store, enter the code once — each code works a single time, then it is dead.'
   },
   {
     keys: ['warranty', 'refund', 'locked', 'recover', 'banned', 'guarantee'],
-    reply: 'ðŸ›¡ï¸ Every account has a 48-hour warranty. Locked out after purchase? Open a ticket for a replacement or refund from your seller.'
+    reply: '🛡️ Every account has a 24-hour refunds. Locked out after purchase? Open a ticket for a replacement or refund from your seller.'
   },
   {
     keys: ['promo', 'discount', 'sale', 'coupon'],
-    reply: 'ðŸ·ï¸ Promo codes give a % discount at checkout. Enter yours with Apply before confirming the purchase. Each promo is single-use.'
+    reply: '🏷️ Promo codes give a % discount at checkout. Enter yours with Apply before confirming the purchase. Each promo is single-use.'
   },
   {
     keys: ['legit', 'scam', 'trust', 'safe', 'real'],
-    reply: 'âœ… Balances, codes and purchases are secured server-side â€” nothing can be faked from the browser. Order codes are instant and a real human answers support tickets.'
+    reply: '✅ Balances, codes and purchases are secured server-side — nothing can be faked from the browser. Order codes are instant and a real human answers support tickets.'
   },
   {
     keys: ['owner', 'admin', 'human', 'support', 'contact', 'help me', 'someone'],
-    reply: 'ðŸ‘¤ Need a human? Open a ticket in this Discord â€” a person answers, day or night.'
+    reply: '👤 Need a human? Open a ticket in this Discord — a person answers, day or night.'
   }
 ];
-const ASK_FALLBACK = 'â“ I can answer questions about lives, custom accounts, buying, prices, codes, delivery, warranty and promos. Try `/ask how do I buy` â€” or open a ticket for a human.';
+const ASK_FALLBACK = '❓ I can answer questions about lives, custom accounts, buying, prices, codes, delivery, warranty and promos. Try `/ask how do I buy` — or open a ticket for a human.';
 
 function answerShopQuestion(text) {
   const q = String(text || '').toLowerCase();
@@ -581,7 +581,7 @@ function supportCommandDefs() {
   ];
 }
 
-const HELP_TEXT = 'ðŸ‘» **Ghxstly Store bot**\nâ€¢ `/ask <question>` â€” lives, custom accounts, buying, prices, codes, delivery, warranty, promos.\nâ€¢ `/giverecharge <amount>` â€” owner only, mints a single-use recharge code.\n• `/promocode <discount>` — owner only, mints a single-use promo code.\nStuck? Open a ticket â€” a human answers. (Only visible to you.)';
+const HELP_TEXT = '👻 **Ghxstly Store bot**\n• `/ask <question>` — lives, custom accounts, buying, prices, codes, delivery, warranty, promos.\n• `/giverecharge <amount>` — owner only, mints a single-use recharge code.\n� `/promocode <discount>` � owner only, mints a single-use promo code.\nStuck? Open a ticket — a human answers. (Only visible to you.)';
 
 app.post('/api/discord/interactions', async (req, res) => {
   if (!verifyDiscordRequest(req)) return res.status(401).json({ error: 'bad signature' });
@@ -617,7 +617,7 @@ app.post('/api/discord/interactions', async (req, res) => {
     const opt = options.find(o => o.name === 'amount');
     const amount = Number(opt && opt.value);
     if (!GIVE_AMOUNTS.includes(amount)) {
-      return res.json({ type: 4, data: { content: 'Pick an amount from the list ($5â€“$100).', flags: 64 } });
+      return res.json({ type: 4, data: { content: 'Pick an amount from the list ($5–$100).', flags: 64 } });
     }
     // Fresh code every call: never repeated, dies on first redeem.
     const code = store.createWalletCodes(amount, 1)[0];
@@ -625,7 +625,7 @@ app.post('/api/discord/interactions', async (req, res) => {
     return res.json({
       type: 4,
       data: {
-        content: `ðŸ’° Recharge code â€” $${amount}\n\`${code}\`\nSingle-use. It dies on first redeem and is never sent twice.`,
+        content: `💰 Recharge code — $${amount}\n\`${code}\`\nSingle-use. It dies on first redeem and is never sent twice.`,
         flags: 64
       }
     });
@@ -634,7 +634,7 @@ app.post('/api/discord/interactions', async (req, res) => {
     const dopt = options.find(o => o.name === 'discount');
     const discount = Number(dopt && dopt.value);
     if (!PROMO_DISCOUNTS.includes(discount)) {
-      return res.json({ type: 4, data: { content: 'Pick a discount from the list (5â€“50%).', flags: 64 } });
+      return res.json({ type: 4, data: { content: 'Pick a discount from the list (5–50%).', flags: 64 } });
     }
     // Fresh promo every call: never repeated, dies on first use.
     const pcode = `GHX-${discount}-${store.generateCode(10)}`;
@@ -643,7 +643,7 @@ app.post('/api/discord/interactions', async (req, res) => {
     return res.json({
       type: 4,
       data: {
-        content: `ðŸ·ï¸ Promo code â€” ${discount}% off\n\`${pcode}\`\nSingle-use. It dies on first checkout and is never sent twice.`,
+        content: `🏷️ Promo code — ${discount}% off\n\`${pcode}\`\nSingle-use. It dies on first checkout and is never sent twice.`,
         flags: 64
       }
     });
@@ -767,7 +767,7 @@ app.get('/api/wallet', async (req, res) => {
     if (!session) session = store.getOrCreateSession(req.sessionToken);
   }
   const rawUser = store.getUserForSession(req.sessionToken);
-  // Self-heal: the server-side user balance is truth — a session must never
+  // Self-heal: the server-side user balance is truth � a session must never
   // sit below it (recovers funds zeroed by a stale copy).
   if (rawUser && (rawUser.balance || 0) > session.balance) {
     session.balance = store.setBalance(req.sessionToken, rawUser.balance);
@@ -993,7 +993,7 @@ app.post('/api/paypal/claim', rateLimit(10000, 3), async (req, res) => {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ embeds: [{
-        title: `💰 PayPal top-up claim — $${amount}`,
+        title: `?? PayPal top-up claim � $${amount}`,
         color: 0x4ade80,
         fields: [
           { name: 'Amount claimed', value: `$${amount}`, inline: true },
@@ -1026,7 +1026,7 @@ app.post('/api/checkout', rateLimit(1500, 4), async (req, res) => {
   }
   if (!Number.isInteger(accountId)) return res.status(400).json({ error: 'Invalid account' });
   if (dupeBuy(`acc:${req.sessionToken}:${accountId}:${promoCode || ''}`)) {
-    return res.status(409).json({ error: 'This purchase is already processing — check your history.' });
+    return res.status(409).json({ error: 'This purchase is already processing � check your history.' });
   }
   const account = store.getAccount(accountId);
   if (!account) return res.status(404).json({ error: 'Account not found' });
@@ -1259,7 +1259,7 @@ app.post('/api/digital/buy', rateLimit(1500, 4), async (req, res) => {
   }
   if (!itemId) return res.status(400).json({ error: 'Invalid item' });
   if (dupeBuy(`dg:${req.sessionToken}:${itemId}`)) {
-    return res.status(409).json({ error: 'This purchase is already processing — check your history.' });
+    return res.status(409).json({ error: 'This purchase is already processing � check your history.' });
   }
 
   const result = store.buyDigital(itemId, req.sessionToken, discordName);
@@ -1321,7 +1321,7 @@ app.post('/api/custom-order', rateLimit(5000, 3), async (req, res) => {
       body: JSON.stringify({ content, embeds: [embed] })
     });
     try {
-      let r = await post('@here ðŸš¨ NEW CUSTOM ACCOUNT ORDER ðŸš¨');
+      let r = await post('@here 🚨 NEW CUSTOM ACCOUNT ORDER 🚨');
       if (!r.ok) r = await post('');
       if (!r.ok) console.error('Custom-order webhook failed:', r.status, (await r.text()).slice(0, 200));
     } catch (err) {
@@ -1382,7 +1382,7 @@ const INVALID_EPIC_NAMES = ['tbd', 'test', 'none', 'n/a', 'admin', 'null', 'unde
 
 function tournamentEmbed(epicName, count) {
   return {
-    title: '🎮 Tournament Registration',
+    title: '?? Tournament Registration',
     description: `**${epicName}** just registered for the **Reload Solo Cash Cup**!`,
     color: 16729344,
     fields: [
@@ -1390,7 +1390,7 @@ function tournamentEmbed(epicName, count) {
       { name: 'Players', value: `${count} / 40`, inline: true },
       { name: 'Prize', value: count >= 40 ? '$5 ACTIVE' : `$5 (${40 - count} more needed)`, inline: true }
     ],
-    footer: { text: 'Ghxstly Store Tournament • Ends Saturday!' },
+    footer: { text: 'Ghxstly Store Tournament � Ends Saturday!' },
     timestamp: new Date().toISOString()
   };
 }
@@ -1458,41 +1458,41 @@ app.post('/api/support-chat', rateLimit(3000, 15), async (req, res) => {
   if (/(ticket|deliver|receive|get my account|where.*account|hand over|handover|after.*buy|what.*after)/.test(q)) {
     reply = 'Delivery: copy your order code from the store, open a ticket in this Discord and send it there. The seller hands over the account in the ticket.' + ticket;
   } else if (/(live|stream|host|tiktok|tiktoks|when are you live|giveaway|drop|when.*drop)/.test(q)) {
-    reply = 'Ghxstly goes live on TikTok: https://www.tiktok.com/@ghxstlyfn — lives, giveaways and restock alerts are announced there and in this Discord. Follow so you never miss a stack.';
+    reply = 'Ghxstly goes live on TikTok: https://www.tiktok.com/@ghxstlyfn � lives, giveaways and restock alerts are announced there and in this Discord. Follow so you never miss a stack.';
   } else if (/(tournament|tourney|competition|cash prize|prize|compete)/.test(q)) {
     reply = 'Tournaments (dates, times, cash prizes) are announced on TikTok and in this Discord. Want to join? Open a ticket and say you want in.' + ticket;
   } else if (/(custom|build|dream|personalized|request account|specific skin)/.test(q)) {
     reply = 'Custom account: press Custom Account on the store, enter your Discord name, minimum skins and the specific skins you want. The order goes straight to the store owner.' + ticket;
   } else if (/(buy|purchase|how do i get|how to get|pay|order|checkout|step)/.test(q)) {
-    reply = 'How buying works:\n1) Recharge your wallet with a code from the store\n2) Press Buy on a listing and enter your Discord name\n3) You get an order code — open a Discord ticket with it and the account is handed over there.\n\nMax price per account: $60.';
+    reply = 'How buying works:\n1) Recharge your wallet with a code from the store\n2) Press Buy on a listing and enter your Discord name\n3) You get an order code � open a Discord ticket with it and the account is handed over there.\n\nMax price per account: $150.';
   } else if (/(price|cost|how much|expensive|cheap|worth)/.test(q)) {
-    reply = 'Every account is capped at $60. Prices vary per locker — check the listings. Promo codes give % off at checkout when available.';
+    reply = 'Every account is capped at $150. Prices vary per locker � check the listings. Promo codes give % off at checkout when available.';
   } else if (/(code|recharge|balance|top up|topup|wallet|add money|fund)/.test(q)) {
-    reply = 'Recharge codes come from the owner (TikTok lives, giveaways, Discord). Open the wallet on the store, enter the code once — each code works a single time, then it\'s dead.';
+    reply = 'Recharge codes come from the owner (TikTok lives, giveaways, Discord). Open the wallet on the store, enter the code once � each code works a single time, then it\'s dead.';
   } else if (/(warranty|refund|locked|recover|banned|guarantee|problem|issue|broken)/.test(q)) {
-    reply = 'Every account has a 48-hour warranty. Locked out after purchase? Open a ticket for a replacement or refund from your seller.' + ticket;
+    reply = 'Every account has a 24-hour refunds. Locked out after purchase? Open a ticket for a replacement or refund from your seller.' + ticket;
   } else if (/(promo|discount|sale|coupon|code.*off|%)/.test(q)) {
     reply = 'Promo codes give a % discount at checkout. Enter yours with Apply before confirming the purchase. Each promo is single-use.';
   } else if (/(legit|scam|trust|safe|real|fake|secure)/.test(q)) {
-    reply = 'Balances, codes and purchases are secured server-side — nothing can be faked from the browser. Order codes are instant and a real human answers support tickets.';
+    reply = 'Balances, codes and purchases are secured server-side � nothing can be faked from the browser. Order codes are instant and a real human answers support tickets.';
   } else if (/(owner|admin|human|support|contact|someone|talk.*person)/.test(q)) {
-    reply = 'Need a human? Open a ticket in this Discord — a person answers, day or night.' + ticket;
+    reply = 'Need a human? Open a ticket in this Discord � a person answers, day or night.' + ticket;
   } else if (/(hi|hello|hey|sup|what's up|how are you)/.test(q)) {
     reply = 'Hey! Welcome to Ghxstly Store. I can help you with buying accounts, prices, codes, delivery, warranties, promos, and more. What do you want to know?';
   } else if (/(skin|outfit|cosmetic|rap|galaxy|og|renegade|travis|black knight)/.test(q)) {
-    reply = 'Check our listings for specific skins — every account shows its skin count and tier. Want something specific? Press Custom Account to request it.';
+    reply = 'Check our listings for specific skins � every account shows its skin count and tier. Want something specific? Press Custom Account to request it.';
   } else if (/(account.*type|bronze|silver|gold|platinum|diamond|tier)/.test(q)) {
-    reply = 'Accounts are tiered by skin count and value: Bronze (1-50 skins), Silver (50-100), Gold (100-200), Platinum (200-400), Diamond (400+). Each tier has its own price range, all capped at $60.';
+    reply = 'Accounts are tiered by skin count and value: Bronze (1-50 skins), Silver (50-100), Gold (100-200), Platinum (200-400), Diamond (400+). Each tier has its own price range, all capped at $150.';
   } else if (/(how many|stock|available|out of stock|restock|when.*restock)/.test(q)) {
     reply = 'Stock levels are shown on each listing. Sold-out items may be restocked during TikTok lives. Follow https://www.tiktok.com/@ghxstlyfn for restock alerts.';
   } else if (/(pay.*method|payment|card|paypal|crypto|apple pay|venmo)/.test(q)) {
-    reply = 'We use a wallet system — recharge with a single-use code from the store (given during lives, giveaways, or from the owner). No card or PayPal needed directly.';
+    reply = 'We use a wallet system � recharge with a single-use code from the store (given during lives, giveaways, or from the owner). No card or PayPal needed directly.';
   } else if (/(thank|thanks|thx|ty|appreciate)/.test(q)) {
-    reply = 'You\'re welcome! If you need anything else, I\'m here. Enjoy your new locker! 🎮';
+    reply = 'You\'re welcome! If you need anything else, I\'m here. Enjoy your new locker! ??';
   } else if (/(age|old|minimum|requirement)/.test(q)) {
     reply = 'No age restrictions on the store itself, but you need a Discord account for delivery. Open a ticket if you need help.';
   } else if (/(night|late|hours|open|available|when.*open|24|always)/.test(q)) {
-    reply = 'The store is always open online. Human support on Discord is available day and night — just open a ticket.';
+    reply = 'The store is always open online. Human support on Discord is available day and night � just open a ticket.';
   }
   res.json({ ok: true, reply: reply || 'I can answer questions about buying, prices, codes, delivery, warranties, promos, skins, tournaments, and more. What would you like to know?' + ticket });
 });
@@ -1506,8 +1506,8 @@ app.use('/api', (req, res) => res.status(404).json({ error: 'Not found' }));
 if (require.main === module) {
   app.listen(PORT, () => {
     console.log(`Ghxstly Store running at http://localhost:${PORT}`);
-    console.log(`Max price: ${CURRENCY}${MAX_PRICE} Â· Currency: ${CURRENCY}`);
-    console.log(`Webhook configured: ${config.webhookUrl ? 'yes (server-side only)' : 'NO â€” add one in config.json'}`);
+    console.log(`Max price: ${CURRENCY}${MAX_PRICE} · Currency: ${CURRENCY}`);
+    console.log(`Webhook configured: ${config.webhookUrl ? 'yes (server-side only)' : 'NO — add one in config.json'}`);
   });
 }
 

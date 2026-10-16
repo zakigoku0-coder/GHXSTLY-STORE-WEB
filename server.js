@@ -581,7 +581,7 @@ function supportCommandDefs() {
   ];
 }
 
-const HELP_TEXT = 'ðŸ‘» **Ghxstly Store bot**\nâ€¢ `/ask <question>` â€” lives, custom accounts, buying, prices, codes, delivery, warranty, promos.\nâ€¢ `/giverecharge <amount>` â€” owner only, mints a single-use recharge code.\n• `/promocode <discount>` — owner only, mints a single-use promo code.\nStuck? Open a ticket â€” a human answers. (Only visible to you.)';
+const HELP_TEXT = 'ðŸ‘» **Ghxstly Store bot**\nâ€¢ `/ask <question>` â€” lives, custom accounts, buying, prices, codes, delivery, warranty, promos.\nâ€¢ `/giverecharge <amount>` â€” owner only, mints a single-use recharge code.\nï¿½ `/promocode <discount>` ï¿½ owner only, mints a single-use promo code.\nStuck? Open a ticket â€” a human answers. (Only visible to you.)';
 
 app.post('/api/discord/interactions', async (req, res) => {
   if (!verifyDiscordRequest(req)) return res.status(401).json({ error: 'bad signature' });
@@ -767,7 +767,7 @@ app.get('/api/wallet', async (req, res) => {
     if (!session) session = store.getOrCreateSession(req.sessionToken);
   }
   const rawUser = store.getUserForSession(req.sessionToken);
-  // Self-heal: the server-side user balance is truth — a session must never
+  // Self-heal: the server-side user balance is truth ï¿½ a session must never
   // sit below it (recovers funds zeroed by a stale copy).
   if (rawUser && (rawUser.balance || 0) > session.balance) {
     session.balance = store.setBalance(req.sessionToken, rawUser.balance);
@@ -993,7 +993,7 @@ app.post('/api/paypal/claim', rateLimit(10000, 3), async (req, res) => {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ embeds: [{
-        title: `?? PayPal top-up claim — $${amount}`,
+        title: `?? PayPal top-up claim ï¿½ $${amount}`,
         color: 0x4ade80,
         fields: [
           { name: 'Amount claimed', value: `$${amount}`, inline: true },
@@ -1026,7 +1026,7 @@ app.post('/api/checkout', rateLimit(1500, 4), async (req, res) => {
   }
   if (!Number.isInteger(accountId)) return res.status(400).json({ error: 'Invalid account' });
   if (dupeBuy(`acc:${req.sessionToken}:${accountId}:${promoCode || ''}`)) {
-    return res.status(409).json({ error: 'This purchase is already processing — check your history.' });
+    return res.status(409).json({ error: 'This purchase is already processing ï¿½ check your history.' });
   }
   const account = store.getAccount(accountId);
   if (!account) return res.status(404).json({ error: 'Account not found' });
@@ -1116,8 +1116,16 @@ app.get('/api/orders', (req, res) => {
 });
 
 /* ---------- Owner stock control ---------- */
+async function ownerViewer(sessionToken) {
+  let viewer = applyOwnerRole(store.getUserForSession(sessionToken));
+  if (!viewer) {
+    await settle(store.refreshFromDurableFresh(), 4000);
+    viewer = applyOwnerRole(store.getUserForSession(sessionToken));
+  }
+  return viewer;
+}
 app.post('/api/admin/stock', rateLimit(1500, 10), async (req, res) => {
-  const viewer = applyOwnerRole(store.getUserForSession(req.sessionToken));
+  const viewer = await ownerViewer(req.sessionToken);
   if (!viewer || viewer.role !== 'owner') return res.status(403).json({ error: 'Owner only.' });
   const id = Number(req.body.id);
   const account = store.getAccount(id);
@@ -1212,15 +1220,15 @@ app.get('/api/admin/add-promo', rateLimit(5000, 3), async (req, res) => {
 });
 
 /* ---------- Owner durability status (no secrets, owner only) ---------- */
-app.get('/api/admin/durable', rateLimit(1500, 10), (req, res) => {
-  const viewer = applyOwnerRole(store.getUserForSession(req.sessionToken));
+app.get('/api/admin/durable', rateLimit(1500, 10), async (req, res) => {
+  const viewer = await ownerViewer(req.sessionToken);
   if (!viewer || viewer.role !== 'owner') return res.status(403).json({ error: 'Owner only.' });
   res.json({ ok: true, status: store.durableStatus() });
 });
 
 /* ---------- Owner durability snapshot (awaited flush + status) ---------- */
 app.post('/api/admin/snapshot', rateLimit(5000, 3), async (req, res) => {
-  const viewer = applyOwnerRole(store.getUserForSession(req.sessionToken));
+  const viewer = await ownerViewer(req.sessionToken);
   if (!viewer || viewer.role !== 'owner') return res.status(403).json({ error: 'Owner only.' });
   try { await store.flushDurable(); } catch (_) {}
   let blob = null;
@@ -1259,7 +1267,7 @@ app.post('/api/digital/buy', rateLimit(1500, 4), async (req, res) => {
   }
   if (!itemId) return res.status(400).json({ error: 'Invalid item' });
   if (dupeBuy(`dg:${req.sessionToken}:${itemId}`)) {
-    return res.status(409).json({ error: 'This purchase is already processing — check your history.' });
+    return res.status(409).json({ error: 'This purchase is already processing ï¿½ check your history.' });
   }
 
   const result = store.buyDigital(itemId, req.sessionToken, discordName);
@@ -1390,7 +1398,7 @@ function tournamentEmbed(epicName, count) {
       { name: 'Players', value: `${count} / 40`, inline: true },
       { name: 'Prize', value: count >= 40 ? '$5 ACTIVE' : `$5 (${40 - count} more needed)`, inline: true }
     ],
-    footer: { text: 'Ghxstly Store Tournament • Ends Saturday!' },
+    footer: { text: 'Ghxstly Store Tournament ï¿½ Ends Saturday!' },
     timestamp: new Date().toISOString()
   };
 }
@@ -1458,41 +1466,41 @@ app.post('/api/support-chat', rateLimit(3000, 15), async (req, res) => {
   if (/(ticket|deliver|receive|get my account|where.*account|hand over|handover|after.*buy|what.*after)/.test(q)) {
     reply = 'Delivery: copy your order code from the store, open a ticket in this Discord and send it there. The seller hands over the account in the ticket.' + ticket;
   } else if (/(live|stream|host|tiktok|tiktoks|when are you live|giveaway|drop|when.*drop)/.test(q)) {
-    reply = 'Ghxstly goes live on TikTok: https://www.tiktok.com/@ghxstlyfn — lives, giveaways and restock alerts are announced there and in this Discord. Follow so you never miss a stack.';
+    reply = 'Ghxstly goes live on TikTok: https://www.tiktok.com/@ghxstlyfn ï¿½ lives, giveaways and restock alerts are announced there and in this Discord. Follow so you never miss a stack.';
   } else if (/(tournament|tourney|competition|cash prize|prize|compete)/.test(q)) {
     reply = 'Tournaments (dates, times, cash prizes) are announced on TikTok and in this Discord. Want to join? Open a ticket and say you want in.' + ticket;
   } else if (/(custom|build|dream|personalized|request account|specific skin)/.test(q)) {
     reply = 'Custom account: press Custom Account on the store, enter your Discord name, minimum skins and the specific skins you want. The order goes straight to the store owner.' + ticket;
   } else if (/(buy|purchase|how do i get|how to get|pay|order|checkout|step)/.test(q)) {
-    reply = 'How buying works:\n1) Recharge your wallet with a code from the store\n2) Press Buy on a listing and enter your Discord name\n3) You get an order code — open a Discord ticket with it and the account is handed over there.\n\nMax price per account: $150.';
+    reply = 'How buying works:\n1) Recharge your wallet with a code from the store\n2) Press Buy on a listing and enter your Discord name\n3) You get an order code ï¿½ open a Discord ticket with it and the account is handed over there.\n\nMax price per account: $150.';
   } else if (/(price|cost|how much|expensive|cheap|worth)/.test(q)) {
-    reply = 'Every account is capped at $150. Prices vary per locker — check the listings. Promo codes give % off at checkout when available.';
+    reply = 'Every account is capped at $150. Prices vary per locker ï¿½ check the listings. Promo codes give % off at checkout when available.';
   } else if (/(code|recharge|balance|top up|topup|wallet|add money|fund)/.test(q)) {
-    reply = 'Recharge codes come from the owner (TikTok lives, giveaways, Discord). Open the wallet on the store, enter the code once — each code works a single time, then it\'s dead.';
+    reply = 'Recharge codes come from the owner (TikTok lives, giveaways, Discord). Open the wallet on the store, enter the code once ï¿½ each code works a single time, then it\'s dead.';
   } else if (/(warranty|refund|locked|recover|banned|guarantee|problem|issue|broken)/.test(q)) {
     reply = 'Every account has a 24-hour refunds. Locked out after purchase? Open a ticket for a replacement or refund from your seller.' + ticket;
   } else if (/(promo|discount|sale|coupon|code.*off|%)/.test(q)) {
     reply = 'Promo codes give a % discount at checkout. Enter yours with Apply before confirming the purchase. Each promo is single-use.';
   } else if (/(legit|scam|trust|safe|real|fake|secure)/.test(q)) {
-    reply = 'Balances, codes and purchases are secured server-side — nothing can be faked from the browser. Order codes are instant and a real human answers support tickets.';
+    reply = 'Balances, codes and purchases are secured server-side ï¿½ nothing can be faked from the browser. Order codes are instant and a real human answers support tickets.';
   } else if (/(owner|admin|human|support|contact|someone|talk.*person)/.test(q)) {
-    reply = 'Need a human? Open a ticket in this Discord — a person answers, day or night.' + ticket;
+    reply = 'Need a human? Open a ticket in this Discord ï¿½ a person answers, day or night.' + ticket;
   } else if (/(hi|hello|hey|sup|what's up|how are you)/.test(q)) {
     reply = 'Hey! Welcome to Ghxstly Store. I can help you with buying accounts, prices, codes, delivery, warranties, promos, and more. What do you want to know?';
   } else if (/(skin|outfit|cosmetic|rap|galaxy|og|renegade|travis|black knight)/.test(q)) {
-    reply = 'Check our listings for specific skins — every account shows its skin count and tier. Want something specific? Press Custom Account to request it.';
+    reply = 'Check our listings for specific skins ï¿½ every account shows its skin count and tier. Want something specific? Press Custom Account to request it.';
   } else if (/(account.*type|bronze|silver|gold|platinum|diamond|tier)/.test(q)) {
     reply = 'Accounts are tiered by skin count and value: Bronze (1-50 skins), Silver (50-100), Gold (100-200), Platinum (200-400), Diamond (400+). Each tier has its own price range, all capped at $150.';
   } else if (/(how many|stock|available|out of stock|restock|when.*restock)/.test(q)) {
     reply = 'Stock levels are shown on each listing. Sold-out items may be restocked during TikTok lives. Follow https://www.tiktok.com/@ghxstlyfn for restock alerts.';
   } else if (/(pay.*method|payment|card|paypal|crypto|apple pay|venmo)/.test(q)) {
-    reply = 'We use a wallet system — recharge with a single-use code from the store (given during lives, giveaways, or from the owner). No card or PayPal needed directly.';
+    reply = 'We use a wallet system ï¿½ recharge with a single-use code from the store (given during lives, giveaways, or from the owner). No card or PayPal needed directly.';
   } else if (/(thank|thanks|thx|ty|appreciate)/.test(q)) {
     reply = 'You\'re welcome! If you need anything else, I\'m here. Enjoy your new locker! ??';
   } else if (/(age|old|minimum|requirement)/.test(q)) {
     reply = 'No age restrictions on the store itself, but you need a Discord account for delivery. Open a ticket if you need help.';
   } else if (/(night|late|hours|open|available|when.*open|24|always)/.test(q)) {
-    reply = 'The store is always open online. Human support on Discord is available day and night — just open a ticket.';
+    reply = 'The store is always open online. Human support on Discord is available day and night ï¿½ just open a ticket.';
   }
   res.json({ ok: true, reply: reply || 'I can answer questions about buying, prices, codes, delivery, warranties, promos, skins, tournaments, and more. What would you like to know?' + ticket });
 });

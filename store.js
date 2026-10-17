@@ -805,7 +805,7 @@ function generateOrderCode() {
 /* ---------- Digital goods (Tweaks / Macro) ---------- */
 
 const DIGITAL_CATALOG = [
-  { id: 'tweaks-premium', type: 'Tweaks', name: 'Tweaks — Premium', price: 20, limited: false, initialStock: 90, license: true, desc: 'Combo of Risxn premium tweaks and some CobraX tweaks with WiFi optimizer — everything in only one click. Limited edition, never coming back.', downloadLinks: [{ label: 'GoFile', url: 'https://gofile.io/d/4Az6VMzS' }, { label: 'Buzzheavier', url: 'https://buzzheavier.com/cx870d3trv9p' }] },
+  { id: 'tweaks-premium', type: 'Tweaks', name: 'Tweaks — Premium', price: 20, limited: false, initialStock: 90, license: true, image: '/images/ghxstly-tweaks-promo.png', desc: 'Combo of Risxn premium tweaks and some CobraX tweaks with WiFi optimizer — everything in only one click. Limited edition, never coming back.', downloadLinks: [{ label: 'GoFile', url: 'https://gofile.io/d/4Az6VMzS' }, { label: 'Buzzheavier', url: 'https://buzzheavier.com/cx870d3trv9p' }] },
   { id: 'cpu-optimizer', type: 'Tweaks', name: 'CPU Optimizor', price: 10, limited: false, license: true, licensePool: 'cpu', desc: 'Reduces your background processes and CPU usage for a smoother game. One-click optimize.', downloadLinks: [{ label: 'GoFile', url: 'https://gofile.io/d/NPdzio0a' }] },
   { id: 'macro-normal', type: 'Macro', name: 'Macro — Normal', price: 5, limited: false },
   { id: 'macro-premium', type: 'Macro', name: 'Macro — Premium', price: 10, limited: false },

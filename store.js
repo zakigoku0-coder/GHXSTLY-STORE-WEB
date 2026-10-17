@@ -210,6 +210,7 @@ function applyGistSnap(snap) {
   db.digitalStockAt = merged.digitalStockAt;
   db.tournamentPlayers = merged.tournamentPlayers;
   db.tweaksKeys = merged.tweaksKeys;
+  db.cpuKeys = merged.cpuKeys;
   return true;
 }
 
@@ -368,6 +369,18 @@ function mergeSnapshot(local, remote) {
   }
   out.tweaksKeys = [...tKeys.values()];
 
+  const cKeys = new Map();
+  for (const k of (remote.cpuKeys || [])) {
+    if (k && k.key) cKeys.set(k.key, { ...k });
+  }
+  for (const k of (local.cpuKeys || [])) {
+    if (!k || !k.key) continue;
+    const r = cKeys.get(k.key);
+    if (!r) { cKeys.set(k.key, { ...k }); continue; }
+    cKeys.set(k.key, { ...r, ...k, used: !!(r.used || k.used), usedAt: (r.used ? r.usedAt : null) || (k.used ? k.usedAt : null) || null });
+  }
+  out.cpuKeys = [...cKeys.values()];
+
   return out;
 }
 
@@ -413,6 +426,7 @@ async function pushDurable() {
       db.digitalStock = merged.digitalStock;
       db.digitalStockAt = merged.digitalStockAt;
       db.tweaksKeys = merged.tweaksKeys;
+      db.cpuKeys = merged.cpuKeys;
       const key = `${SNAP_PREFIX}${Date.now()}-${randomToken(4)}.json`;
       const putRes = await blobClient.put(key, JSON.stringify(db), {
         access: 'private',
@@ -502,6 +516,7 @@ async function refreshFromDurable() {
       db.digitalStock = merged.digitalStock;
       db.digitalStockAt = merged.digitalStockAt;
       db.tweaksKeys = merged.tweaksKeys;
+      db.cpuKeys = merged.cpuKeys;
       return true;
     }
     if (kv && kvAvailable) {
@@ -519,6 +534,34 @@ async function refreshFromDurable() {
   return false;
 }
 
+const CPU_KEYS_POOL = [
+  'WWFF-NFF4-RWZA-A4HA', 'Z6LM-VF72-NE7N-MUK3', 'ND8R-W7EZ-WA6P-7VY2', '9E2G-45V8-ZVXQ-6742',
+  'K77C-F4HS-K7KF-QZRJ', 'QHQM-LKM8-JXUN-4BE7', 'VLUL-9L2E-EGKN-DMBT', 'E2YF-USEY-N6LW-JFPW',
+  'DPXP-N2QJ-CNX4-NHBE', 'T8Y7-ZTWF-82UL-VRBJ', 'E224-MRMR-8VQ6-WQ7Y', '8DCC-LBV2-A63Z-Y9RH',
+  'KDLD-Z7X8-NVAW-N5XU', 'EGYJ-5KYL-AUSX-TGLA', 'ELKA-SN7C-GV39-D7HY', 'JDM9-8XBH-QW76-7EFJ',
+  'ETZS-M7Q3-LLQR-3XNA', 'FPRB-YUPW-QTAX-J66C', 'SKBV-XFSQ-PWJC-LE9U', 'HCZ9-YMWE-7BQA-QWE5',
+  'SXGG-UHPL-SRF4-WCSX', 'PSBW-4BAY-WUBJ-5JX6', '96NL-93BF-NLHT-JL5A', '89J6-Y4UJ-JQEK-NLBV',
+  'LZH9-SYUC-5BXF-RFRK', '8FYM-SQRE-2Q9K-JP2P', '2Z5F-PVZM-ZLQ7-BNZK', 'T26J-D59Q-T9VG-45TW',
+  '5HFE-FDL5-M2QE-UVUN', 'WYLP-F4YS-3PNT-9GSB', '7WW3-8ZBG-YUR4-JQ32', 'QJL6-WW6E-GVK9-BLRH',
+  'CGN2-MWG2-JWSX-6VA3', 'G8NW-GHH4-RFM6-EPXW', 'KWCV-KZ2H-HRTP-W7GT', 'M76M-SANT-WC3R-JLAJ',
+  '836C-3337-5P9P-VY32', 'MUTY-U3MA-PJRE-GMXG', '24HX-XFDK-56UD-WALG', 'RVMW-A59W-6NGQ-SX87',
+  'J2KK-4DQ6-WXYH-N4XR', 'QU2C-CNSH-NWV8-6X33', '8U36-HXZ3-57XP-7GQX', '8QMB-VVRF-ECJY-WKWZ',
+  'KYXP-4NUJ-SJWD-LPRS', 'KT4Y-Z3HZ-LTTL-2NHC', '28Z6-6S8Y-9SE3-7UHF', 'E6WG-XJ7T-DERJ-PZ35',
+  'XKWM-DKW5-KCBU-8PRC', '7VLH-W92P-57X3-LMUD', 'LM9Y-95GL-XHGV-JULQ', 'EBHC-K2WP-9YV5-8TJZ',
+  'VVKK-47HX-5LCR-QXH5', 'RKF5-HVLY-X4SU-JMKA', 'SFKZ-TGJX-YM2V-XW5Q', 'LQ35-FKME-6VHY-HNRE',
+  'KU2S-Z923-2QLS-ETGM', '4MN5-AXC4-BJSH-6NCS', '8J4B-MTV9-SGVD-ST6H', 'C6KG-MHGX-SPSE-WA8H',
+  'AGXQ-EADU-M78A-Y8NM', 'QHHN-GVF6-GY27-AFWR', '2VH3-C64C-YVD2-C3Q6', 'B5JQ-7Y6Y-RVXZ-UK9T',
+  'ERAR-8BWD-FA4E-8H87', '2TR6-752N-ZCUP-3ZFZ', 'KEE7-SW2D-49FM-D6N5', 'RSFR-CGDW-EMRQ-ZS3B',
+  'J92P-ZTCF-8F6T-W67A', 'MFE3-N5XZ-AMEL-JDXN', '9SRL-ZCYD-V9KQ-EWXB', 'RFD7-KW6U-44S4-KB6P',
+  '374G-PHLS-P5PD-Q2CS', 'VHA3-P9KL-C5T4-GWCV', 'JU2M-LQGJ-J3F8-SRTN', 'YCHT-X4UC-9GM7-KCLX',
+  'R6RQ-E29V-XVDX-2UKG', 'T43X-DCHA-XRDY-F37T', 'QA4G-JJKQ-X3GK-QQ6Z', 'YUZL-VM6R-NCWE-QPUM',
+  'E6W6-3V4Y-AW4N-5GP5', 'QPPL-QTV6-445W-EBT6', '3R4V-M4NR-NAY2-2PL6', 'KTYB-7FY6-S4DJ-K9X9',
+  '5DBQ-RT9N-9L6T-Q9EA', 'RFAF-A5AJ-Q22V-5RYX', '46P8-JAJP-LC7Q-P6AX', 'YNQE-AXB7-7XFY-5HPJ',
+  'AEC9-49EP-JSX8-4N94', '2EGU-BFDN-RWJ9-JD4D', 'M8FC-P8DZ-LFXK-387U', 'XUJN-4BX6-QBGF-GARR',
+  'BTP5-NJHQ-UXY7-LZHN', 'MJUA-6KK2-PTQ8-AUT7', '636T-8JYU-7QMR-F2DD', 'NN6P-5D67-VBYA-F7J4',
+  'CJFU-B223-9YZU-JNE4', 'ZNAT-NNNW-QQHU-AK5Q', 'PD88-LXVW-KFAR-VS4U', 'R8FL-EF8A-6PZE-WMDC'
+];
+
 const DEFAULT_DB = {
   accounts: [],
   walletCodes: [],
@@ -528,6 +571,7 @@ const DEFAULT_DB = {
   users: [],
   tournamentPlayers: [],
   tweaksKeys: [],
+  cpuKeys: [],
   digitalStockAt: {}
 };
 
@@ -570,6 +614,13 @@ function seedFromEnv() {
     if (!key || key.length > 40) continue;
     if (!db.tweaksKeys.some(k => k.key === key)) {
       db.tweaksKeys.push({ key, used: false, usedAt: null });
+      changed = true;
+    }
+  }
+  if (!db.cpuKeys) db.cpuKeys = [];
+  for (const key of CPU_KEYS_POOL) {
+    if (!db.cpuKeys.some(k => k.key === key)) {
+      db.cpuKeys.push({ key, used: false, usedAt: null });
       changed = true;
     }
   }
@@ -635,6 +686,7 @@ async function bootDurable() {
       db.digitalStockAt = merged.digitalStockAt;
       db.tournamentPlayers = merged.tournamentPlayers;
       db.tweaksKeys = merged.tweaksKeys;
+      db.cpuKeys = merged.cpuKeys;
         bootLoad.ok = true;
         bootLoad.sessions = (merged.sessions || []).length;
         save();
@@ -754,6 +806,7 @@ function generateOrderCode() {
 
 const DIGITAL_CATALOG = [
   { id: 'tweaks-premium', type: 'Tweaks', name: 'Tweaks — Premium', price: 20, limited: false, initialStock: 90, license: true, desc: 'Combo of Risxn premium tweaks and some CobraX tweaks with WiFi optimizer — everything in only one click. Limited edition, never coming back.', downloadLinks: [{ label: 'GoFile', url: 'https://gofile.io/d/4Az6VMzS' }, { label: 'Buzzheavier', url: 'https://buzzheavier.com/cx870d3trv9p' }] },
+  { id: 'cpu-optimizer', type: 'Tweaks', name: 'CPU Optimizor', price: 10, limited: false, license: true, licensePool: 'cpu', desc: 'Reduces your background processes and CPU usage for a smoother game. One-click optimize.', downloadLinks: [{ label: 'GoFile', url: 'https://gofile.io/d/NPdzio0a' }] },
   { id: 'macro-normal', type: 'Macro', name: 'Macro — Normal', price: 5, limited: false },
   { id: 'macro-premium', type: 'Macro', name: 'Macro — Premium', price: 10, limited: false },
   { id: 'vbucks-800', type: 'V-Bucks', name: '800 V-Bucks', price: 9.99, limited: false },
@@ -781,6 +834,7 @@ function listDigitals() {
       saleable: !i.limited || stock > 0,
       desc: i.desc || null,
       games: i.games || null,
+      image: i.image || null,
       downloadLinks: i.downloadLinks || null
     };
   });
@@ -824,7 +878,7 @@ function buyDigital(itemId, sessionToken, discordName) {
   }
   let licenseKey = null;
   if (item.license) {
-    licenseKey = assignTweaksKey();
+    licenseKey = item.licensePool === 'cpu' ? assignCpuKey() : assignTweaksKey();
     if (!licenseKey) return { ok: false, error: 'License keys exhausted — open a ticket for help.' };
   }
   session.balance = Math.max(0, Math.round((session.balance - item.price) * 100) / 100);
@@ -1170,6 +1224,16 @@ function assignTweaksKey() {
   return entry.key;
 }
 
+function assignCpuKey() {
+  if (!db.cpuKeys) db.cpuKeys = [];
+  const entry = db.cpuKeys.find(k => k && k.key && !k.used);
+  if (!entry) return null;
+  entry.used = true;
+  entry.usedAt = new Date().toISOString();
+  save();
+  return entry.key;
+}
+
 function createTransaction({ sessionToken, accountId, accountName, amount, promoCode, discount, discordName, licenseKey }) {
   const session = getSession(sessionToken);
   const tx = {
@@ -1271,6 +1335,7 @@ module.exports = {
   buyDigital,
   setDigitalStock,
   assignTweaksKey,
+  assignCpuKey,
   randomToken,
   generateCode,
   durableStatus,

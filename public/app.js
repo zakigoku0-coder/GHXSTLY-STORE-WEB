@@ -1562,12 +1562,15 @@
           ${dgIcon(type)}
           <span class="warranty-badge">${i.limited ? 'LIMITED EDITION' : 'DIGITAL'}</span>
         </div>`;
+      const cardThumb = i.image
+        ? `<div class="acc-thumb dg-art-thumb"><img src="${i.image}" alt="${escapeHtml(i.name)}" loading="lazy"><span class="warranty-badge">${i.limited ? 'LIMITED EDITION' : 'DIGITAL'}</span></div>`
+        : thumb;
       const direct = art || isSteam;
       const gamesHtml = (isSteam && i.games) ? `<div class="steam-games">${i.games.map(g => `<span>${g}</span>`).join('')}</div>` : '';
       const descHtml = i.desc ? `<span class="acc-desc">${i.desc}</span>` : '';
       return `
       <div class="acc-card${art ? ' vbuck-card' : ''}${isSteam ? ' steam-card' : ''}" style="--tier-color: var(${dgAccent(type)}); animation-delay:${Math.min(idx * 40, 400)}ms">
-        ${thumb}
+        ${cardThumb}
         <div class="acc-body">
           <span class="acc-tag">${type}</span>
           <span class="acc-name">${i.name}</span>

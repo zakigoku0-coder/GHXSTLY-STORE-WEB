@@ -457,6 +457,9 @@ section:not(.hero) { padding: 88px 0; }
   animation: float 4s ease-in-out infinite;
 }
 @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
+.acc-thumb.dg-art-thumb { height: auto; aspect-ratio: 16 / 9; padding: 0; align-items: stretch; justify-content: stretch; }
+.acc-thumb.dg-art-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; position: relative; z-index: 1; }
+.acc-thumb.dg-art-thumb::after { display: none; }
 .warranty-badge {
   font-size: 10.5px; font-weight: 800; padding: 4px 8px; border-radius: 4px;
   background: rgba(13,5,8,0.7); border: 1px solid var(--tier-color, var(--common)); color: var(--tier-color, var(--common));
